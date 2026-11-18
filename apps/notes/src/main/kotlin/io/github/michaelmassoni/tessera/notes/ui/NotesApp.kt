@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -179,7 +180,7 @@ fun NotesApp(
             Row(Modifier.fillMaxSize()) {
                 listPane(Modifier.width(listWidth).fillMaxHeight())
                 VerticalDivider()
-                Box(Modifier.weight(1f).fillMaxHeight()) {
+                Box(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.surface)) {
                     if (editor != null) {
                         NoteEditor(editor, checkedLast, wrapped, showBack = false)
                     } else {
