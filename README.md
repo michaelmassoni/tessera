@@ -15,9 +15,11 @@ design system.
 
 | App        | Package                 | Status        |
 |------------|-------------------------|---------------|
-| Calculator | `io.github.michaelmassoni.tessera.calculator` | v0.1: basic + scientific, exact decimals, history ([spec](docs/calculator.md)) |
-| Clock      | `io.github.michaelmassoni.tessera.clock`      | v0.1: alarms, timers, stopwatch, world clock ([spec](docs/clock.md)) |
-| Files      | `io.github.michaelmassoni.tessera.files`      | v0.1: browse, copy/move, search, share ([spec](docs/files.md)) |
+| Calculator | `io.github.michaelmassoni.tessera.calculator` | v0.2: basic + scientific, exact decimals, history ([spec](docs/calculator.md)) |
+| Clock      | `io.github.michaelmassoni.tessera.clock`      | v0.2: alarms, timers, stopwatch, world clock ([spec](docs/clock.md)) |
+| Files      | `io.github.michaelmassoni.tessera.files`      | v0.2: browse, copy/move, search, share ([spec](docs/files.md)) |
+
+Every app has Settings with theme (light/dark, wallpaper colours, pure black, one theme for all Tessera apps) and app icon (Colour, Light, Dark or custom colours).
 
 The planned order after these is in [CLAUDE.md](CLAUDE.md#app-order).
 

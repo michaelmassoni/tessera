@@ -4,6 +4,50 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Settings in every app; app icon styles; shared theme (Accepted)
+
+**Request:** every app gets a settings page with an App icon setting (Dark, Light and Custom,
+where Custom takes any foreground and background colour) and an option to give every Tessera
+app the same theme.
+
+**Decisions:**
+
+- **`core:settings`** holds the shared settings screen (`TesseraSettingsActivity`),
+  appearance settings and theme sync. It's the second shared module, because every app needs it.
+  Apps call `setTesseraContent { }` instead of `enableEdgeToEdge()` + `setContent { TesseraTheme {} }`.
+- **Theme:** System, Light or Dark, wallpaper colours on or off, and pure black for OLED. Light
+  and dark go through `UiModeManager.setApplicationNightMode` (API 31+), so the window
+  background, splash screen and system bars follow, not only the Compose content.
+- **App icon styles:** Colour (the existing icon), Light, Dark and Custom. Colour, Light and
+  Dark are built-in icons switched with `activity-alias` launcher entries.
+  - The switch waits until the app goes to the background, because Android closes a task
+    whose launch component gets disabled.
+  - `scripts/launcher-icons.sh <app> <RRGGBB>` generates all three variants from one glyph and
+    one colour.
+- **Custom icon colours are a pinned home-screen shortcut, not the app-drawer icon.** Android
+  has no API for an app to recolour its own launcher icon. The only built-in mechanism is
+  switching between icons the APK already contains, so arbitrary colours can't be one of them.
+  - The custom icon is drawn at full adaptive-icon size with
+    `Icon.createWithAdaptiveBitmap`.
+  - It is pinned with `ShortcutManager.requestPinShortcut`, and recolouring updates it in place.
+  - The app drawer keeps the Colour icon.
+  - Launchers, including AOSP Launcher3, may show a small app badge on the shortcut.
+  - The screen says all of this. If the user prefers a fixed palette of built-in coloured
+    icons instead, that's a small change.
+- **Same theme in all Tessera apps:** each app exports a `SharedSettingsProvider` (`call()`
+  only), found through an intent filter, so package visibility works through `<queries>`.
+  - **Who can call:** a caller is served only if `PackageManager.checkSignatures` matches.
+    A signature-level custom permission was rejected: two apps that define the same
+    permission with different signers can't both be installed, which would break mixing
+    GitHub and F-Droid builds.
+  - **Conflicts:** the newest change wins (by timestamp). The sync switch is shared too, so
+    turning it on or off in one app does the same everywhere.
+  - **New apps:** an app installed later adopts the shared theme on first launch.
+  - **Storage:** settings live in device-protected storage, so Clock's ringing screen can
+    read them before the first unlock.
+- Each app's settings activity handles `APPLICATION_PREFERENCES`, so system Settings > Apps
+  links to it.
+
 ## 2026-11-19: How Clock delivers alarms (Accepted)
 
 **Decision:**
