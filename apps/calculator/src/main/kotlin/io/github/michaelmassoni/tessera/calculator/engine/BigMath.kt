@@ -95,8 +95,7 @@ internal object BigMath {
         return checkRange(base.pow(n, MC))
     }
 
-    private fun log10OfMantissa(x: BigDecimal): Double =
-        Math.log10(x.abs().scaleByPowerOfTen(-exponentOf(x)).toDouble())
+    private fun log10OfMantissa(x: BigDecimal): Double = Math.log10(x.abs().scaleByPowerOfTen(-exponentOf(x)).toDouble())
 
     fun factorial(x: BigDecimal): BigDecimal {
         val n = x.toIntegerOrNull() ?: throw CalcException(CalcError.Domain)
@@ -236,8 +235,7 @@ internal object BigMath {
         return tan(toRadians(degrees))
     }
 
-    fun toRadians(degrees: BigDecimal): BigDecimal =
-        degrees.remainder(BigDecimal(360)).multiply(PI, MC).divide(BigDecimal(180), MC)
+    fun toRadians(degrees: BigDecimal): BigDecimal = degrees.remainder(BigDecimal(360)).multiply(PI, MC).divide(BigDecimal(180), MC)
 
     fun toDegrees(radians: BigDecimal): BigDecimal = radians.multiply(BigDecimal(180), MC).divide(PI, MC)
 

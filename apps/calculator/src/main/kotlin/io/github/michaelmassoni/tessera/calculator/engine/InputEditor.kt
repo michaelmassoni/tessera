@@ -232,8 +232,7 @@ object InputEditor {
         return expression.substring(i)
     }
 
-    private fun endsWithNumberChar(expression: String): Boolean =
-        expression.lastOrNull()?.let { it.isDigit() || it == '.' } == true
+    private fun endsWithNumberChar(expression: String): Boolean = expression.lastOrNull()?.let { it.isDigit() || it == '.' } == true
 
     fun endsWithOperand(expression: String): Boolean {
         val last = expression.lastOrNull() ?: return false
