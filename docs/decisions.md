@@ -4,6 +4,33 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Static analysis is Android Lint + Compose lint rules + ktlint, without detekt (Accepted)
+
+**Decision:** Android Lint (warnings treated as errors) with Slack's `compose-lint-checks`,
+plus ktlint 1.8 in the `ktlint_official` style. Detekt isn't used for now.
+
+**Reason:** Detekt 1.23.x (the latest stable) is built against Kotlin 2.0, and this project uses
+Kotlin 2.4. Detekt 2.0 is still alpha. The Compose-specific rules people usually add through
+detekt are also available as Lint checks. Revisit when detekt 2.0 is stable.
+
+Lint checks that only report newer dependency versions (`GradleDependency`,
+`NewerVersionAvailable`, `AndroidGradlePluginVersion`, `OldTargetApi`) are disabled so that a
+new upstream release can't break CI on its own. Dependabot opens weekly update PRs instead.
+
+## 2026-11-19: Screenshot tests generated from @Preview with Roborazzi (Accepted)
+
+**Decision:** Roborazzi with Robolectric (native graphics, SDK 37). Its preview scanner turns
+every `@Preview` into a screenshot test, and `@TesseraPreviews` gives the standard
+phone/dark/landscape/tablet set. Goldens are committed and checked in `check`.
+
+**Reason:** Roborazzi needs no device and fits Robolectric, which the apps' logic tests already
+use. Generating tests from previews means screen authors write a preview, not test code.
+Paparazzi would also work, but it doesn't use Robolectric's real Android framework.
+
+**Pins:** `espresso-core` is forced to 3.7.0 because the 3.5.1 pulled in by Compose UI test
+crashes on SDK 37. `ComposablePreviewScanner` is pinned to 0.9.3 because 0.10.0 is
+binary-incompatible with Roborazzi 1.79.0. Remove both pins when upstream catches up.
+
 ## 2026-11-19: Files requests all-files access by default (Accepted)
 
 **Decision:** Files asks for `MANAGE_EXTERNAL_STORAGE` ("All files access") on first launch,
