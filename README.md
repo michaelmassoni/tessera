@@ -30,7 +30,9 @@ build-tools `37.0.0`.
 ./gradlew assembleDebug check
 ```
 
-APKs land in `apps/<app>/build/outputs/apk/debug/`.
+APKs land in `apps/<app>/build/outputs/apk/debug/`. `check` runs Android Lint, ktlint, unit tests
+and screenshot tests; see [CLAUDE.md](CLAUDE.md#build-and-quality) for recording screenshots,
+release signing and tagging releases.
 
 ### Nix (optional)
 

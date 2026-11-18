@@ -22,6 +22,7 @@ the reason.
 ## Layout
 
 ```
+build-logic/      convention plugins: tessera.android.application, .library, .compose
 core/design       TesseraTheme (MaterialExpressiveTheme + dynamic color), shared components
 apps/<name>       one application module per app, package io.github.michaelmassoni.tessera.<name>
 docs/<name>.md    spec for each app, written before the implementation
@@ -33,6 +34,28 @@ docs/decisions.md dated decision log
   app needs the code. Until then the code stays in the app.
 - Keep logic in plain, testable Kotlin classes (no Android types where you can avoid them) and
   keep composables thin. Every non-trivial logic class gets unit tests.
+
+## Build and quality
+
+- Modules apply convention plugins and set only `namespace` (plus `applicationId` and
+  versions for apps). Put shared Gradle config in `build-logic/`, never copy it between
+  modules.
+  - `tessera.android.application` gives an app SDK levels, Compose, `core:design`, R8, F-Droid
+    settings, lint, ktlint and release signing.
+  - `tessera.android.library` is for `core:*`. Add `tessera.compose` if the module has UI.
+- `./gradlew check` runs Android Lint (warnings are errors, plus Slack's Compose lint rules),
+  ktlint (`ktlint_official` style, configured in `.editorconfig`), unit tests and screenshot
+  tests. Auto-format with `./gradlew ktlintFormat` and `./gradlew -p build-logic ktlintFormat`.
+- **Screenshot tests:** every `@Preview` becomes a Roborazzi test under Robolectric (SDK 37).
+  Annotate screen-level previews with `@TesseraPreviews` (phone, phone dark, landscape, tablet)
+  and use `TesseraTheme(dynamicColor = false)`. Goldens live in `<module>/screenshots/` and are
+  committed. After an intended UI change, run `./gradlew recordRoborazziDebug`, **look at the
+  new images**, and commit them. Diffs from a failing run are in `build/outputs/roborazzi/`.
+- **Release signing** comes only from environment variables: `TESSERA_KEYSTORE_FILE`,
+  `TESSERA_KEYSTORE_PASSWORD`, `TESSERA_KEY_ALIAS`, `TESSERA_KEY_PASSWORD`. Without them,
+  release APKs are unsigned, which is what F-Droid wants. Never commit a keystore.
+- **Releases:** push a tag `<app>-v<versionName>` (for example `calculator-v1.0.0`) and
+  `.github/workflows/release.yml` builds, signs and publishes that app.
 
 ## Design rules
 
