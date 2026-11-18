@@ -43,6 +43,7 @@ import io.github.michaelmassoni.tessera.calculator.R
 import io.github.michaelmassoni.tessera.calculator.engine.AngleUnit
 import io.github.michaelmassoni.tessera.calculator.engine.CalcError
 import io.github.michaelmassoni.tessera.calculator.engine.DisplayFormatter
+import io.github.michaelmassoni.tessera.calculator.engine.ResultFormatter
 import io.github.michaelmassoni.tessera.calculator.engine.Symbols
 import kotlinx.coroutines.launch
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -121,7 +122,10 @@ internal fun CalculatorDisplay(
                 val maxSize = if (heightCap.value < displayLarge.fontSize.value) heightCap else displayLarge.fontSize
                 val minSize = if (maxSize.value < 20f) maxSize else 20.sp
                 BasicText(
-                    text = formatter.format(state.expression),
+                    text =
+                        formatter.format(
+                            if (state.justEvaluated) ResultFormatter.shorten(state.expression) else state.expression,
+                        ),
                     style =
                         displayLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface,
