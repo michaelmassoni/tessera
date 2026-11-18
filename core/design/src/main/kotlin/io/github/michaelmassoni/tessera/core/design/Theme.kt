@@ -1,4 +1,4 @@
-package org.tessera.core.design
+package io.github.michaelmassoni.tessera.core.design
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi

@@ -1,4 +1,4 @@
-package org.tessera.files
+package io.github.michaelmassoni.tessera.files
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,7 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import org.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

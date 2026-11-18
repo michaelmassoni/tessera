@@ -4,7 +4,33 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
-## 2026-11-19: material3 pinned to 1.5.0-rc01 (Proposed)
+## 2026-11-19: Files requests all-files access by default (Accepted)
+
+**Decision:** Files asks for `MANAGE_EXTERNAL_STORAGE` ("All files access") on first launch,
+as most file managers do. This replaces the founding preference for SAF and scoped storage
+**for Files only**. Every other app still prefers system pickers.
+
+**Reason:** Since Android 11, SAF can't browse the root of shared storage or `Android/data`,
+and every folder needs its own picker grant, which makes a general-purpose file manager
+impractical. F-Droid allows the permission. Google Play would require a policy declaration if
+the app is ever published there.
+
+## 2026-11-19: Private GitHub repo; merge each branch when CI passes (Accepted)
+
+**Decision:** The repository is `michaelmassoni/tessera` and stays private for now. Each task
+gets its own branch and pull request, which is merged into `main` once CI passes, so later
+branches build on it.
+
+## 2026-11-19: Package prefix io.github.michaelmassoni.tessera (Accepted)
+
+**Decision:** Apps use `io.github.michaelmassoni.tessera.<app>`, replacing `org.tessera.<app>`.
+
+**Reason:** `tessera.org` belongs to an unrelated nonprofit, and an Android package name can
+never change after publication. The `io.github.<user>` namespace is one the maintainer already
+controls, at no cost. The GitHub account name "Tessera" is also taken. The project name
+Tessera itself is unchanged: there are no F-Droid or Android collisions.
+
+## 2026-11-19: material3 pinned to 1.5.0-rc01 (Accepted)
 
 **Decision:** Override the Compose BOM (2026.09.00, which ships material3 1.4.0) with
 material3 `1.5.0-rc01`. Every other Compose artifact stays on the stable BOM (Compose 1.12.1).

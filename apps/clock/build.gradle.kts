@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "org.tessera.clock"
+    namespace = "io.github.michaelmassoni.tessera.clock"
     compileSdk { version = release(37) }
     buildToolsVersion = "37.0.0"
 
     defaultConfig {
-        applicationId = "org.tessera.clock"
+        applicationId = "io.github.michaelmassoni.tessera.clock"
         minSdk { version = release(31) }
         targetSdk { version = release(37) }
         versionCode = 1

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "org.tessera.core.design"
+    namespace = "io.github.michaelmassoni.tessera.core.design"
     compileSdk { version = release(37) }
     buildToolsVersion = "37.0.0"
     defaultConfig { minSdk { version = release(31) } }

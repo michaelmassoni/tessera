@@ -23,7 +23,7 @@ the reason.
 
 ```
 core/design       TesseraTheme (MaterialExpressiveTheme + dynamic color), shared components
-apps/<name>       one application module per app, package org.tessera.<name>
+apps/<name>       one application module per app, package io.github.michaelmassoni.tessera.<name>
 docs/<name>.md    spec for each app, written before the implementation
 docs/decisions.md dated decision log
 ```
@@ -56,7 +56,8 @@ docs/decisions.md dated decision log
 - No ads, trackers, analytics, crash reporters that phone home, proprietary libraries, Google
   Play Services or Firebase. Every dependency must be open source and buildable by F-Droid.
 - Keep `dependenciesInfo { includeInApk = false; includeInBundle = false }` in every app.
-- Request minimal permissions. Prefer SAF and the photo picker. Any broad permission (all-files
+- Request minimal permissions. Prefer SAF and the photo picker (the exception is Files, which uses all-files
+  access by design; see docs/decisions.md). Any broad permission (all-files
   access, exact alarms, contacts and so on) must be justified in the app's spec.
 - No network access unless the app's spec justifies it.
 

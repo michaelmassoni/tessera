@@ -15,9 +15,9 @@ design system.
 
 | App        | Package                 | Status        |
 |------------|-------------------------|---------------|
-| Calculator | `org.tessera.calculator` | Scaffold only |
-| Clock      | `org.tessera.clock`      | Scaffold only |
-| Files      | `org.tessera.files`      | Scaffold only |
+| Calculator | `io.github.michaelmassoni.tessera.calculator` | Scaffold only |
+| Clock      | `io.github.michaelmassoni.tessera.clock`      | Scaffold only |
+| Files      | `io.github.michaelmassoni.tessera.files`      | Scaffold only |
 
 The planned order after these is in [CLAUDE.md](CLAUDE.md#app-order).
 

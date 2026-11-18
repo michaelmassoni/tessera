@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "org.tessera.calculator"
+    namespace = "io.github.michaelmassoni.tessera.calculator"
     compileSdk { version = release(37) }
     buildToolsVersion = "37.0.0"
 
     defaultConfig {
-        applicationId = "org.tessera.calculator"
+        applicationId = "io.github.michaelmassoni.tessera.calculator"
         minSdk { version = release(31) }
         targetSdk { version = release(37) }
         versionCode = 1

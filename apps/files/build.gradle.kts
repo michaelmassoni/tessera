@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "org.tessera.files"
+    namespace = "io.github.michaelmassoni.tessera.files"
     compileSdk { version = release(37) }
     buildToolsVersion = "37.0.0"
 
     defaultConfig {
-        applicationId = "org.tessera.files"
+        applicationId = "io.github.michaelmassoni.tessera.files"
         minSdk { version = release(31) }
         targetSdk { version = release(37) }
         versionCode = 1
