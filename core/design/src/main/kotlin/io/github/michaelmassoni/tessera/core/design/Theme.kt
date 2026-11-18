@@ -26,12 +26,13 @@ fun TesseraTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && darkTheme -> dynamicDarkColorScheme(context)
-        dynamicColor -> dynamicLightColorScheme(context)
-        darkTheme -> darkColorScheme()
-        else -> expressiveLightColorScheme()
-    }
+    val colorScheme =
+        when {
+            dynamicColor && darkTheme -> dynamicDarkColorScheme(context)
+            dynamicColor -> dynamicLightColorScheme(context)
+            darkTheme -> darkColorScheme()
+            else -> expressiveLightColorScheme()
+        }
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),

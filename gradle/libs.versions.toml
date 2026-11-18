@@ -1,5 +1,12 @@
-# Versions checked against Maven Central / Google Maven on 2026-11-19 (latest stable only).
+# Versions checked against Maven Central / Google Maven / Gradle Plugin Portal on 2026-11-19.
+# Latest stable only; any exception needs a comment here and an entry in docs/decisions.md.
 [versions]
+# Android SDK levels, read by the convention plugins in build-logic/.
+sdk-compile = "37"
+sdk-target = "37"
+sdk-min = "31"
+build-tools = "37.0.0"
+
 agp = "9.5.1"
 kotlin = "2.4.21"
 compose-bom = "2026.09.00"     # compose ui 1.12.1 (stable)
@@ -10,7 +17,19 @@ material3 = "1.5.0-rc01"
 activity-compose = "1.13.0"
 core-ktx = "1.19.1"
 lifecycle = "2.11.0"
+
+# Testing
 junit = "4.13.2"
+androidx-test-ext-junit = "1.3.0"
+espresso = "3.7.0"  # compose ui-test pulls 3.5.1, which crashes on SDK 37 (InputManager.getInstance)
+robolectric = "4.18.1"
+roborazzi = "1.79.0"
+composable-preview-scanner = "0.9.3"  # 0.10.0 is binary-incompatible with roborazzi 1.79.0 (built against 0.9.x)
+
+# Static analysis
+ktlint-gradle = "14.2.0"
+ktlint = "1.8.0"
+compose-lint-checks = "1.6.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -20,8 +39,28 @@ compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
+
 junit = { module = "junit:junit", version.ref = "junit" }
+androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext-junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
+roborazzi-compose-preview-scanner-support = { module = "io.github.takahirom.roborazzi:roborazzi-compose-preview-scanner-support", version.ref = "roborazzi" }
+composable-preview-scanner = { module = "io.github.sergio-sastre.ComposablePreviewScanner:android", version.ref = "composable-preview-scanner" }
+
+compose-lint-checks = { module = "com.slack.lint.compose:compose-lint-checks", version.ref = "compose-lint-checks" }
+
+# Gradle plugins, used as dependencies of build-logic.
+android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+compose-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
+ktlint-gradle-plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint-gradle" }
+roborazzi-gradle-plugin = { module = "io.github.takahirom.roborazzi:roborazzi-gradle-plugin", version.ref = "roborazzi" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -29,3 +68,10 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 # AGP 9 compiles Kotlin itself (built-in Kotlin); this pins the Kotlin Gradle plugin version it uses.
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
+
+# Tessera convention plugins (build-logic/)
+tessera-android-application = { id = "tessera.android.application" }
+tessera-android-library = { id = "tessera.android.library" }
+tessera-compose = { id = "tessera.compose" }
