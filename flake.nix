@@ -11,19 +11,19 @@
         config = { android_sdk.accept_license = true; allowUnfree = true; };
       };
       buildToolsVersion = "37.0.0";
-      mkSdk = withEmulator: pkgs.androidenv.composeAndroidPackages ({
-        platformVersions = [ "37.0" ];
+      # imageApi: null = no emulator; otherwise the API level of the AOSP (no Google APIs) image.
+      mkSdk = imageApi: pkgs.androidenv.composeAndroidPackages ({
+        platformVersions = [ "37.0" ] ++ pkgs.lib.optional (imageApi != null && imageApi != "37.0") imageApi;
         buildToolsVersions = [ buildToolsVersion ];
-      } // pkgs.lib.optionalAttrs withEmulator {
+      } // pkgs.lib.optionalAttrs (imageApi != null) {
         includeEmulator = true;
         includeSystemImages = true;
-        # AOSP image without Google Play Services, matching what Tessera targets.
         systemImageTypes = [ "default" ];
         abiVersions = [ "x86_64" ];
       });
-      mkShell = withEmulator:
+      mkShell = imageApi:
         let
-          android = mkSdk withEmulator;
+          android = mkSdk imageApi;
           sdk = "${android.androidsdk}/libexec/android-sdk";
         in pkgs.mkShell {
           packages = [ pkgs.jdk21 pkgs.android-tools android.androidsdk ];
@@ -39,9 +39,11 @@
         };
     in {
       devShells.${system} = {
-        default = mkShell false;
-        # nix develop .#emulator  -> adds emulator + API 37 AOSP x86_64 system image
-        emulator = mkShell true;
+        default = mkShell null;
+        # nix develop .#emulator        -> emulator + API 37 AOSP x86_64 image (target SDK)
+        emulator = mkShell "37.0";
+        # nix develop .#emulator-minsdk -> emulator + API 31 AOSP x86_64 image (min SDK, Android 12)
+        emulator-minsdk = mkShell "31";
       };
     };
 }

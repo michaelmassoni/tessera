@@ -26,6 +26,10 @@ here.
   first unlock.
 - Timers stay off `setAlarmClock` so they don't show up as the "next alarm" on the lock screen.
 
+**Verified on emulators:** API 37 (alarm, snooze, timer in forced deep Doze, rescheduling after
+a reboot before first unlock) and API 31 (alarm via `SCHEDULE_EXACT_ALARM`, the untyped
+`startForeground` path, and the revoked-permission banner).
+
 **Risk to watch:** `setExactAndAllowWhileIdle` is rate-limited while the device is idle. The
 emulator Doze test covers a single timer. Several timers expiring within minutes of each other
 in deep Doze haven't been tested on a real device.
