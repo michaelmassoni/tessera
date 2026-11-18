@@ -43,6 +43,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
 
             dependencies {
                 "implementation"(project(":core:design"))
+                "implementation"(project(":core:settings"))
                 "implementation"(libs.library("androidx-core-ktx"))
                 "implementation"(libs.library("androidx-activity-compose"))
                 "implementation"(libs.library("androidx-lifecycle-runtime-compose"))

@@ -24,6 +24,8 @@ the reason.
 ```
 build-logic/      convention plugins: tessera.android.application, .library, .compose
 core/design       TesseraTheme (MaterialExpressiveTheme + dynamic color), shared components
+core/settings     settings screen, theme and icon settings, theme sync between apps
+scripts/          launcher-icons.sh (generates Colour/Light/Dark launcher icons)
 apps/<name>       one application module per app, package io.github.michaelmassoni.tessera.<name>
 docs/<name>.md    spec for each app, written before the implementation
 docs/decisions.md dated decision log
@@ -73,6 +75,16 @@ docs/decisions.md dated decision log
   check TalkBack order, touch target size (48dp) and font scaling up to 200%.
 - `TesseraTheme(dynamicColor = false)` gives deterministic colors for previews and screenshot
   tests.
+- **Every app has:**
+  - **Theme:** start each activity with `setTesseraContent { }` from `core:settings`, never
+    `setContent { TesseraTheme { } }`. It applies the user's theme and theme sync. A screen
+    shown before unlock may use `TesseraAppTheme { }`.
+  - **Settings:** a `SettingsActivity : TesseraSettingsActivity()` that adds the app's own
+    settings. Declare it with an `APPLICATION_PREFERENCES` intent filter and link to it from
+    the app's main screen.
+  - **Launcher icon:** `MainActivity` has no LAUNCHER filter. Launching goes through the
+    `.LauncherDefault`, `.LauncherLight` and `.LauncherDark` activity-aliases (copy them from an
+    existing manifest). Generate the icons with `scripts/launcher-icons.sh <app> <RRGGBB>`.
 
 ## Privacy and F-Droid rules
 

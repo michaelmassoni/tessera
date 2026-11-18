@@ -57,6 +57,7 @@ internal fun CalculatorDisplay(
     formatter: DisplayFormatter,
     decimalSeparator: Char,
     onShowHistory: (() -> Unit)?,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val clipboard = LocalClipboard.current
@@ -103,6 +104,12 @@ internal fun CalculatorDisplay(
                         contentDescription = stringResource(R.string.cd_history),
                     )
                 }
+            }
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    painterResource(DesignR.drawable.ic_settings),
+                    contentDescription = stringResource(R.string.cd_settings),
+                )
             }
         }
         Column(

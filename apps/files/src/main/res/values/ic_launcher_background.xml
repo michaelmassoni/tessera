@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Launcher icons are the one place fixed colors are allowed; themed (monochrome)
-         icons on Android 13+ use the system palette instead. -->
-    <color name="ic_launcher_background">#FF2F6B4F</color>
-</resources>

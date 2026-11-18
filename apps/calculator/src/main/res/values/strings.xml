@@ -38,6 +38,10 @@
     <string name="cd_expand_scientific">Show more functions</string>
     <string name="cd_collapse_scientific">Show fewer functions</string>
     <string name="cd_history">History</string>
+    <string name="cd_settings">Settings</string>
+    <string name="settings_angle_unit">Trigonometry angle unit</string>
+    <string name="settings_degrees">Degrees</string>
+    <string name="settings_radians">Radians</string>
 
     <!-- Angle unit shown in the display -->
     <string name="angle_degrees">DEG</string>
