@@ -40,7 +40,8 @@ release signing and tagging releases.
 
 ```sh
 nix develop               # build tooling
-nix develop .#emulator    # + emulator and API 37 AOSP system image
+nix develop .#emulator         # + emulator and API 37 AOSP system image
+nix develop .#emulator-minsdk  # + emulator and API 31 (Android 12, minSdk) image
 ```
 
 ## Layout

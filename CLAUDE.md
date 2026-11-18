@@ -99,7 +99,8 @@ docs/decisions.md dated decision log
 
 `nix develop` provides JDK 21 and the Android SDK. It also overrides aapt2 through
 `GRADLE_OPTS`, because the Maven aapt2 can't run on NixOS. `nix develop .#emulator` adds the
-emulator and an API 37 AOSP (no Google APIs) x86_64 image. AVDs live in `./.android`, which is
+emulator and an API 37 AOSP (no Google APIs) x86_64 image; `nix develop .#emulator-minsdk` adds an
+API 31 (Android 12, our minSdk) image for testing older code paths. AVDs live in `./.android`, which is
 gitignored.
 
 ## App order
