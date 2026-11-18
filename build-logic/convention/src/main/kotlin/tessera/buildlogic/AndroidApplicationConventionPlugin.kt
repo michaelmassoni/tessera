@@ -46,6 +46,8 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                 "implementation"(libs.library("androidx-core-ktx"))
                 "implementation"(libs.library("androidx-activity-compose"))
                 "implementation"(libs.library("androidx-lifecycle-runtime-compose"))
+                "implementation"(libs.library("androidx-lifecycle-viewmodel-compose"))
+                "testImplementation"(libs.library("kotlinx-coroutines-test"))
             }
         }
 }
