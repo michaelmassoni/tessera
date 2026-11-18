@@ -37,7 +37,8 @@ sealed class OperationException(
  * Cancellation is checked between buffers; a cancelled or failed copy removes its partial file.
  */
 class FileOperations(
-    private val freeSpace: (File) -> Long = { it.usableSpace },
+    /** Bytes that can be written under a folder. On Android, see [io.github.michaelmassoni.tessera.files.data.AndroidFreeSpace]. */
+    private val freeSpace: (File) -> Long,
     /** Same-volume rename; fails (returns false) across volumes. Injectable for tests. */
     private val rename: (File, File) -> Boolean = { from, to ->
         runCatching { Files.move(from.toPath(), to.toPath(), StandardCopyOption.ATOMIC_MOVE) }.isSuccess
