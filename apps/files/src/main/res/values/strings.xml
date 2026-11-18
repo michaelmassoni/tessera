@@ -1,4 +1,133 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Files</string>
+
+    <!-- First run -->
+    <string name="permission_title">Allow access to your files</string>
+    <string name="permission_body">To browse, open and organise everything on your phone and SD cards, Files needs the “All files access” permission. Android grants it on the next screen.</string>
+    <string name="permission_button">Continue</string>
+    <string name="permission_privacy">Files works entirely on this device. It has no internet access and never uploads, scans or indexes your files in the background.</string>
+
+    <!-- Home -->
+    <string name="storage">Storage</string>
+    <string name="storage_free_of">%1$s free of %2$s</string>
+    <string name="folders">Folders</string>
+    <string name="folder_downloads">Downloads</string>
+    <string name="folder_camera">Camera</string>
+    <string name="folder_pictures">Pictures</string>
+    <string name="folder_documents">Documents</string>
+    <string name="folder_music">Music</string>
+    <string name="folder_movies">Movies</string>
+    <string name="pick_a_location">Choose a storage location or folder.</string>
+
+    <!-- Browser -->
+    <string name="empty_folder">This folder is empty</string>
+    <string name="restricted_folder">Android doesn\'t let any file manager open this folder. It holds apps\' private data.</string>
+    <string name="unreadable_folder">This folder can\'t be read.</string>
+    <string name="search_hint">Search files and folders</string>
+    <string name="searching">Searching…</string>
+    <string name="no_results">No matches</string>
+    <string name="view_list">Show as list</string>
+    <string name="view_grid">Show as grid</string>
+    <string name="show_hidden">Show hidden files</string>
+    <string name="hide_hidden">Hide hidden files</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_modified">Date modified</string>
+    <string name="sort_size">Size</string>
+    <string name="sort_type">Type</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+    <plurals name="items">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+
+    <!-- Types -->
+    <string name="type_folder">Folder</string>
+    <string name="type_image">Image</string>
+    <string name="type_video">Video</string>
+    <string name="type_audio">Audio</string>
+    <string name="type_pdf">PDF document</string>
+    <string name="type_document">Document</string>
+    <string name="type_archive">Archive</string>
+    <string name="type_apk">App package</string>
+    <string name="type_file">File</string>
+
+    <!-- Actions -->
+    <string name="action_up">Up</string>
+    <string name="action_search">Search</string>
+    <string name="action_close_search">Close search</string>
+    <string name="action_sort">Sort</string>
+    <string name="action_more">More options</string>
+    <string name="action_new_folder">New folder</string>
+    <string name="action_select">Select</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_clear_selection">Clear selection</string>
+    <string name="action_share">Share</string>
+    <string name="action_copy">Copy to…</string>
+    <string name="action_move">Move to…</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_details">Details</string>
+    <string name="action_paste_here">Paste here</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
+    <plurals name="clip_copy">
+        <item quantity="one">Copy %d item</item>
+        <item quantity="other">Copy %d items</item>
+    </plurals>
+    <plurals name="clip_move">
+        <item quantity="one">Move %d item</item>
+        <item quantity="other">Move %d items</item>
+    </plurals>
+
+    <!-- Progress and results -->
+    <string name="progress_copying">Copying</string>
+    <string name="progress_moving">Moving</string>
+    <string name="progress_deleting">Deleting</string>
+    <string name="progress_detail">%1$s · %2$s of %3$s</string>
+    <plurals name="files_progress">
+        <item quantity="one">%1$d of %2$d file</item>
+        <item quantity="other">%1$d of %2$d files</item>
+    </plurals>
+    <plurals name="copied">
+        <item quantity="one">Copied %d item</item>
+        <item quantity="other">Copied %d items</item>
+    </plurals>
+    <plurals name="moved">
+        <item quantity="one">Moved %d item</item>
+        <item quantity="other">Moved %d items</item>
+    </plurals>
+    <plurals name="deleted">
+        <item quantity="one">Deleted %d item</item>
+        <item quantity="other">Deleted %d items</item>
+    </plurals>
+    <plurals name="delete_title">
+        <item quantity="one">Delete %d item?</item>
+        <item quantity="other">Delete %d items?</item>
+    </plurals>
+    <string name="delete_permanent">This can\'t be undone. Deleted files don\'t go to a trash folder.</string>
+    <string name="error_into_itself">A folder can\'t be copied or moved into itself.</string>
+    <string name="error_no_space">Not enough free space.</string>
+    <string name="error_io">Something went wrong. Some files may not have been changed.</string>
+    <string name="error_cancelled">Cancelled. Nothing was left half-copied.</string>
+    <string name="error_no_app">No app can open this file.</string>
+
+    <!-- Names -->
+    <string name="name_empty">Enter a name</string>
+    <string name="name_reserved">That name is reserved</string>
+    <string name="name_invalid">Names can\'t contain “/”</string>
+    <string name="name_too_long">That name is too long</string>
+    <string name="name_exists">Something with that name already exists</string>
+
+    <!-- Details -->
+    <string name="detail_path">Location</string>
+    <string name="detail_type">Type</string>
+    <string name="detail_size">Size</string>
+    <string name="detail_modified">Modified</string>
+    <string name="calculating">Calculating…</string>
 </resources>

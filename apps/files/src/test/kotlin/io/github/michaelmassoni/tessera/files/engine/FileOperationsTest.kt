@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class FileOperationsTest {
     @get:Rule val tmp = TemporaryFolder()
 
-    private val ops = FileOperations()
+    private val ops = FileOperations(freeSpace = { it.usableSpace })
 
     private fun file(
         path: String,
@@ -121,7 +121,7 @@ class FileOperationsTest {
     }
 
     @Test fun `move across volumes copies then deletes the sources`() {
-        val crossVolume = FileOperations(rename = { _, _ -> false })
+        val crossVolume = FileOperations(freeSpace = { it.usableSpace }, rename = { _, _ -> false })
         val a = file("src/a.txt", "data")
         file("src/sub/b.txt", "b")
         val moved = crossVolume.move(listOf(a, File(tmp.root, "src/sub")), dir("dst"))

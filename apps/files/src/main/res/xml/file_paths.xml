@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Internal shared storage -->
+    <external-path name="internal" path="." />
+    <!-- SD cards and USB drives live under /storage/<id>; root-path is the only way to name them. -->
+    <root-path name="volumes" path="storage" />
+</paths>
