@@ -1,0 +1,30 @@
+# Gradle / build
+.gradle/
+.kotlin/
+build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+.android/
+*.apk
+*.aab
+
+# Signing material must never be committed
+*.jks
+*.keystore
+keystore.properties
+
+# Nix
+result
+result-*
+.direnv/
+
+.DS_Store
