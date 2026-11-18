@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+ backup rules. Empty sections back up everything the app stores; add <exclude>
-     entries here for anything device-specific (e.g. scheduled alarm IDs) as features land. -->
+<!-- Alarms, cities and settings move with the user. Live state (running timers, stopwatch,
+     what is ringing) is tied to this device's clocks and is never restored. -->
 <data-extraction-rules>
-    <cloud-backup />
-    <device-transfer />
+    <cloud-backup>
+        <include domain="device_file" path="alarms.json" />
+        <include domain="device_file" path="cities.json" />
+        <include domain="device_file" path="settings.json" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="device_file" path="alarms.json" />
+        <include domain="device_file" path="cities.json" />
+        <include domain="device_file" path="settings.json" />
+    </device-transfer>
 </data-extraction-rules>

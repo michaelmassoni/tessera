@@ -4,6 +4,36 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: How Clock delivers alarms (Accepted)
+
+**Decision:**
+
+- Alarms use `AlarmManager.setAlarmClock`, with `USE_EXACT_ALARM` on API 33+ and
+  `SCHEDULE_EXACT_ALARM` (`maxSdkVersion` 32) below that.
+- Ringing runs in a foreground service of type `systemExempted`, with a full-screen-intent
+  notification.
+- State is JSON (kotlinx.serialization) in **device-protected storage**, and the receivers are
+  direct-boot aware.
+- Timers use `setExactAndAllowWhileIdle` on the elapsed clock instead of `setAlarmClock`.
+
+**Reason:**
+
+- `setAlarmClock` is the only API that is both exact and exempt from Doze.
+- Android's foreground-service documentation lists apps holding either exact-alarm permission as
+  eligible for `systemExempted`. Its alternatives are `mediaPlayback`, which can't be started from
+  boot on Android 15+, and `shortService`, which is limited to 3 minutes. Neither fits.
+- Device-protected storage lets alarms be rescheduled from `LOCKED_BOOT_COMPLETED`, before the
+  first unlock.
+- Timers stay off `setAlarmClock` so they don't show up as the "next alarm" on the lock screen.
+
+**Risk to watch:** `setExactAndAllowWhileIdle` is rate-limited while the device is idle. The
+emulator Doze test covers a single timer. Several timers expiring within minutes of each other
+in deep Doze haven't been tested on a real device.
+
+**Also added:** `kotlinx-serialization-json` and the Kotlin serialization plugin (JetBrains,
+Apache-2.0, F-Droid compatible). The ktlint line limit is now 140, which is common for Compose
+code.
+
 ## 2026-11-19: Static analysis is Android Lint + Compose lint rules + ktlint, without detekt (Accepted)
 
 **Decision:** Android Lint (warnings treated as errors) with Slack's `compose-lint-checks`,
