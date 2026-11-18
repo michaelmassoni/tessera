@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Music</string>
+    <string name="tab_songs">Songs</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_artists">Artists</string>
+    <string name="search_hint">Search your music</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="shuffle_all">Shuffle all</string>
+    <string name="unknown_artist">Unknown artist</string>
+    <string name="empty_library">Music on this device appears here</string>
+    <plurals name="album_count">
+        <item quantity="one">%d album</item>
+        <item quantity="other">%d albums</item>
+    </plurals>
+    <plurals name="song_count">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="repeat_off">Repeat off</string>
+    <string name="repeat_all">Repeat all</string>
+    <string name="repeat_one">Repeat one</string>
+    <string name="queue">Queue</string>
+    <string name="close_player">Close player</string>
+    <string name="position">Playback position</string>
+
+    <string name="permission_title">Your music</string>
+    <string name="permission_body">Music needs access to the audio files on this device to play them. Nothing leaves your device.</string>
+    <string name="permission_grant">Continue</string>
+    <string name="permission_settings">Open settings</string>
+    <string name="permission_denied">Access was denied. Allow it in system settings to use Music.</string>
+</resources>
