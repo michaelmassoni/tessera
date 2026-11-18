@@ -24,6 +24,7 @@ dependencyResolutionManagement {
 rootProject.name = "tessera"
 
 include(":core:design")
+include(":core:settings")
 
 include(":apps:calculator")
 include(":apps:clock")

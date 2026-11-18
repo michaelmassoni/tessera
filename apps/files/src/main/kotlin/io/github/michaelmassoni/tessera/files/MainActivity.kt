@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +16,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.files.data.AndroidFreeSpace
 import io.github.michaelmassoni.tessera.files.data.FileIntents
 import io.github.michaelmassoni.tessera.files.data.SharedPreferencesFilesSettings
@@ -37,7 +35,7 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 FilesViewModel(
-                    settings = SharedPreferencesFilesSettings(getSharedPreferences("settings", Context.MODE_PRIVATE)),
+                    settings = filesSettings(),
                     volumes = { StorageVolumes.list(applicationContext) },
                     io = Dispatchers.IO,
                     ops = FileOperations(freeSpace = AndroidFreeSpace(applicationContext)),
@@ -47,29 +45,33 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val actions = Actions(this, viewModel)
-        setContent {
-            TesseraTheme {
-                var granted by remember { mutableStateOf(Environment.isExternalStorageManager()) }
-                LifecycleResumeEffect(Unit) {
-                    granted = Environment.isExternalStorageManager()
-                    if (granted) viewModel.refresh()
-                    onPauseOrDispose { }
-                }
-                if (!granted) {
-                    PermissionScreen(onGrant = {
-                        startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, "package:$packageName".toUri()))
-                    })
-                } else {
-                    val state by viewModel.state.collectAsStateWithLifecycle()
-                    FilesScreen(state = state, events = viewModel.events, actions = actions)
-                }
+        setTesseraContent {
+            var granted by remember { mutableStateOf(Environment.isExternalStorageManager()) }
+            LifecycleResumeEffect(Unit) {
+                granted = Environment.isExternalStorageManager()
+                if (granted) viewModel.refresh()
+                onPauseOrDispose { }
+            }
+            if (!granted) {
+                PermissionScreen(onGrant = {
+                    startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, "package:$packageName".toUri()))
+                })
+            } else {
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                FilesScreen(state = state, events = viewModel.events, actions = actions)
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.reloadOptions()
+    }
 }
+
+internal fun Context.filesSettings() = SharedPreferencesFilesSettings(getSharedPreferences("settings", Context.MODE_PRIVATE))
 
 private class Actions(
     private val activity: ComponentActivity,
@@ -119,4 +121,6 @@ private class Actions(
     override fun search(query: String) = vm.search(query)
 
     override fun closeSearch() = vm.closeSearch()
+
+    override fun openSettings() = activity.startActivity(Intent(activity, SettingsActivity::class.java))
 }

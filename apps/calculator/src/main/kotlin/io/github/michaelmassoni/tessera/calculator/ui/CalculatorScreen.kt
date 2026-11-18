@@ -66,6 +66,8 @@ interface CalculatorActions {
     )
 
     fun onClearHistory()
+
+    fun onOpenSettings()
 }
 
 private val ExpandedWidth = 840.dp
@@ -121,6 +123,7 @@ fun CalculatorScreen(
                     formatter = formatter,
                     decimalSeparator = symbols.decimalSeparator,
                     onShowHistory = if (wide) null else ({ showHistorySheet = true }),
+                    onOpenSettings = actions::onOpenSettings,
                     modifier = displayModifier,
                 )
             }
@@ -249,6 +252,8 @@ private fun SideBySideLayout(
 // ------------------------------------------------------------------------------- previews
 
 private object PreviewActions : CalculatorActions {
+    override fun onOpenSettings() = Unit
+
     override fun onInput(input: Input) = Unit
 
     override fun onEquals() = Unit

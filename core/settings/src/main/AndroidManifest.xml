@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Lets this app find the other Tessera apps' settings providers (package visibility). -->
+    <queries>
+        <intent>
+            <action android:name="io.github.michaelmassoni.tessera.action.SHARED_SETTINGS" />
+        </intent>
+    </queries>
+
+    <application>
+        <!--
+            Shares appearance settings between Tessera apps. Exported without a permission on
+            purpose: the provider checks that the caller has the same signing certificate (see
+            SharedSettingsProvider for why a signature permission isn't used).
+        -->
+        <provider
+            android:name="io.github.michaelmassoni.tessera.core.settings.SharedSettingsProvider"
+            android:authorities="${applicationId}.tessera.settings"
+            android:directBootAware="true"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider">
+            <intent-filter>
+                <action android:name="io.github.michaelmassoni.tessera.action.SHARED_SETTINGS" />
+            </intent-filter>
+        </provider>
+    </application>
+
+</manifest>

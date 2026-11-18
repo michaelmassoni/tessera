@@ -169,6 +169,12 @@ class FilesViewModel(
         if (hiddenChanged) reload()
     }
 
+    /** Picks up changes made on the settings screen. */
+    fun reloadOptions() {
+        val stored = settings.options
+        if (stored != _state.value.options) setOptions(stored)
+    }
+
     // ------------------------------------------------------------------ selection
 
     fun toggleSelection(file: File) =

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Wallpaper colours</string>
+    <string name="settings_dynamic_color_summary">Match the colours of your wallpaper</string>
+    <string name="settings_pure_black">Black background</string>
+    <string name="settings_pure_black_summary">Use pure black in dark theme</string>
+    <string name="settings_sync_all">Same theme in all Tessera apps</string>
+    <string name="settings_sync_all_summary">Changes here also apply to your other Tessera apps</string>
+
+    <string name="settings_app_icon">App icon</string>
+    <string name="settings_icon_default">Colour</string>
+    <string name="settings_icon_light">Light</string>
+    <string name="settings_icon_dark">Dark</string>
+    <string name="settings_icon_custom">Custom</string>
+    <string name="settings_icon_builtin_note">The new icon appears after you leave the app. Some launchers remove it from the home screen; add it again from the app list.</string>
+    <string name="settings_icon_custom_note">Android only lets apps use icons built into them, so a custom icon is added to your home screen as a shortcut. Some launchers mark shortcuts with a small app badge. The app list keeps the colour icon.</string>
+    <string name="settings_icon_choose_colours">Choose colours</string>
+    <string name="settings_icon_add">Add to home screen</string>
+    <string name="settings_icon_update">Update home screen icon</string>
+    <string name="settings_icon_updated">Home screen icon updated</string>
+    <string name="settings_icon_unsupported">Your launcher doesn\'t support adding icons</string>
+
+    <string name="color_picker_title">Icon colours</string>
+    <string name="color_picker_background">Background</string>
+    <string name="color_picker_symbol">Symbol</string>
+    <string name="color_picker_hue">Hue</string>
+    <string name="color_picker_saturation">Saturation</string>
+    <string name="color_picker_brightness">Brightness</string>
+    <string name="color_picker_hex">Hex colour</string>
+    <string name="color_picker_hex_invalid">Use 6 hex digits, like #3E5F8A</string>
+    <string name="color_picker_low_contrast">The symbol may be hard to see on this background</string>
+    <string name="color_picker_preview">Icon preview</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_source">Source code</string>
+    <string name="settings_source_summary">github.com/michaelmassoni/tessera</string>
+    <string name="settings_licence">Licence</string>
+    <string name="settings_licence_summary">GNU General Public License v3.0</string>
+    <string name="settings_no_browser">No app can open web links</string>
+</resources>

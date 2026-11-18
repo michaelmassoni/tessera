@@ -4,8 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.AlarmClock
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -16,7 +14,7 @@ import io.github.michaelmassoni.tessera.clock.ringing.Ringing
 import io.github.michaelmassoni.tessera.clock.ringing.RingingService
 import io.github.michaelmassoni.tessera.clock.ui.ClockRoot
 import io.github.michaelmassoni.tessera.clock.ui.ClockViewModel
-import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import java.time.DayOfWeek
 import java.util.Calendar
 import kotlin.concurrent.thread
@@ -26,13 +24,10 @@ class MainActivity : ComponentActivity() {
     private var tab by mutableIntStateOf(TAB_ALARMS)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null && handleIntent(intent)) return
-        setContent {
-            TesseraTheme {
-                ClockRoot(viewModel, initialTab = tab)
-            }
+        setTesseraContent {
+            ClockRoot(viewModel, initialTab = tab, onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) })
         }
     }
 
