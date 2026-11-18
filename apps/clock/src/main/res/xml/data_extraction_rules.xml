@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ backup rules. Empty sections back up everything the app stores; add <exclude>
+     entries here for anything device-specific (e.g. scheduled alarm IDs) as features land. -->
+<data-extraction-rules>
+    <cloud-backup />
+    <device-transfer />
+</data-extraction-rules>

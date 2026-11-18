@@ -1,0 +1,31 @@
+# Versions checked against Maven Central / Google Maven on 2026-11-19 (latest stable only).
+[versions]
+agp = "9.5.1"
+kotlin = "2.4.21"
+compose-bom = "2026.09.00"     # compose ui 1.12.1 (stable)
+# Exception to "latest stable": material3 1.4.0 (newest stable, Sep 2025) keeps all Expressive APIs
+# internal. 1.5.0-rc01 (2026-11-04) is the first build that exposes MaterialExpressiveTheme.
+# Move to 1.5.0 stable (or a BOM that includes it) as soon as it ships. See docs/decisions.md.
+material3 = "1.5.0-rc01"
+activity-compose = "1.13.0"
+core-ktx = "1.19.1"
+lifecycle = "2.11.0"
+junit = "4.13.2"
+
+[libraries]
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
+junit = { module = "junit:junit", version.ref = "junit" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+# AGP 9 compiles Kotlin itself (built-in Kotlin); this pins the Kotlin Gradle plugin version it uses.
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

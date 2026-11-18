@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme shared by all Tessera apps. Compose draws everything; this only
+         sets the pre-Compose window (system splash, edge-to-edge bars). -->
+    <style name="Theme.Tessera" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>
