@@ -24,7 +24,7 @@ and no network access.
 - **`( )`** is one smart key, as on the Pixel. It inserts `)` when there are unclosed
   parentheses and the expression ends in something that can be closed (a digit, `)`, a
   constant, `%` or `!`). Otherwise it inserts `(`.
-- **`AC`** clears everything. A long press on `⌫` does the same.
+- **`AC`** clears everything.
 - **`⌫`** deletes the last token; a function name such as `sin(` goes in one step.
 - **The decimal key** shows the locale's decimal separator (`.` or `,`).
 
@@ -45,12 +45,14 @@ landscape and on large screens.
 | `xʸ` | power `^` | |
 | `π` `e` | constants | |
 | `!` | factorial | |
+| `1/x` | reciprocal (inserts `^−1`; landscape and large screens) | |
 
 ### Display
 
 - **Expression line:** what you've entered, with the locale's thousands separators. Long
-  expressions shrink the text (auto-size), down to a minimum size, and then scroll
-  horizontally so the end stays visible.
+  expressions shrink the text (auto-size) down to 20sp, and then the start is elided (`…`) so
+  the end you are typing stays visible. The maximum size is also capped by the height
+  available, so short windows get smaller text instead of clipped text.
 - **Preview line:** the live result, shown when the expression contains an operation and
   evaluates successfully. Nothing is shown for incomplete input such as `5+`.
 - **`=`** moves the result onto the expression line. The next digit starts a new
@@ -128,8 +130,8 @@ Layouts are chosen from the space available, not from orientation alone:
 |--------|--------|
 | Compact width, portrait | Display above a collapsible scientific panel and a 4×5 keypad |
 | Compact height (phone landscape, < 480dp) | Display above scientific keys (left) and basic keys (right), side by side |
-| Medium width (600–839dp, e.g. foldable) | Like portrait, with the scientific panel always expanded |
-| Expanded width (≥ 840dp, tablet or desktop) | Calculator on the left, permanent history pane on the right |
+| Medium width (600–839dp, e.g. foldable) | Like portrait, with the scientific panel expanded by default |
+| Expanded width (≥ 840dp) and height ≥ 480dp (tablet or desktop) | Calculator on the left, permanent history pane on the right |
 
 Keys are Material 3 Expressive buttons that change shape when pressed. Color roles:
 

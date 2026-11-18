@@ -1,0 +1,9 @@
+Tessera
+Copyright (C) 2026 Michael Massoni and Tessera contributors
+Licensed under the GNU General Public License v3.0 (see LICENSE).
+
+Third-party material bundled in this repository:
+
+- Material Symbols icons (core/design/src/main/res/drawable/ic_*.xml)
+  Copyright Google LLC. Licensed under the Apache License, Version 2.0.
+  https://github.com/google/material-design-icons

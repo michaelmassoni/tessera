@@ -1,51 +1,70 @@
 package io.github.michaelmassoni.tessera.calculator
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.michaelmassoni.tessera.calculator.data.HistoryEntry
+import io.github.michaelmassoni.tessera.calculator.data.HistoryStore
+import io.github.michaelmassoni.tessera.calculator.data.SharedPreferencesSettings
+import io.github.michaelmassoni.tessera.calculator.engine.Input
+import io.github.michaelmassoni.tessera.calculator.ui.CalculatorActions
+import io.github.michaelmassoni.tessera.calculator.ui.CalculatorScreen
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import kotlinx.coroutines.Dispatchers
+import java.io.File
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: CalculatorViewModel by viewModels {
+        viewModelFactory {
+            initializer {
+                CalculatorViewModel(
+                    savedState = createSavedStateHandle(),
+                    historyStore = HistoryStore(File(filesDir, "history.tsv")),
+                    settings = SharedPreferencesSettings(getSharedPreferences("settings", Context.MODE_PRIVATE)),
+                    ioDispatcher = Dispatchers.IO,
+                )
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        val actions = ViewModelActions(viewModel)
         setContent {
             TesseraTheme {
-                CalculatorApp()
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                CalculatorScreen(state = state, actions = actions)
             }
         }
     }
 }
 
-@Composable
-fun CalculatorApp(modifier: Modifier = Modifier) {
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displayMedium,
-            )
-        }
-    }
-}
+private class ViewModelActions(
+    private val vm: CalculatorViewModel,
+) : CalculatorActions {
+    override fun onInput(input: Input) = vm.onInput(input)
 
-@TesseraPreviews
-@Composable
-private fun CalculatorAppPreview() {
-    TesseraTheme(dynamicColor = false) { CalculatorApp() }
+    override fun onEquals() = vm.onEquals()
+
+    override fun onToggleInverse() = vm.onToggleInverse()
+
+    override fun onToggleAngleUnit() = vm.onToggleAngleUnit()
+
+    override fun onToggleScientific(currentlyExpanded: Boolean) = vm.onToggleScientific(currentlyExpanded)
+
+    override fun onInsertFromHistory(
+        entry: HistoryEntry,
+        expression: Boolean,
+    ) = vm.onInsertFromHistory(entry, expression)
+
+    override fun onClearHistory() = vm.onClearHistory()
 }

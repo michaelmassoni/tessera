@@ -1,4 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Calculator</string>
+
+    <!-- Spoken labels for keys (TalkBack) -->
+    <string name="cd_clear">Clear</string>
+    <string name="cd_parentheses">Parentheses</string>
+    <string name="cd_percent">Percent</string>
+    <string name="cd_divide">Divide</string>
+    <string name="cd_multiply">Multiply</string>
+    <string name="cd_minus">Minus</string>
+    <string name="cd_plus">Plus</string>
+    <string name="cd_equals">Equals</string>
+    <string name="cd_decimal">Decimal point</string>
+    <string name="cd_backspace">Backspace</string>
+    <string name="cd_sqrt">Square root</string>
+    <string name="cd_square">Square</string>
+    <string name="cd_reciprocal">Reciprocal</string>
+    <string name="cd_pi">Pi</string>
+    <string name="cd_e">Euler\'s number</string>
+    <string name="cd_power">Power</string>
+    <string name="cd_factorial">Factorial</string>
+    <string name="cd_inverse">Inverse functions</string>
+    <string name="cd_switch_to_radians">Switch to radians</string>
+    <string name="cd_switch_to_degrees">Switch to degrees</string>
+    <string name="cd_sin">Sine</string>
+    <string name="cd_cos">Cosine</string>
+    <string name="cd_tan">Tangent</string>
+    <string name="cd_asin">Arcsine</string>
+    <string name="cd_acos">Arccosine</string>
+    <string name="cd_atan">Arctangent</string>
+    <string name="cd_ln">Natural logarithm</string>
+    <string name="cd_log">Logarithm</string>
+    <string name="cd_exp">e to the power of</string>
+    <string name="cd_ten_power">Ten to the power of</string>
+    <string name="cd_open_paren">Left parenthesis</string>
+    <string name="cd_close_paren">Right parenthesis</string>
+    <string name="cd_expand_scientific">Show more functions</string>
+    <string name="cd_collapse_scientific">Show fewer functions</string>
+    <string name="cd_history">History</string>
+
+    <!-- Angle unit shown in the display -->
+    <string name="angle_degrees">DEG</string>
+    <string name="angle_radians">RAD</string>
+
+    <!-- Display -->
+    <string name="copy_result">Copy</string>
+    <string name="spoken_equals">equals %1$s</string>
+
+    <!-- Errors -->
+    <string name="error_divide_by_zero">Can\'t divide by 0</string>
+    <string name="error_domain">Domain error</string>
+    <string name="error_overflow">Number too large</string>
+    <string name="error_syntax">Bad expression</string>
+
+    <!-- History -->
+    <string name="history_title">History</string>
+    <string name="history_empty">No calculations yet</string>
+    <string name="history_clear">Clear history</string>
+    <string name="history_clear_confirm_title">Clear history?</string>
+    <string name="history_clear_confirm_text">All past calculations will be removed.</string>
+    <string name="history_clear_confirm">Clear</string>
+    <string name="cancel">Cancel</string>
+    <string name="history_insert_expression">Insert expression</string>
 </resources>
