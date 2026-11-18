@@ -20,6 +20,8 @@ captures/
 # Signing material must never be committed
 *.jks
 *.keystore
+*.p12
+*.pfx
 keystore.properties
 
 # Nix
