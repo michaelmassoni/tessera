@@ -66,7 +66,16 @@ class CalculatorViewModel(
     }
 
     fun onInput(input: Input) {
-        updateInput { InputEditor.apply(it, input) }
+        updateInput { current ->
+            // After "=", backspace edits the result as displayed, not its hidden extra digits.
+            val base =
+                if (current.justEvaluated && input == Input.Backspace) {
+                    current.copy(expression = ResultFormatter.shorten(current.expression))
+                } else {
+                    current
+                }
+            InputEditor.apply(base, input)
+        }
         // Inverse mode applies to one function key, like the Pixel calculator.
         if (_state.value.inverse && input.isInvertible()) _state.update { it.copy(inverse = false) }
     }

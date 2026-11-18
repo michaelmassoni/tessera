@@ -55,7 +55,9 @@ landscape and on large screens.
   available, so short windows get smaller text instead of clipped text.
 - **Preview line:** the live result, shown when the expression contains an operation and
   evaluates successfully. Nothing is shown for incomplete input such as `5+`.
-- **`=`** moves the result onto the expression line. The next digit starts a new
+- **`=`** moves the result onto the expression line. It's displayed rounded to 16 significant digits, but the
+  full 32-digit value is kept for further calculations and for copying. Backspace after `=` edits
+  the displayed digits. The next digit starts a new
   calculation, and the next operator continues from the result.
 - **Errors** appear in the preview line, using `colorScheme.error`, only after `=`:
   "Can't divide by 0", "Domain error", "Number too large" and "Bad expression". While you're

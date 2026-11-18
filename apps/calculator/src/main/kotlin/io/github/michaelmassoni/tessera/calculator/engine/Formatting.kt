@@ -31,6 +31,19 @@ object ResultFormatter {
         return text.replace('-', Symbols.MINUS)
     }
 
+    /**
+     * A stored full-precision number (a result in internal notation) rounded for display.
+     * Anything that isn't a plain number is returned unchanged.
+     */
+    fun shorten(
+        number: String,
+        digits: Int = PREVIEW_DIGITS,
+    ): String {
+        if (InputEditor.hasOperation(number)) return number
+        val value = (Evaluator.evaluate(number) as? EvalResult.Value)?.value ?: return number
+        return format(value, digits)
+    }
+
     private fun scientific(
         value: BigDecimal,
         exponent: Int,

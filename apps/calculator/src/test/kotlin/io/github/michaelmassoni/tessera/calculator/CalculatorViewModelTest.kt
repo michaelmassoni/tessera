@@ -156,4 +156,21 @@ class CalculatorViewModelTest {
             )
             assertTrue(store.load().isEmpty())
         }
+
+    @Test fun `results keep full precision but backspace edits the displayed digits`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.type("1${Symbols.DIVIDE}3")
+            vm.onEquals()
+            assertEquals("0.33333333333333333333333333333333", vm.state.value.expression)
+            vm.onInput(Input.BinaryOperator(Symbols.TIMES))
+            vm.type("3")
+            assertEquals("1", vm.state.value.preview)
+
+            vm.onInput(Input.Clear)
+            vm.type("1${Symbols.DIVIDE}3")
+            vm.onEquals()
+            vm.onInput(Input.Backspace)
+            assertEquals("0.333333333333333", vm.state.value.expression)
+        }
 }

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.calculator.R
 import io.github.michaelmassoni.tessera.calculator.data.HistoryEntry
 import io.github.michaelmassoni.tessera.calculator.engine.DisplayFormatter
+import io.github.michaelmassoni.tessera.calculator.engine.ResultFormatter
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** History list. Tap inserts the result; long-press inserts the expression. */
@@ -100,7 +101,7 @@ internal fun HistoryPane(
                             textAlign = TextAlign.End,
                         )
                         Text(
-                            text = "= " + formatter.format(entry.result),
+                            text = "= " + formatter.format(ResultFormatter.shorten(entry.result)),
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.End,

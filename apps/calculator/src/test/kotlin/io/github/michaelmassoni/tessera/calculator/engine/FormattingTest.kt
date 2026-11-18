@@ -42,6 +42,13 @@ class FormattingTest {
         }
     }
 
+    @Test fun `shorten rounds stored results for display only`() {
+        assertEquals("0.3333333333333333", ResultFormatter.shorten("0.33333333333333333333333333333333"))
+        assertEquals("−42", ResultFormatter.shorten("−42"))
+        assertEquals("2+3", ResultFormatter.shorten("2+3"))
+        assertEquals("1.5E−7", ResultFormatter.shorten("1.5E−7"))
+    }
+
     @Test fun `display formatting for US English`() {
         val us = DisplayFormatter(Locale.US)
         assertEquals("1,234,567.89", us.format("1234567.89"))
