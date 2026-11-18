@@ -1,0 +1,41 @@
+package io.github.michaelmassoni.tessera.notes.engine
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class ChecklistItem(
+    val text: String,
+    val checked: Boolean = false,
+)
+
+/**
+ * One note. A note is either text ([checklist] == null, content in [body]) or a checklist
+ * ([checklist] != null; [body] is unused). Times are epoch milliseconds.
+ */
+@Serializable
+data class Note(
+    val id: String,
+    val title: String = "",
+    val body: String = "",
+    val checklist: List<ChecklistItem>? = null,
+    val labels: Set<String> = emptySet(),
+    val pinned: Boolean = false,
+    val archived: Boolean = false,
+    val trashedAt: Long? = null,
+    val created: Long = 0,
+    val modified: Long = 0,
+) {
+    val isChecklist: Boolean get() = checklist != null
+    val isTrashed: Boolean get() = trashedAt != null
+
+    /** Nothing worth keeping: an empty new note is discarded instead of saved. */
+    val isBlank: Boolean
+        get() = title.isBlank() && body.isBlank() && checklist.orEmpty().all { it.text.isBlank() }
+
+    /** The note as plain text, for sharing and search. Checklists use "☐"/"☑" markers. */
+    fun plainText(): String {
+        val content =
+            checklist?.joinToString("\n") { (if (it.checked) "☑ " else "☐ ") + it.text } ?: body
+        return listOf(title, content).filter { it.isNotBlank() }.joinToString("\n\n")
+    }
+}

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:icon="@drawable/ic_shortcut_note"
+        android:shortcutId="new_note"
+        android:shortcutShortLabel="@string/shortcut_new_note">
+        <intent
+            android:action="io.github.michaelmassoni.tessera.notes.NEW_NOTE"
+            android:targetClass="io.github.michaelmassoni.tessera.notes.MainActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.notes" />
+    </shortcut>
+    <shortcut
+        android:icon="@drawable/ic_shortcut_checklist"
+        android:shortcutId="new_checklist"
+        android:shortcutShortLabel="@string/shortcut_new_checklist">
+        <intent
+            android:action="io.github.michaelmassoni.tessera.notes.NEW_CHECKLIST"
+            android:targetClass="io.github.michaelmassoni.tessera.notes.MainActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.notes" />
+    </shortcut>
+</shortcuts>

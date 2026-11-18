@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notes</string>
+
+    <string name="view_notes">Notes</string>
+    <string name="view_archive">Archive</string>
+    <string name="view_trash">Trash</string>
+    <string name="labels">Labels</string>
+    <string name="settings">Settings</string>
+    <string name="open_menu">Open navigation menu</string>
+    <string name="search_hint">Search your notes</string>
+    <string name="search_in">Search %1$s</string>
+    <string name="clear_search">Clear search</string>
+    <string name="pinned">Pinned</string>
+    <string name="others">Others</string>
+    <string name="new_note">New note</string>
+    <string name="new_checklist">New checklist</string>
+
+    <string name="empty_notes">Notes you add appear here</string>
+    <string name="empty_archive">Your archived notes appear here</string>
+    <string name="empty_trash">No notes in Trash</string>
+    <string name="empty_label">No notes with this label yet</string>
+    <string name="empty_search">No matching notes</string>
+    <string name="trash_notice">Notes in Trash are deleted after 7 days.</string>
+    <string name="empty_trash_action">Empty Trash</string>
+    <string name="empty_trash_confirm">Empty Trash? All notes in Trash will be permanently deleted.</string>
+    <string name="delete_forever_confirm">Delete forever? These notes can\'t be recovered.</string>
+
+    <plurals name="selected_count">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="trashed">
+        <item quantity="one">Note moved to Trash</item>
+        <item quantity="other">%d notes moved to Trash</item>
+    </plurals>
+    <plurals name="archived">
+        <item quantity="one">Note archived</item>
+        <item quantity="other">%d notes archived</item>
+    </plurals>
+    <plurals name="unarchived">
+        <item quantity="one">Note unarchived</item>
+        <item quantity="other">%d notes unarchived</item>
+    </plurals>
+    <plurals name="imported">
+        <item quantity="one">Imported %d note</item>
+        <item quantity="other">Imported %d notes</item>
+    </plurals>
+    <string name="import_failed">That file isn\'t a Notes export</string>
+    <string name="exported">Notes exported</string>
+    <string name="empty_discarded">Empty note discarded</string>
+
+    <string name="action_undo">Undo</string>
+    <string name="action_redo">Redo</string>
+    <string name="action_close">Close</string>
+    <string name="action_back">Back</string>
+    <string name="action_more">More options</string>
+    <string name="action_pin">Pin</string>
+    <string name="action_unpin">Unpin</string>
+    <string name="action_archive">Archive</string>
+    <string name="action_unarchive">Unarchive</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_delete_forever">Delete forever</string>
+    <string name="action_labels">Labels</string>
+    <string name="action_share">Share</string>
+    <string name="action_copy">Make a copy</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_select">Select</string>
+    <string name="export_failed">Couldn\'t save the file</string>
+    <string name="action_show_checkboxes">Show checkboxes</string>
+    <string name="action_hide_checkboxes">Hide checkboxes</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_done">Done</string>
+    <string name="action_add">Add</string>
+
+    <string name="title_hint">Title</string>
+    <string name="body_hint">Note</string>
+    <string name="item_hint">List item</string>
+    <string name="add_item">Add item</string>
+    <string name="remove_item">Remove item</string>
+    <plurals name="checked_items">
+        <item quantity="one">%d checked item</item>
+        <item quantity="other">%d checked items</item>
+    </plurals>
+    <string name="edited">Edited %1$s</string>
+    <string name="pinned_state">Pinned</string>
+    <string name="label_new_hint">New label</string>
+    <string name="select_note">Select a note, or create one</string>
+
+    <string name="settings_backup">Backup</string>
+    <string name="settings_export">Export notes</string>
+    <string name="settings_export_summary">Save all notes to a file</string>
+    <string name="settings_import">Import notes</string>
+    <string name="settings_import_summary">Add notes from an exported file</string>
+    <string name="settings_editing">Editing</string>
+    <string name="settings_checked_last">Move checked items to the bottom</string>
+    <string name="shortcut_new_note">New note</string>
+    <string name="shortcut_new_checklist">New checklist</string>
+</resources>
