@@ -1,0 +1,23 @@
+plugins {
+    alias(libs.plugins.tessera.android.application)
+}
+
+android {
+    namespace = "io.github.michaelmassoni.tessera.gallery"
+
+    defaultConfig {
+        applicationId = "io.github.michaelmassoni.tessera.gallery"
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+}
+
+dependencies {
+    implementation(libs.compose.material3.navigation.suite)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.video)
+    implementation(libs.telephoto.zoomable.image.coil3)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui.compose)
+    implementation(libs.androidx.exifinterface)
+}
