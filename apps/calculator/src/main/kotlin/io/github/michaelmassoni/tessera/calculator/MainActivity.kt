@@ -1,10 +1,9 @@
 package io.github.michaelmassoni.tessera.calculator
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,7 +16,7 @@ import io.github.michaelmassoni.tessera.calculator.data.SharedPreferencesSetting
 import io.github.michaelmassoni.tessera.calculator.engine.Input
 import io.github.michaelmassoni.tessera.calculator.ui.CalculatorActions
 import io.github.michaelmassoni.tessera.calculator.ui.CalculatorScreen
-import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 
@@ -28,7 +27,7 @@ class MainActivity : ComponentActivity() {
                 CalculatorViewModel(
                     savedState = createSavedStateHandle(),
                     historyStore = HistoryStore(File(filesDir, "history.tsv")),
-                    settings = SharedPreferencesSettings(getSharedPreferences("settings", Context.MODE_PRIVATE)),
+                    settings = calculatorSettings(),
                     ioDispatcher = Dispatchers.IO,
                 )
             }
@@ -36,20 +35,25 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val actions = ViewModelActions(viewModel)
-        setContent {
-            TesseraTheme {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                CalculatorScreen(state = state, actions = actions)
-            }
+        val actions = ViewModelActions(viewModel) { startActivity(Intent(this, SettingsActivity::class.java)) }
+        setTesseraContent {
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            CalculatorScreen(state = state, actions = actions)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.reloadSettings()
     }
 }
 
+internal fun Context.calculatorSettings() = SharedPreferencesSettings(getSharedPreferences("settings", Context.MODE_PRIVATE))
+
 private class ViewModelActions(
     private val vm: CalculatorViewModel,
+    private val openSettings: () -> Unit,
 ) : CalculatorActions {
     override fun onInput(input: Input) = vm.onInput(input)
 
@@ -67,4 +71,6 @@ private class ViewModelActions(
     ) = vm.onInsertFromHistory(entry, expression)
 
     override fun onClearHistory() = vm.onClearHistory()
+
+    override fun onOpenSettings() = openSettings()
 }

@@ -44,7 +44,6 @@ class ClockViewModel(
     val timers: StateFlow<List<ClockTimer>> = graph.timers.timers
     val stopwatch: StateFlow<Stopwatch> = graph.stopwatch.stopwatch
     val cities: StateFlow<List<String>> = graph.cities.state
-    val settings: StateFlow<ClockSettings> = graph.settings.state
     val time = graph.time
 
     private val eventChannel = Channel<ClockEvent>(Channel.BUFFERED)
@@ -152,10 +151,4 @@ class ClockViewModel(
             }
         }
     }
-
-    // ------------------------------------------------------------------ settings
-
-    fun setSnooze(minutes: Int) = background { graph.settings.update { it.copy(snoozeMinutes = minutes) } }
-
-    fun setSilenceAfter(minutes: Int) = background { graph.settings.update { it.copy(silenceAfterMinutes = minutes) } }
 }

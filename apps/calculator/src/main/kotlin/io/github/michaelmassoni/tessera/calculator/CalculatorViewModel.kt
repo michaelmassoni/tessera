@@ -118,6 +118,12 @@ class CalculatorViewModel(
         _state.update { it.copy(angleUnit = next).withPreview() }
     }
 
+    /** Picks up changes made on the settings screen. */
+    fun reloadSettings() {
+        val unit = settings.angleUnit
+        if (unit != _state.value.angleUnit) _state.update { it.copy(angleUnit = unit).withPreview() }
+    }
+
     fun onToggleInverse() = _state.update { it.copy(inverse = !it.inverse) }
 
     fun onToggleScientific(currentlyExpanded: Boolean) {

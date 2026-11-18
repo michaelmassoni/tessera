@@ -76,13 +76,13 @@ enum class ClockTab(
 fun ClockRoot(
     viewModel: ClockViewModel,
     initialTab: Int,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(initialTab) }
     LaunchedEffect(initialTab) { tab = initialTab }
     val current = ClockTab.entries[tab.coerceIn(0, ClockTab.entries.lastIndex)]
     val snackbar = remember { SnackbarHostState() }
-    var showSettings by rememberSaveable { mutableStateOf(false) }
     var addingAlarm by rememberSaveable { mutableStateOf(false) }
     var pickingCity by rememberSaveable { mutableStateOf(false) }
     var timerInput by rememberSaveable(stateSaver = TimerInputSaver) { mutableStateOf(TimerInput()) }
@@ -92,7 +92,6 @@ fun ClockRoot(
     val timers by viewModel.timers.collectAsStateWithLifecycle()
     val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     val cityIds by viewModel.cities.collectAsStateWithLifecycle()
-    val settings by viewModel.settings.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
     val catalog = remember(locale) { CityCatalog.icu(locale) }
 
@@ -133,7 +132,7 @@ fun ClockRoot(
                 TopAppBar(
                     title = { Text(stringResource(current.title)) },
                     actions = {
-                        IconButton(onClick = { showSettings = true }) {
+                        IconButton(onClick = onOpenSettings) {
                             Icon(
                                 painterResource(DesignR.drawable.ic_settings),
                                 contentDescription = stringResource(R.string.settings),
@@ -296,14 +295,6 @@ fun ClockRoot(
             onClose = { pickingCity = false },
         )
     }
-    if (showSettings) {
-        SettingsDialog(
-            settings = settings,
-            onSnooze = viewModel::setSnooze,
-            onSilenceAfter = viewModel::setSilenceAfter,
-            onDismiss = { showSettings = false },
-        )
-    }
 }
 
 private val TimerInputSaver =
@@ -430,69 +421,5 @@ private fun Banner(
             )
             TextButton(onClick = onFix) { Text(stringResource(R.string.action_fix)) }
         }
-    }
-}
-
-@Composable
-private fun SettingsDialog(
-    settings: ClockSettings,
-    onSnooze: (Int) -> Unit,
-    onSilenceAfter: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.settings_snooze), style = MaterialTheme.typography.titleSmall)
-                ClockSettings.SNOOZE_CHOICES.forEach { minutes ->
-                    ChoiceRow(
-                        pluralStringResource(R.plurals.duration_minutes, minutes, minutes),
-                        settings.snoozeMinutes == minutes,
-                    ) {
-                        onSnooze(minutes)
-                    }
-                }
-                Text(
-                    stringResource(R.string.settings_silence_after),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(top = 16.dp),
-                )
-                ClockSettings.SILENCE_CHOICES.forEach { minutes ->
-                    val label =
-                        if (minutes ==
-                            0
-                        ) {
-                            stringResource(R.string.settings_never)
-                        } else {
-                            pluralStringResource(R.plurals.duration_minutes, minutes, minutes)
-                        }
-                    ChoiceRow(label, settings.silenceAfterMinutes == minutes) { onSilenceAfter(minutes) }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_done)) } },
-    )
-}
-
-@Composable
-private fun ChoiceRow(
-    label: String,
-    selected: Boolean,
-    onSelect: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .selectable(
-                selected = selected,
-                onClick = onSelect,
-                role = Role.RadioButton,
-            ).padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null, modifier = Modifier.padding(end = 12.dp))
-        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }

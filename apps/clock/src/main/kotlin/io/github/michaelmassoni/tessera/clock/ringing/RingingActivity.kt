@@ -44,6 +44,7 @@ import io.github.michaelmassoni.tessera.clock.ui.DurationFormat
 import io.github.michaelmassoni.tessera.clock.ui.formatClockTime
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.settings.TesseraAppTheme
 import kotlinx.coroutines.delay
 
 /**
@@ -58,12 +59,12 @@ class RingingActivity : ComponentActivity() {
         setTurnScreenOn(true)
         val graph = graph
         setContent {
-            TesseraTheme {
+            TesseraAppTheme {
                 val ringing by graph.ringing.state.collectAsStateWithLifecycle()
                 val current = ringing
                 if (current == null) {
                     LaunchedEffect(Unit) { finish() }
-                    return@TesseraTheme
+                    return@TesseraAppTheme
                 }
                 val timer = (current as? Ringing.Timer)?.let { graph.timers.get(it.id) }
                 BackHandler { /* ignore: dismiss with the buttons */ }

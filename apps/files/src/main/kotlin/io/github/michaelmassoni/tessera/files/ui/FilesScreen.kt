@@ -119,6 +119,8 @@ interface FilesActions {
     fun search(query: String)
 
     fun closeSearch()
+
+    fun openSettings()
 }
 
 private val ExpandedWidth = 840.dp
@@ -358,11 +360,13 @@ private fun BrowserTopBar(
                             contentDescription = stringResource(if (state.options.grid) R.string.view_list else R.string.view_grid),
                         )
                     }
-                    Box {
-                        IconButton(onClick = { moreMenu = true }) {
-                            Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
-                        }
-                        DropdownMenu(moreMenu, onDismissRequest = { moreMenu = false }) {
+                }
+                Box {
+                    IconButton(onClick = { moreMenu = true }) {
+                        Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
+                    }
+                    DropdownMenu(moreMenu, onDismissRequest = { moreMenu = false }) {
+                        if (location != null) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_new_folder)) },
                                 leadingIcon = { Icon(painterResource(DesignR.drawable.ic_create_new_folder), null) },
@@ -381,6 +385,10 @@ private fun BrowserTopBar(
                                     actions.setOptions(state.options.copy(showHidden = !state.options.showHidden))
                                 },
                             )
+                        }
+                        MenuItem(stringResource(R.string.settings), DesignR.drawable.ic_settings) {
+                            moreMenu = false
+                            actions.openSettings()
                         }
                     }
                 }
@@ -720,6 +728,8 @@ fun NameProblem.message(): String =
 // ------------------------------------------------------------------------------- previews
 
 private object PreviewActions : FilesActions {
+    override fun openSettings() = Unit
+
     override fun open(dir: File?) = Unit
 
     override fun back() = true

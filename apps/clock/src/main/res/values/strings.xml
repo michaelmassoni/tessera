@@ -12,7 +12,6 @@
     <string name="action_add">Add</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_done">Done</string>
     <string name="action_delete">Delete</string>
     <string name="action_remove">Remove</string>
     <string name="action_undo">Undo</string>
