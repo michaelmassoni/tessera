@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Contacts</string>
+
+    <string name="permission_title">Your contacts</string>
+    <string name="permission_body">Contacts needs access to your contacts to show, search and edit them. They stay on this device and in the accounts you already sync with.</string>
+    <string name="permission_grant">Continue</string>
+    <string name="permission_settings">Open settings</string>
+    <string name="permission_denied">Contacts access was denied. Allow it in system settings to use this app.</string>
+
+    <string name="search_hint">Search contacts</string>
+    <string name="clear_search">Clear search</string>
+    <string name="favourites">Favourites</string>
+    <string name="create_contact">Create contact</string>
+    <string name="empty_contacts">No contacts yet</string>
+    <string name="empty_search">No matching contacts</string>
+    <plurals name="contact_count">
+        <item quantity="one">%d contact</item>
+        <item quantity="other">%d contacts</item>
+    </plurals>
+    <string name="all_accounts">All accounts</string>
+    <string name="device_account">Device</string>
+    <string name="action_import">Import from file</string>
+    <string name="action_export">Export to file</string>
+    <string name="settings">Settings</string>
+    <string name="action_more">More options</string>
+
+    <string name="action_back">Back</string>
+    <string name="action_call">Call</string>
+    <string name="action_text">Text</string>
+    <string name="action_email">Email</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_favourite">Add to favourites</string>
+    <string name="action_unfavourite">Remove from favourites</string>
+    <string name="action_message_number">Send a message to %1$s</string>
+    <string name="delete_confirm">Delete %1$s? This removes the contact from every account it is stored in.</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="section_contact_info">Contact info</string>
+    <string name="section_about">About</string>
+    <string name="label_website">Website</string>
+    <string name="label_notes">Notes</string>
+    <string name="label_saved_in">Saved in</string>
+    <string name="no_app">No app can do that</string>
+
+    <string name="editor_new">Create contact</string>
+    <string name="editor_edit">Edit contact</string>
+    <string name="action_save">Save</string>
+    <string name="action_close">Close</string>
+    <string name="field_first_name">First name</string>
+    <string name="field_last_name">Last name</string>
+    <string name="field_company">Company</string>
+    <string name="field_phone">Phone</string>
+    <string name="field_email">Email</string>
+    <string name="field_address">Address</string>
+    <string name="field_birthday">Birthday</string>
+    <string name="field_notes">Notes</string>
+    <string name="add_phone">Add phone</string>
+    <string name="add_email">Add email</string>
+    <string name="add_address">Add address</string>
+    <string name="add_birthday">Add birthday</string>
+    <string name="remove_field">Remove</string>
+    <string name="field_type">Label</string>
+    <string name="save_to">Save to</string>
+    <string name="discard_title">Discard changes?</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="date_ok">OK</string>
+
+    <string name="saved">Contact saved</string>
+    <string name="save_failed">Couldn\'t save the contact</string>
+    <string name="deleted">%1$s deleted</string>
+    <plurals name="imported">
+        <item quantity="one">Imported %d contact</item>
+        <item quantity="other">Imported %d contacts</item>
+    </plurals>
+    <string name="import_failed">No contacts found in that file</string>
+    <string name="exported">Contacts exported</string>
+    <string name="export_failed">Couldn\'t save the file</string>
+    <string name="pick_number">Choose a number</string>
+    <string name="pick_email">Choose an email</string>
+    <string name="unnamed">(No name)</string>
+
+    <string name="settings_default_account">Default account for new contacts</string>
+</resources>
