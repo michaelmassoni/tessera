@@ -20,6 +20,7 @@ design system.
 | Files      | `io.github.michaelmassoni.tessera.files`      | v0.2: browse, copy/move, search, share ([spec](docs/files.md)) |
 | Notes      | `io.github.michaelmassoni.tessera.notes`      | v0.1: text and checklist notes, labels, archive, trash, search, export ([spec](docs/notes.md)) |
 | Contacts   | `io.github.michaelmassoni.tessera.contacts`   | v0.1: list, search, favourites, detail, editor, vCard import/export, picker for other apps ([spec](docs/contacts.md)) |
+| Gallery    | `io.github.michaelmassoni.tessera.gallery`    | v0.1: timeline, albums, viewer with zoom and video, favourites, trash, picker ([spec](docs/gallery.md)) |
 
 Every app has Settings with theme (light/dark, wallpaper colours, pure black, one theme for all Tessera apps) and app icon (Colour, Light, Dark or custom colours).
 
