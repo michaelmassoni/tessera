@@ -6,6 +6,7 @@ import com.android.build.api.variant.HasHostTestsBuilder
 import com.android.build.api.variant.HostTestBuilder
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
+import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -55,6 +56,13 @@ internal fun Project.configureAndroidCommon(commonExtension: CommonExtension) {
             jvmTarget.set(JvmTarget.JVM_17)
             allWarningsAsErrors.set(true)
         }
+    }
+
+    // Deterministic host tests and screenshots on every machine (CI runs in UTC).
+    tasks.withType(Test::class.java).configureEach {
+        systemProperty("user.timezone", "UTC")
+        systemProperty("user.language", "en")
+        systemProperty("user.country", "US")
     }
 
     pluginManager.apply("org.jlleitschuh.gradle.ktlint")
