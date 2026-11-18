@@ -15,9 +15,9 @@ design system.
 
 | App        | Package                 | Status        |
 |------------|-------------------------|---------------|
-| Calculator | `io.github.michaelmassoni.tessera.calculator` | Scaffold only |
-| Clock      | `io.github.michaelmassoni.tessera.clock`      | Scaffold only |
-| Files      | `io.github.michaelmassoni.tessera.files`      | Scaffold only |
+| Calculator | `io.github.michaelmassoni.tessera.calculator` | v0.1: basic + scientific, exact decimals, history ([spec](docs/calculator.md)) |
+| Clock      | `io.github.michaelmassoni.tessera.clock`      | v0.1: alarms, timers, stopwatch, world clock ([spec](docs/clock.md)) |
+| Files      | `io.github.michaelmassoni.tessera.files`      | v0.1: browse, copy/move, search, share ([spec](docs/files.md)) |
 
 The planned order after these is in [CLAUDE.md](CLAUDE.md#app-order).
 
