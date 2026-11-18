@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mathematical symbols shown on keys. Universal notation, so not translated. -->
+<resources>
+    <string name="key_clear" translatable="false">AC</string>
+    <string name="key_parentheses" translatable="false">( )</string>
+    <string name="key_percent" translatable="false">%</string>
+    <string name="key_divide" translatable="false">÷</string>
+    <string name="key_multiply" translatable="false">×</string>
+    <string name="key_minus" translatable="false">−</string>
+    <string name="key_plus" translatable="false">+</string>
+    <string name="key_equals" translatable="false">=</string>
+    <string name="key_sqrt" translatable="false">√</string>
+    <string name="key_square" translatable="false">x²</string>
+    <string name="key_reciprocal" translatable="false">1/x</string>
+    <string name="key_pi" translatable="false">π</string>
+    <string name="key_e" translatable="false">e</string>
+    <string name="key_power" translatable="false">xʸ</string>
+    <string name="key_factorial" translatable="false">!</string>
+    <string name="key_inverse" translatable="false">INV</string>
+    <string name="key_sin" translatable="false">sin</string>
+    <string name="key_cos" translatable="false">cos</string>
+    <string name="key_tan" translatable="false">tan</string>
+    <string name="key_asin" translatable="false">sin⁻¹</string>
+    <string name="key_acos" translatable="false">cos⁻¹</string>
+    <string name="key_atan" translatable="false">tan⁻¹</string>
+    <string name="key_ln" translatable="false">ln</string>
+    <string name="key_log" translatable="false">log</string>
+    <string name="key_exp" translatable="false">eˣ</string>
+    <string name="key_ten_power" translatable="false">10ˣ</string>
+    <string name="key_open_paren" translatable="false">(</string>
+    <string name="key_close_paren" translatable="false">)</string>
+</resources>
