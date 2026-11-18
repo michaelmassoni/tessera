@@ -1,0 +1,156 @@
+package io.github.michaelmassoni.tessera.music
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.database.ContentObserver
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import android.provider.Settings
+import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.music.data.MusicRepository
+import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Song
+import io.github.michaelmassoni.tessera.music.ui.LibraryActions
+import io.github.michaelmassoni.tessera.music.ui.LibraryState
+import io.github.michaelmassoni.tessera.music.ui.MusicApp
+import io.github.michaelmassoni.tessera.music.ui.PermissionScreen
+import io.github.michaelmassoni.tessera.music.ui.PlayerActions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class MainActivity : ComponentActivity() {
+    private val player by lazy { PlayerConnection(lifecycleScope) }
+    private var granted by mutableStateOf(false)
+    private var denied by mutableStateOf(false)
+    private var library by mutableStateOf(LibraryState())
+    private var observing = false
+
+    private val permission =
+        if (Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.TIRAMISU
+        ) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+    private val observer =
+        object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) = load()
+        }
+
+    private val request =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+            granted = ok
+            denied = !ok
+            if (ok) onGranted()
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        granted = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        val libraryActions = LibraryActionsImpl()
+        val playerActions = PlayerActionsImpl()
+        setTesseraContent {
+            if (!granted) {
+                PermissionScreen(
+                    denied = denied,
+                    onGrant = { request.launch(permission) },
+                    onSettings = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())) },
+                )
+            } else {
+                val playback by player.state.collectAsStateWithLifecycle()
+                MusicApp(library, playback, libraryActions, playerActions)
+            }
+        }
+        if (granted) onGranted()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        player.connect(this)
+    }
+
+    override fun onStop() {
+        player.release()
+        super.onStop()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!granted && ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            granted = true
+            onGranted()
+        }
+    }
+
+    override fun onDestroy() {
+        if (observing) contentResolver.unregisterContentObserver(observer)
+        super.onDestroy()
+    }
+
+    private fun onGranted() {
+        if (!observing) {
+            contentResolver.registerContentObserver(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, observer)
+            observing = true
+        }
+        load()
+    }
+
+    private fun load() {
+        lifecycleScope.launch {
+            val songs = withContext(Dispatchers.IO) { MusicRepository(contentResolver).songs() }
+            library =
+                withContext(Dispatchers.Default) { LibraryState(true, Library.songs(songs), Library.albums(songs), Library.artists(songs)) }
+        }
+    }
+
+    private inner class LibraryActionsImpl : LibraryActions {
+        override fun play(
+            songs: List<Song>,
+            index: Int,
+        ) = player.play(songs, index)
+
+        override fun shuffle(songs: List<Song>) = player.play(songs, 0, shuffle = true)
+
+        override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+    }
+
+    private inner class PlayerActionsImpl : PlayerActions {
+        override fun togglePlay() = player.togglePlay()
+
+        override fun next() {
+            player.next()
+        }
+
+        override fun previous() {
+            player.previous()
+        }
+
+        override fun seekTo(positionMs: Long) {
+            player.seekTo(positionMs)
+        }
+
+        override fun toggleShuffle() = player.toggleShuffle()
+
+        override fun cycleRepeat() = player.cycleRepeat()
+
+        override fun skipTo(index: Int) {
+            player.skipTo(index)
+        }
+    }
+}

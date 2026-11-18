@@ -1,0 +1,72 @@
+package io.github.michaelmassoni.tessera.music.ui
+
+import androidx.compose.runtime.Composable
+import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.music.PlaybackState
+import io.github.michaelmassoni.tessera.music.QueueItem
+import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Song
+
+private val songs =
+    listOf(
+        Song(1, "u1", "Northern Lights", "Aurora Bay", 1, "Polar", 10, 241_000, 1001, 2024),
+        Song(2, "u2", "Slow Tide", "Aurora Bay", 1, "Polar", 10, 198_000, 1002, 2024),
+        Song(3, "u3", "City at Dawn", "The Night Shift", 2, "Overtime", 20, 305_000, 1001, 2022),
+        Song(4, "u4", "Paper Planes", "Juniper", 3, "Fold", 30, 187_000, 1001, 2021),
+        Song(5, "u5", "Lanterns", "Juniper", 3, "Fold", 30, 222_000, 1002, 2021),
+    )
+
+private val library = LibraryState(true, Library.songs(songs), Library.albums(songs), Library.artists(songs))
+
+private val playing =
+    PlaybackState(
+        hasMedia = true,
+        title = "City at Dawn",
+        artist = "The Night Shift",
+        album = "Overtime",
+        isPlaying = true,
+        positionMs = 95_000,
+        durationMs = 305_000,
+        queue = songs.map { QueueItem(it.title, it.artist) },
+        index = 2,
+    )
+
+private object NoLibrary : LibraryActions {
+    override fun play(
+        songs: List<Song>,
+        index: Int,
+    ) = Unit
+
+    override fun shuffle(songs: List<Song>) = Unit
+
+    override fun openSettings() = Unit
+}
+
+private object NoPlayer : PlayerActions {
+    override fun togglePlay() = Unit
+
+    override fun next() = Unit
+
+    override fun previous() = Unit
+
+    override fun seekTo(positionMs: Long) = Unit
+
+    override fun toggleShuffle() = Unit
+
+    override fun cycleRepeat() = Unit
+
+    override fun skipTo(index: Int) = Unit
+}
+
+@TesseraPreviews
+@Composable
+private fun LibraryPreview() {
+    TesseraTheme(dynamicColor = false) { MusicApp(library, playing, NoLibrary, NoPlayer) }
+}
+
+@TesseraPreviews
+@Composable
+private fun FullPlayerPreview() {
+    TesseraTheme(dynamicColor = false) { FullPlayer(playing, NoPlayer, onClose = {}) }
+}
