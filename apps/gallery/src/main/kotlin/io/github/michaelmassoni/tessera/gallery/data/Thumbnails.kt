@@ -19,6 +19,8 @@ import coil3.size.pxOrElse
  */
 data class Thumbnail(
     val uri: String,
+    /** The item's modified time, so an edited photo gets a fresh thumbnail. */
+    val version: Long = 0,
 )
 
 class ThumbnailFetcher(
@@ -54,5 +56,5 @@ class ThumbnailKeyer : Keyer<Thumbnail> {
     override fun key(
         data: Thumbnail,
         options: Options,
-    ): String = "thumbnail:${data.uri}"
+    ): String = "thumbnail:${data.uri}:${data.version}"
 }

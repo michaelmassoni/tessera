@@ -53,13 +53,35 @@ and needs no account.
   added when there's none, then id). MediaStore can't sort by that fallback itself, so the list is
   sorted in Kotlin.
 - **Actions:** Share, Favourite, Edit, Set as wallpaper, Info and Move to trash.
-  - **Edit** sends `ACTION_EDIT` with read access only (Gallery can't grant write access it doesn't
-    hold), so editors save a copy. It's hidden when no editor is installed.
+  - **Edit** (photos) opens the built-in editor (see Editor below). Its menu still offers
+    **Open in another app** (`ACTION_EDIT` with read access only, so other editors save a copy),
+    shown only when one is installed.
   - **Set as wallpaper** (photos only) asks Home screen, Lock screen or both, and sets it directly
     with `WallpaperManager`, so it works without a wallpaper picker app.
 - **Rotation and wallpaper changes** keep the open album and photo.
 - **Info:** a sheet with the date taken, file name, size, resolution, folder, and camera details
   from EXIF when present.
+
+### Editor
+
+For photos (JPEG, PNG, WebP, HEIC). Videos aren't edited.
+
+- **Crop and rotate:** drag the corners or edges of the crop frame, or pick a ratio: Free,
+  Original, Square, 4:3, 3:2, 16:9 (each turns with the photo). Rotate 90° and Flip. A
+  **Straighten** dial from −45° to 45° zooms in just enough that no empty corners show.
+- **Adjust:** Brightness, Contrast, Saturation and Warmth sliders, from −100 to 100.
+- **Auto:** one tap sets brightness and contrast from the photo's histogram (stretching the
+  darkest and brightest 0.5% to black and white), and a little saturation. It's done on the
+  device, and the sliders show what it chose.
+- **Undo, Redo and Reset.** In Adjust, press and hold the photo to compare with it unadjusted.
+- **Save as copy** (the default) writes a new JPEG (quality 95) next to the original, in the same
+  folder with the same date taken, so it sits beside it in the timeline. **Save** replaces the
+  original, after the system asks (`MediaStore.createWriteRequest`). Leaving with changes asks
+  whether to discard them.
+- The preview is drawn from a downscaled copy (at most 2048 px) with the adjustments as a colour
+  matrix, so dragging stays smooth. Saving decodes the full photo and applies the same steps.
+- EXIF orientation is applied when the photo is opened, and the saved copy is upright with
+  orientation "normal". Date taken, camera details and GPS are copied to it.
 
 ### Other apps
 
@@ -72,7 +94,8 @@ and needs no account.
 - `Timeline`: groups items into day sections with locale-aware relative labels.
 - `Albums`: builds the album list from items (counts, cover, ordering, pinned folders).
 - `TrashInfo`: days remaining from `DATE_EXPIRES`.
-
+- `Edit`: the editor's state and history, crop frames and ratios, the straighten zoom, the
+  colour matrix for the adjustments, and auto enhance from a histogram.
 ## Libraries
 
 All open source and F-Droid compatible:
@@ -99,7 +122,6 @@ The viewer is always full-screen.
 
 ## Out of scope for v0.1
 
-- An editor.
 - Search.
 - Moving between albums.
 - Creating albums.

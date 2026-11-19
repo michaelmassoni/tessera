@@ -109,6 +109,7 @@ fun GalleryApp(
     viewerActions: ViewerActions,
     dynamicColor: Boolean,
     modifier: Modifier = Modifier,
+    editorActions: EditorActions? = null,
     pickMode: Boolean = false,
     pickMultiple: Boolean = false,
     now: () -> Long = System::currentTimeMillis,
@@ -117,6 +118,8 @@ fun GalleryApp(
     // Saveable, so rotating or a wallpaper change (which recreates the activity) keeps your place.
     var album by rememberSaveable(stateSaver = CollectionSaver) { mutableStateOf<Collection?>(null) }
     var viewing by rememberSaveable(stateSaver = ViewingSaver) { mutableStateOf<Pair<Collection, Long>?>(null) }
+    // The photo open in the editor, by id.
+    var editing by rememberSaveable { mutableStateOf<Long?>(null) }
 
     BackHandler(viewing == null && state.selection.isNotEmpty()) { gridActions.clearSelection() }
     BackHandler(viewing == null && state.selection.isEmpty() && album != null) { album = null }
@@ -193,6 +196,7 @@ fun GalleryApp(
                     items = items,
                     startIndex = if (index < 0) 0 else index,
                     trashMode = collection == Collection.Trash,
+                    onEditPhoto = { if (editorActions != null) editing = it.id },
                     actions =
                         object : ViewerActions by viewerActions {
                             override fun close() {
@@ -200,6 +204,10 @@ fun GalleryApp(
                             }
                         },
                 )
+                val edited = editing?.let { id -> items.firstOrNull { it.id == id } }
+                if (edited != null && editorActions != null) {
+                    Editor(edited, editorActions, onClose = { editing = null })
+                }
             }
         }
     }

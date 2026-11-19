@@ -160,7 +160,7 @@ private fun MediaCell(
     ) {
         val inset = if (selected) Modifier.padding(12.dp).clip(RoundedCornerShape(12.dp)) else Modifier
         AsyncImage(
-            model = Thumbnail(item.uri),
+            model = Thumbnail(item.uri, item.modified),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize().then(inset),
