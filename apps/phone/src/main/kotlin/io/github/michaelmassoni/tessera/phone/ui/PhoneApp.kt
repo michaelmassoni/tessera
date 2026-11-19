@@ -202,20 +202,24 @@ private fun Favourites(
     }
 }
 
+/** A name's first letter, or a person icon when there's no name (a number on its own). */
 @Composable
 private fun Initial(
-    name: String,
+    name: String?,
     size: Int,
 ) {
     Box(Modifier.size(size.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
-        Text(
-            name
-                .firstOrNull {
-                    it.isLetterOrDigit()
-                }?.uppercase() ?: "#",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
+        val letter = name?.firstOrNull { it.isLetterOrDigit() }?.takeIf { it.isLetter() }
+        if (letter != null) {
+            Text(letter.uppercase(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        } else {
+            Icon(
+                painterResource(DesignR.drawable.ic_person),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size((size * 0.55f).dp),
+            )
+        }
     }
 }
 
@@ -253,7 +257,7 @@ private fun Recents(
                         ?: call.number.ifBlank { stringResource(R.string.unknown_number) }
                 val missed = call.type == CallType.Missed || call.type == CallType.Rejected
                 ListItem(
-                    leadingContent = { Initial(call.name ?: "#", 40) },
+                    leadingContent = { Initial(call.name, 40) },
                     supportingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
