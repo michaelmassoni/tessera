@@ -81,6 +81,14 @@ class TesseraSettingsTest {
         )
     }
 
+    @Test fun `peers are asked once per installed version`() {
+        val s = settings()
+        assertTrue(s.needsPull(3))
+        s.pullFromPeers(3)
+        assertFalse(settings().needsPull(3))
+        assertTrue(settings().needsPull(4))
+    }
+
     @Test fun `icon settings persist, and app colours apply until the user picks some`() {
         val s = settings()
         assertEquals(IconSettings(foreground = 1, background = 2), s.icon.value.withAppColors(1, 2))
