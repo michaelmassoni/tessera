@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.phone.ui
 
+import android.telecom.Call
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,6 +42,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.call.CallInfo
 import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
@@ -84,58 +88,62 @@ fun InCallScreen(
     // A ringing call takes over the screen; otherwise the first live call (or the one that just ended).
     val call = calls.firstOrNull { it.ringing } ?: calls.firstOrNull { !it.ended } ?: calls.firstOrNull()
     var keypad by rememberSaveable { mutableStateOf(false) }
-    Box(
-        modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer).safeDrawingPadding(),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        if (call == null) return@Box
-        Column(
-            Modifier.widthIn(max = 480.dp).fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+    // A Surface, not just a background: it also sets the content colour, so text that doesn't pick
+    // its own colour is onSurface (light on dark in dark theme) rather than the default black.
+    Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
+        Box(
+            Modifier.fillMaxSize().safeDrawingPadding(),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Spacer(Modifier.size(48.dp))
-            Box(
-                Modifier.size(112.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
+            if (call == null) return@Box
+            Column(
+                Modifier.widthIn(max = 480.dp).fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Icon(
-                    painterResource(DesignR.drawable.ic_person),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(64.dp),
+                Spacer(Modifier.size(48.dp))
+                Box(
+                    Modifier.size(112.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painterResource(DesignR.drawable.ic_person),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(64.dp),
+                    )
+                }
+                Text(
+                    call.name ?: call.number.ifBlank {
+                        stringResource(R.string.unknown_number)
+                    },
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 24.dp),
                 )
-            }
-            Text(
-                call.name ?: call.number.ifBlank {
-                    stringResource(R.string.unknown_number)
-                },
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 24.dp),
-            )
-            if (call.name !=
-                null
-            ) {
-                Text(call.number, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            CallStatus(call)
-            Spacer(Modifier.weight(1f))
-            when {
-                call.ringing -> IncomingControls(call, actions)
-                call.ended -> Unit
-                keypad -> InCallKeypad(onDigit = { actions.dtmf(call.id, it) }, onClose = { keypad = false })
-                else -> ActiveControls(call, audio, actions, onKeypad = { keypad = true })
-            }
-            if (!call.ringing && !call.ended) {
-                FilledIconButton(
-                    onClick = { actions.hangUp(call.id) },
-                    colors =
-                        IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                        ),
-                    modifier = Modifier.padding(top = 32.dp).size(72.dp),
-                ) { Icon(painterResource(DesignR.drawable.ic_call_end), contentDescription = stringResource(R.string.hang_up)) }
+                if (call.name !=
+                    null
+                ) {
+                    Text(call.number, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                CallStatus(call)
+                Spacer(Modifier.weight(1f))
+                when {
+                    call.ringing -> IncomingControls(call, actions)
+                    call.ended -> Unit
+                    keypad -> InCallKeypad(onDigit = { actions.dtmf(call.id, it) }, onClose = { keypad = false })
+                    else -> ActiveControls(call, audio, actions, onKeypad = { keypad = true })
+                }
+                if (!call.ringing && !call.ended) {
+                    FilledIconButton(
+                        onClick = { actions.hangUp(call.id) },
+                        colors =
+                            IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                        modifier = Modifier.padding(top = 32.dp).size(72.dp),
+                    ) { Icon(painterResource(DesignR.drawable.ic_call_end), contentDescription = stringResource(R.string.hang_up)) }
+                }
             }
         }
     }
@@ -356,5 +364,61 @@ private fun DialKey(
                 )
             }
         }
+    }
+}
+
+private object NoInCallActions : InCallActions {
+    override fun answer(id: String) = Unit
+
+    override fun decline(id: String) = Unit
+
+    override fun hangUp(id: String) = Unit
+
+    override fun hold(
+        id: String,
+        on: Boolean,
+    ) = Unit
+
+    override fun mute(on: Boolean) = Unit
+
+    override fun route(id: String) = Unit
+
+    override fun dtmf(
+        id: String,
+        digit: Char,
+    ) = Unit
+}
+
+private fun previewCall(state: Int) = CallInfo("1", "+61 412 345 678", "Ada Lovelace", null, state, 0, incoming = true)
+
+// Both themes are checked (TesseraPreviews includes dark): text here must never fall back to black.
+@TesseraPreviews
+@Composable
+private fun RingingPreview() {
+    TesseraTheme(dynamicColor = false) {
+        InCallScreen(listOf(previewCall(Call.STATE_RINGING)), AudioInfo(), NoInCallActions)
+    }
+}
+
+/** On hold rather than active, so the screenshot has no running timer. */
+@TesseraPreviews
+@Composable
+private fun ActiveCallPreview() {
+    TesseraTheme(dynamicColor = false) {
+        InCallScreen(
+            listOf(previewCall(Call.STATE_HOLDING)),
+            AudioInfo(
+                muted = true,
+                current = Route.Bluetooth,
+                currentId = "bt",
+                available =
+                    listOf(
+                        AudioRoute("ear", Route.Earpiece),
+                        AudioRoute("spk", Route.Speaker),
+                        AudioRoute("bt", Route.Bluetooth, "Pixel Buds"),
+                    ),
+            ),
+            NoInCallActions,
+        )
     }
 }
