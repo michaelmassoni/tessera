@@ -41,7 +41,7 @@ and needs no account.
 
 ### Viewer
 
-- **Navigation:** full screen, swipe between items in the current timeline or album (swipe right for older), and tap
+- **Navigation:** full screen, swipe between items in the current timeline or album (swipe left for older, like the grid reads), and tap
   to show or hide the controls (system bars hide with them).
 - **Images:** pinch and double-tap zoom with subsampling for large images (Telephoto).
 - **Videos:** play inline with Media3 ExoPlayer (play/pause and a seek slider). Playback pauses
