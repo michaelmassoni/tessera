@@ -40,6 +40,7 @@ import io.github.michaelmassoni.tessera.messages.data.isDefaultSmsApp
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
 import io.github.michaelmassoni.tessera.messages.engine.Conversation
 import io.github.michaelmassoni.tessera.messages.engine.Message
+import io.github.michaelmassoni.tessera.messages.engine.Sending
 import io.github.michaelmassoni.tessera.messages.ui.MessagesActions
 import io.github.michaelmassoni.tessera.messages.ui.MessagesApp
 import io.github.michaelmassoni.tessera.messages.ui.MessagesState
@@ -262,12 +263,19 @@ class MainActivity : ComponentActivity() {
             if (open?.loaded != true) {
                 first = load(FIRST_PAGE)
                 if (!stillOpen()) return@launch
-                open = open?.copy(messages = first, loaded = true)
+                open = open?.let { o -> o.copy(messages = Sending.merge(o.messages, first, System.currentTimeMillis()), loaded = true) }
             }
             // A thread shorter than the first page is already complete.
             val messages = if (first != null && first.size < FIRST_PAGE) first else load(null)
             if (stillOpen()) {
-                open = open?.copy(messages = messages, loaded = true, scheduled = scheduledFor(current.addresses))
+                open =
+                    open?.let { o ->
+                        o.copy(
+                            messages = Sending.merge(o.messages, messages, System.currentTimeMillis()),
+                            loaded = true,
+                            scheduled = scheduledFor(current.addresses),
+                        )
+                    }
                 val missing = current.addresses.filter { state.names[it] == null }
                 if (missing.isNotEmpty() && granted(Manifest.permission.READ_CONTACTS)) {
                     val found = withContext(Dispatchers.IO) { missing.mapNotNull { a -> repository.name(a)?.let { a to it } } }
@@ -318,13 +326,18 @@ class MainActivity : ComponentActivity() {
             val current = open ?: return
             val text = current.draft.trim()
             if ((text.isEmpty() && current.attachments.isEmpty()) || !granted(Manifest.permission.SEND_SMS)) return
-            open = current.copy(draft = "", attachments = emptyList())
+            // Show it straight away; the stored copy replaces it on the next reload.
+            val shown = Sending.message(text, current.attachments.map { Attachment(it, "image/jpeg") }, System.currentTimeMillis())
+            open = current.copy(draft = "", attachments = emptyList(), messages = current.messages + shown)
             lifecycleScope.launch {
                 val result =
                     withContext(
                         Dispatchers.IO,
                     ) { runCatching { repository.send(current.addresses, text, current.attachments.map(String::toUri)) } }
-                if (result.isFailure) toast(R.string.send_failed)
+                if (result.isFailure) {
+                    toast(R.string.send_failed)
+                    open = open?.let { o -> o.copy(messages = o.messages.filterNot { it.key == shown.key }) }
+                }
                 if (current.threadId == null) startThread(current.addresses) else reload()
             }
         }
