@@ -75,6 +75,9 @@ A clean SMS and MMS app over the system message database. It works in two modes:
   - Pictures show inline (Coil). Tapping one opens it in another app through a private copy.
     Video and audio show as chips that open the same way.
   - Failed messages are marked "Not sent".
+  - A sent message shows at once (as sending), fades in, and the list scrolls to it. The stored
+    copy takes over the same list item when it arrives, so it doesn't flicker. Incoming messages
+    scroll into view only if you're already at the bottom.
   - Opening shows the newest 100 messages first, then loads the rest above them. MMS parts are
     read in batches (one query per 200 messages, not one per message). A loading indicator shows
     until the first messages are in.  - **Selection** (long-press a message):
