@@ -5,7 +5,7 @@
 Tessera
 ===
 
-[![Latest release][release badge]][releases]
+[![10 apps][apps badge]](#the-apps)
 [![Android 12+][android badge]][releases]
 [![Built with Kotlin][kotlin badge]][kotlin]
 [![License: GPL-3.0][license badge]][license]
@@ -45,16 +45,16 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 
 | | App | | Install |
 |:-:|---|---|:-:|
-| <img src="docs/icons/calculator.svg" width="48" alt=""/> | **Calculator**<br/>Basic and scientific, exact decimals, history. | [![calculator][v calculator]][releases] | [Add][obtainium calculator] |
-| <img src="docs/icons/clock.svg" width="48" alt=""/> | **Clock**<br/>Alarms, named timers and a stopwatch on the lock screen, world clock. | [![clock][v clock]][releases] | [Add][obtainium clock] |
-| <img src="docs/icons/files.svg" width="48" alt=""/> | **Files**<br/>Browse, search, copy and move, share, SD cards. | [![files][v files]][releases] | [Add][obtainium files] |
-| <img src="docs/icons/notes.svg" width="48" alt=""/> | **Notes**<br/>Text and checklist notes, labels, pins, archive and trash. | [![notes][v notes]][releases] | [Add][obtainium notes] |
-| <img src="docs/icons/contacts.svg" width="48" alt=""/> | **Contacts**<br/>Search, favourites, editor, vCard import and export. | [![contacts][v contacts]][releases] | [Add][obtainium contacts] |
-| <img src="docs/icons/gallery.svg" width="48" alt=""/> | **Gallery**<br/>Timeline and albums, zoom, video, favourites, trash, set as wallpaper. | [![gallery][v gallery]][releases] | [Add][obtainium gallery] |
-| <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month and schedule views, repeating events, reminders, ICS import. | [![calendar][v calendar]][releases] | [Add][obtainium calendar] |
-| <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Songs, albums and artists, search, background playback. | [![music][v music]][releases] | [Add][obtainium music] |
-| <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, recents, keypad, and the call screen when it's your default. | [![phone][v phone]][releases] | [Add][obtainium phone] |
-| <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive. | [![messages][v messages]][releases] | [Add][obtainium messages] |
+| <img src="docs/icons/calculator.svg" width="48" alt=""/> | **Calculator**<br/>Basic and scientific, exact decimals, history. | [![calculator][v calculator]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calculator to Obtainium">][obtainium calculator] |
+| <img src="docs/icons/clock.svg" width="48" alt=""/> | **Clock**<br/>Alarms, named timers and a stopwatch on the lock screen, world clock. | [![clock][v clock]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Clock to Obtainium">][obtainium clock] |
+| <img src="docs/icons/files.svg" width="48" alt=""/> | **Files**<br/>Browse, search, copy and move, share, SD cards. | [![files][v files]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Files to Obtainium">][obtainium files] |
+| <img src="docs/icons/notes.svg" width="48" alt=""/> | **Notes**<br/>Text and checklist notes, labels, pins, archive and trash. | [![notes][v notes]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Notes to Obtainium">][obtainium notes] |
+| <img src="docs/icons/contacts.svg" width="48" alt=""/> | **Contacts**<br/>Search, favourites, editor, vCard import and export. | [![contacts][v contacts]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Contacts to Obtainium">][obtainium contacts] |
+| <img src="docs/icons/gallery.svg" width="48" alt=""/> | **Gallery**<br/>Timeline and albums, zoom, video, favourites, trash, set as wallpaper. | [![gallery][v gallery]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Gallery to Obtainium">][obtainium gallery] |
+| <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month and schedule views, repeating events, reminders, ICS import. | [![calendar][v calendar]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calendar to Obtainium">][obtainium calendar] |
+| <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Songs, albums and artists, search, background playback. | [![music][v music]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Music to Obtainium">][obtainium music] |
+| <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, recents, keypad, and the call screen when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
+| <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive. | [![messages][v messages]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Messages to Obtainium">][obtainium messages] |
 
 Each app has a short spec in [docs/](docs) describing what it does and why it asks for each
 permission.
@@ -85,7 +85,7 @@ permission.
 **[Obtainium](https://obtainium.imranr.dev/)** (recommended) installs the apps straight from this
 repository's releases and keeps them up to date.
 
-- **One app:** tap **Add** next to it in [the table above](#the-apps) on your phone.
+- **One app:** tap its Obtainium badge in [the table above](#the-apps) on your phone.
 - **All of them:** download [obtainium.json](docs/obtainium.json), then in Obtainium open
   **Import/Export → Obtainium import** and choose the file.
 
@@ -134,7 +134,7 @@ Bug reports and ideas are welcome in [Issues](../../issues).
 
 [GNU GPL v3.0](LICENSE).
 
-[release badge]: https://img.shields.io/github/v/release/michaelmassoni/tessera?style=for-the-badge&color=5B4B8A&label=latest
+[apps badge]: https://img.shields.io/badge/Apps-10-5B4B8A?style=for-the-badge
 [releases]: https://github.com/michaelmassoni/tessera/releases
 [android badge]: https://img.shields.io/badge/Android-12%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white
 [kotlin badge]: https://img.shields.io/badge/Built%20with-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white
