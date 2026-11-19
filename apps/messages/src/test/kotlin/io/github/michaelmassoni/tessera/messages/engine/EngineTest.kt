@@ -43,6 +43,19 @@ class EngineTest {
         assertEquals(6, rows.size)
         assertTrue(rows[0] is Row.Day)
         assertEquals(listOf(false, true, true), rows.subList(1, 4).map { (it as Row.Bubble).lastInGroup })
+        assertEquals(listOf(true, false, true), rows.subList(1, 4).map { (it as Row.Bubble).firstInGroup })
         assertTrue(rows[4] is Row.Day)
+    }
+
+    @Test fun `a different sender in a group starts a new run`() {
+        val msgs =
+            listOf(
+                Message("1", "hi", at(18, 9, 0), outgoing = false, sender = "+611"),
+                Message("2", "yo", at(18, 9, 1), outgoing = false, sender = "+612"),
+                Message("3", "sup", at(18, 9, 1), outgoing = false, sender = "+612"),
+            )
+        val bubbles = Grouping.rows(msgs, ZoneOffset.UTC).filterIsInstance<Row.Bubble>()
+        assertEquals(listOf(true, true, false), bubbles.map { it.firstInGroup })
+        assertEquals(listOf(true, false, true), bubbles.map { it.lastInGroup })
     }
 }
