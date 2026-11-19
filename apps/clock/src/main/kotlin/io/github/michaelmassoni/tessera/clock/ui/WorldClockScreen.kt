@@ -210,7 +210,7 @@ fun CityPicker(
 @TesseraPreviews
 @Composable
 private fun WorldClockPreview() {
-    TesseraTheme(dynamicColor = false) {
+    ClockPreview {
         WorldClockScreen(
             now = ZonedDateTime.of(2026, 11, 18, 22, 5, 0, 0, ZoneId.of("America/New_York")),
             cities =

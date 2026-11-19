@@ -501,7 +501,7 @@ private object NoAlarmActions : AlarmActions {
 @TesseraPreviews
 @Composable
 private fun AlarmsPreview() {
-    TesseraTheme(dynamicColor = false) {
+    ClockPreview {
         AlarmsScreen(
             alarms =
                 listOf(
