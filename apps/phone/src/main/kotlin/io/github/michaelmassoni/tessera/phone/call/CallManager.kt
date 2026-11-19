@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.phone.call
 
 import android.telecom.Call
 import android.telecom.VideoProfile
+import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,12 +22,10 @@ data class CallInfo(
     val active: Boolean get() = state == Call.STATE_ACTIVE
     val holding: Boolean get() = state == Call.STATE_HOLDING
     val ended: Boolean get() = state == Call.STATE_DISCONNECTED
-}
 
-data class AudioInfo(
-    val muted: Boolean = false,
-    val speaker: Boolean = false,
-)
+    /** On the line or connecting: everything but ringing and over. */
+    val live: Boolean get() = !ringing && !ended
+}
 
 /**
  * The calls Telecom has given the in-call service, as state for the UI, plus the commands the
@@ -46,7 +45,8 @@ object CallManager {
     interface AudioControl {
         fun mute(on: Boolean)
 
-        fun speaker(on: Boolean)
+        /** Switches call audio to the route with this [AudioRoute.id]. */
+        fun route(id: String)
     }
 
     internal var nameLookup: (String) -> Pair<String, String?>? = { null }

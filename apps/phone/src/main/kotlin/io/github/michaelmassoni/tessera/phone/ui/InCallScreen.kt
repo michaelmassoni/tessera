@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
@@ -39,9 +41,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.phone.R
-import io.github.michaelmassoni.tessera.phone.call.AudioInfo
 import io.github.michaelmassoni.tessera.phone.call.CallInfo
+import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
+import io.github.michaelmassoni.tessera.phone.engine.AudioRoute
 import io.github.michaelmassoni.tessera.phone.engine.Dialpad
+import io.github.michaelmassoni.tessera.phone.engine.Route
 import io.github.michaelmassoni.tessera.phone.engine.formatTimer
 import kotlinx.coroutines.delay
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -60,7 +64,8 @@ interface InCallActions {
 
     fun mute(on: Boolean)
 
-    fun speaker(on: Boolean)
+    /** Switches call audio to the route with this id. */
+    fun route(id: String)
 
     fun dtmf(
         id: String,
@@ -216,10 +221,72 @@ private fun ActiveControls(
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         Toggle(DesignR.drawable.ic_mic_off, stringResource(R.string.mute), audio.muted) { actions.mute(!audio.muted) }
         Toggle(DesignR.drawable.ic_dialpad, stringResource(R.string.keypad), false) { onKeypad() }
-        Toggle(DesignR.drawable.ic_volume_up, stringResource(R.string.speaker), audio.speaker) { actions.speaker(!audio.speaker) }
+        AudioButton(audio, actions)
         Toggle(DesignR.drawable.ic_pause, stringResource(R.string.hold), call.holding) { actions.hold(call.id, !call.holding) }
     }
 }
+
+/**
+ * Speaker on and off, or, with a headset or Bluetooth connected, a button showing where audio
+ * goes that opens the list of routes.
+ */
+@Composable
+private fun AudioButton(
+    audio: AudioInfo,
+    actions: InCallActions,
+) {
+    if (!audio.needsPicker) {
+        Toggle(DesignR.drawable.ic_volume_up, stringResource(R.string.speaker), audio.speaker) {
+            audio.toggleTarget()?.let { actions.route(it.id) }
+        }
+        return
+    }
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Toggle(
+            routeIcon(audio.current),
+            routeLabel(audio.available.firstOrNull { it.id == audio.currentId } ?: AudioRoute("", audio.current)),
+            audio.current != Route.Earpiece,
+        ) { open = true }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            audio.available.forEach { r ->
+                DropdownMenuItem(
+                    text = { Text(routeLabel(r)) },
+                    leadingIcon = { Icon(painterResource(routeIcon(r.route)), contentDescription = null) },
+                    trailingIcon = {
+                        if (r.id == audio.currentId) {
+                            Icon(painterResource(DesignR.drawable.ic_check), contentDescription = stringResource(R.string.route_selected))
+                        }
+                    },
+                    onClick = {
+                        open = false
+                        actions.route(r.id)
+                    },
+                )
+            }
+        }
+    }
+}
+
+private fun routeIcon(route: Route) =
+    when (route) {
+        Route.Earpiece -> DesignR.drawable.ic_phone_in_talk
+        Route.Speaker -> DesignR.drawable.ic_volume_up
+        Route.Bluetooth -> DesignR.drawable.ic_bluetooth
+        Route.Wired, Route.Streaming -> DesignR.drawable.ic_headphones
+    }
+
+@Composable
+private fun routeLabel(r: AudioRoute): String =
+    r.name ?: stringResource(
+        when (r.route) {
+            Route.Earpiece -> R.string.route_phone
+            Route.Speaker -> R.string.speaker
+            Route.Bluetooth -> R.string.route_bluetooth
+            Route.Wired -> R.string.route_headset
+            Route.Streaming -> R.string.route_other
+        },
+    )
 
 @Composable
 private fun Toggle(

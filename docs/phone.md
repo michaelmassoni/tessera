@@ -28,6 +28,7 @@ so trying Tessera Phone can't break calling.
 | `READ_CALL_LOG` | Recents |
 | `READ_CONTACTS` | Names, favourites and the contact list |
 | `POST_NOTIFICATIONS` | Incoming-call and ongoing-call notifications (when default) |
+| `WAKE_LOCK` | Turning the screen off near the ear during calls |
 
 When it's the default phone app, the role grants the in-call binding. `USE_FULL_SCREEN_INTENT`
 covers the incoming-call screen.
@@ -56,10 +57,17 @@ covers the incoming-call screen.
   full-screen intent, so it rings over the lock screen.
 - **Active:**
   - Mute (`InCallService.setMuted`).
-  - Speaker (`setAudioRoute`, using `CallEndpoint` routes on Android 14+).
+  - Audio: with only the earpiece and speaker, a Speaker toggle. With a wired headset or
+    Bluetooth connected, an Audio button that shows the current route and lists them all
+    (`CallEndpoint` on Android 14+, with device names; `CallAudioState` before, where Bluetooth
+    devices are just "Bluetooth" because names need a permission Phone doesn't ask for).
   - Hold.
   - Keypad, which sends DTMF.
   - End.
+- **Screen off at the ear:** while a call is live and its audio is on the earpiece, a
+  `PROXIMITY_SCREEN_OFF_WAKE_LOCK` turns the screen off when the phone is near the face. It's
+  released with `RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY` when the call ends or audio moves to the
+  speaker, a headset or Bluetooth.
 - **Ongoing call notification:** with Hang up. Tapping it returns to the call.
 - **Second calls:** a second incoming call during a call shows Answer (which holds the first) and
   Decline. Conference merging is out of scope.
@@ -70,6 +78,8 @@ covers the incoming-call screen.
 - `CallLogGrouping`: day sections, and collapses consecutive calls from the same number into one
   row with a count ("(3)").
 - `NumberMatch`: matches typed digits against contact numbers by digits only.
+- `AudioInfo` and `Proximity`: when the audio button is a toggle or a list, the toggle's target,
+  and when the screen should turn off near the ear.
 
 ## Out of scope for v0.1
 
