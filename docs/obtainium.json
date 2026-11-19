@@ -1,0 +1,84 @@
+{
+  "apps": [
+    {
+      "id": "io.github.michaelmassoni.tessera.calculator",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Calculator",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Calculator \",\"apkFilterRegEx\":\"^tessera-calculator-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Calculator\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.clock",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Clock",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Clock \",\"apkFilterRegEx\":\"^tessera-clock-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Clock\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.files",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Files",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Files \",\"apkFilterRegEx\":\"^tessera-files-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Files\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.notes",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Notes",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Notes \",\"apkFilterRegEx\":\"^tessera-notes-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Notes\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.contacts",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Contacts",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Contacts \",\"apkFilterRegEx\":\"^tessera-contacts-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Contacts\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.gallery",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Gallery",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Gallery \",\"apkFilterRegEx\":\"^tessera-gallery-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Gallery\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.calendar",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Calendar",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Calendar \",\"apkFilterRegEx\":\"^tessera-calendar-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Calendar\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.music",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Music",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Music \",\"apkFilterRegEx\":\"^tessera-music-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Music\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.phone",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Phone",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Phone \",\"apkFilterRegEx\":\"^tessera-phone-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Phone\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.messages",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Messages",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Messages \",\"apkFilterRegEx\":\"^tessera-messages-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Messages\"}"
+    }
+  ]
+}
