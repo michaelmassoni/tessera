@@ -29,4 +29,22 @@
     <string name="settings_haptics">Vibrate on keypress</string>
     <string name="settings_double_space">Double-space full stop</string>
     <string name="settings_double_space_summary">Type two spaces to end a sentence</string>
+    <string name="settings_auto_caps">Auto-capitalisation</string>
+    <string name="settings_auto_caps_summary">Start sentences with a capital letter</string>
+    <string name="settings_corrections">Suggestions and corrections</string>
+    <string name="settings_suggestions">Show suggestion strip</string>
+    <string name="settings_suggestions_summary">Suggest words above the keys as you type</string>
+    <string name="settings_autocorrect">Autocorrect</string>
+    <string name="settings_autocorrect_summary">Fix typos when you type a space or punctuation. Press delete straight after to undo.</string>
+    <string name="settings_block_offensive">Block offensive words</string>
+    <string name="settings_block_offensive_summary">Don’t suggest them unless you type them in full</string>
+    <string name="settings_clear_learned">Forget learned words</string>
+    <plurals name="settings_clear_learned_summary">
+        <item quantity="one">%d word you kept, stored only on this device</item>
+        <item quantity="other">%d words you kept, stored only on this device</item>
+    </plurals>
+    <string name="settings_dictionary_credit">Word list</string>
+    <string name="settings_dictionary_credit_summary">SCOWL by Kevin Atkinson, with word frequencies from FrequencyWords by Hermit Dave (CC BY-SA 4.0)</string>
+    <string name="suggestion_keep">Keep %s</string>
+    <string name="suggestion_undo">Undo correction, %s</string>
 </resources>

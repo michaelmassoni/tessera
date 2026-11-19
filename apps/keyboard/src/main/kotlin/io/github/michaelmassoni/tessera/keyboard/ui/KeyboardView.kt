@@ -11,17 +11,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.tappableElement
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +38,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.michaelmassoni.tessera.keyboard.R
@@ -43,6 +49,7 @@ import io.github.michaelmassoni.tessera.keyboard.engine.Key
 import io.github.michaelmassoni.tessera.keyboard.engine.Layout
 import io.github.michaelmassoni.tessera.keyboard.engine.Layouts
 import io.github.michaelmassoni.tessera.keyboard.engine.ShiftState
+import io.github.michaelmassoni.tessera.keyboard.engine.Slot
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -57,6 +64,8 @@ data class KeyboardState(
     val haptics: Boolean = true,
     /** Accent alternatives shown above the keys after a long press, or null. */
     val accents: List<String>? = null,
+    /** The suggestion strip: left, middle and right, or empty. */
+    val suggestions: List<Slot?> = emptyList(),
 )
 
 interface KeyboardActions {
@@ -76,6 +85,8 @@ interface KeyboardActions {
     )
 
     fun dismissAccents()
+
+    fun pick(slot: Slot)
 }
 
 private val KeyHeight = 54.dp
@@ -92,11 +103,11 @@ fun KeyboardView(
         modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .windowInsetsPadding(WindowInsets.navigationBars)
+            .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.tappableElement))
             .padding(horizontal = 3.dp, vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        AccentStrip(state.accents, actions, tick)
+        if (state.accents != null) AccentStrip(state.accents, actions, tick) else SuggestionStrip(state.suggestions, actions)
         Layouts.rows(state.layout, state.numberRow, state.decimal).forEach { row ->
             Row(Modifier.fillMaxWidth().height(KeyHeight), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 row.forEach { key -> KeyCell(key, state, actions, tick) }
@@ -105,15 +116,15 @@ fun KeyboardView(
     }
 }
 
-/** The strip above the keys: accent alternatives after a long press, otherwise empty space. */
+/** The strip above the keys after a long press: accent alternatives. */
 @Composable
 private fun AccentStrip(
-    accents: List<String>?,
+    accents: List<String>,
     actions: KeyboardActions,
     tick: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
-        accents?.forEach { option ->
+        accents.forEach { option ->
             Surface(
                 onClick = {
                     tick()
@@ -331,6 +342,60 @@ private fun BackspaceKey(
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Icon(painterResource(DesignR.drawable.ic_backspace), contentDescription = stringResource(R.string.key_backspace))
+        }
+    }
+}
+
+/**
+ * Word suggestions: what was typed (in quotes when it isn't a known word) on the left, the
+ * correction or best word in the middle (bold when autocorrect will use it), another on the right.
+ */
+@Composable
+private fun SuggestionStrip(
+    slots: List<Slot?>,
+    actions: KeyboardActions,
+) {
+    Row(Modifier.fillMaxWidth().height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (slots.isEmpty()) return@Row
+        slots.forEachIndexed { i, slot ->
+            if (i > 0) {
+                // A divider only between two suggestions; an empty slot stays blank.
+                val color = if (slot != null && slots[i - 1] != null) MaterialTheme.colorScheme.outlineVariant else Color.Transparent
+                VerticalDivider(Modifier.height(20.dp), color = color)
+            }
+            Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                if (slot != null) SuggestionCell(slot, actions)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionCell(
+    slot: Slot,
+    actions: KeyboardActions,
+) {
+    val label =
+        when (slot.kind) {
+            Slot.Kind.Literal -> stringResource(R.string.suggestion_keep, slot.text)
+            Slot.Kind.Undo -> stringResource(R.string.suggestion_undo, slot.text)
+            else -> slot.text
+        }
+    Surface(
+        onClick = { actions.pick(slot) },
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
+        modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp).semantics { contentDescription = label },
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                if (slot.kind == Slot.Kind.Literal) "“${slot.text}”" else slot.text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (slot.kind == Slot.Kind.Correction) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 6.dp),
+            )
         }
     }
 }
