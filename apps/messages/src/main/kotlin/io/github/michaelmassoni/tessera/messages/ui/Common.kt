@@ -32,7 +32,17 @@ internal fun Avatar(
         if (group) {
             Icon(painterResource(DesignR.drawable.ic_group), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
         } else {
-            Text(name.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "#", color = MaterialTheme.colorScheme.onPrimaryContainer)
+            // A name's first letter; a person icon for a number with no contact (not its first digit).
+            val letter = name.firstOrNull { it.isLetterOrDigit() }?.takeIf { it.isLetter() }
+            if (letter != null) {
+                Text(letter.uppercase(), color = MaterialTheme.colorScheme.onPrimaryContainer)
+            } else {
+                Icon(
+                    painterResource(DesignR.drawable.ic_person),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
         }
     }
 }
