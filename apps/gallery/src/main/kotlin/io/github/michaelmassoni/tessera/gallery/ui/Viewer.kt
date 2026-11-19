@@ -110,7 +110,9 @@ fun Viewer(
     val current = items[pager.currentPage.coerceIn(0, items.lastIndex)]
 
     Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        HorizontalPager(pager, key = { items[it].id }, beyondViewportPageCount = 1) { page ->
+        // Items run newest first. Reversed, older items sit to the left, so swiping right goes
+        // back in time, matching how the grid reads.
+        HorizontalPager(pager, key = { items[it].id }, beyondViewportPageCount = 1, reverseLayout = true) { page ->
             val item = items[page]
             if (item.isVideo) {
                 VideoPage(item, isCurrent = page == pager.currentPage, showControls = controls, onTap = { controls = !controls })
