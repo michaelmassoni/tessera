@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumFloatingActionButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -243,6 +244,11 @@ fun ClockRoot(
 
                                     override fun onAddMinute(id: Int) = viewModel.addMinute(id)
 
+                                    override fun onLabel(
+                                        id: Int,
+                                        label: String,
+                                    ) = viewModel.setTimerLabel(id, label)
+
                                     override fun onDelete(id: Int) = viewModel.deleteTimer(id)
                                 },
                             contentPadding = listPadding,
@@ -343,12 +349,22 @@ private fun EventSnackbars(
                 }
 
                 is ClockEvent.AlarmDeleted -> {
-                    val result = snackbar.showSnackbar(resources.getString(R.string.alarm_deleted), actionLabel = undo)
+                    val result =
+                        snackbar.showSnackbar(
+                            resources.getString(R.string.alarm_deleted),
+                            actionLabel = undo,
+                            duration = SnackbarDuration.Long,
+                        )
                     if (result == SnackbarResult.ActionPerformed) onUndoDelete(event.alarm)
                 }
 
                 is ClockEvent.CityRemoved -> {
-                    val result = snackbar.showSnackbar(resources.getString(R.string.city_removed), actionLabel = undo)
+                    val result =
+                        snackbar.showSnackbar(
+                            resources.getString(R.string.city_removed),
+                            actionLabel = undo,
+                            duration = SnackbarDuration.Long,
+                        )
                     if (result == SnackbarResult.ActionPerformed) onUndoRemoveCity(event.zoneId, event.index)
                 }
             }

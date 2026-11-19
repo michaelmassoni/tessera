@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.clock.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,8 +32,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -57,6 +63,11 @@ interface TimerActions {
     fun onAddMinute(id: Int)
 
     fun onDelete(id: Int)
+
+    fun onLabel(
+        id: Int,
+        label: String,
+    )
 }
 
 /** Running and paused timers. [elapsedNow] ticks from the caller while the tab is visible. */
@@ -95,12 +106,37 @@ private fun TimerCard(
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            var editingLabel by rememberSaveable { mutableStateOf(false) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    timer.label.ifEmpty { DurationFormat.timer(timer.durationMillis) },
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
+                // Tap the title to name the timer; the original duration stays underneath.
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(onClickLabel = stringResource(R.string.timer_edit_label)) { editingLabel = true }
+                        .padding(vertical = 4.dp),
+                ) {
+                    Text(
+                        timer.label.ifEmpty { stringResource(R.string.alarm_add_label) },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (timer.label.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+                    )
+                    Text(
+                        DurationFormat.timer(timer.durationMillis),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (editingLabel) {
+                    LabelDialog(
+                        initial = timer.label,
+                        onDismiss = { editingLabel = false },
+                        onConfirm = {
+                            editingLabel = false
+                            actions.onLabel(timer.id, it)
+                        },
+                    )
+                }
                 IconButton(onClick = { actions.onDelete(timer.id) }) {
                     Icon(
                         painterResource(DesignR.drawable.ic_close),
@@ -249,6 +285,11 @@ private object NoTimerActions : TimerActions {
     override fun onReset(id: Int) = Unit
 
     override fun onAddMinute(id: Int) = Unit
+
+    override fun onLabel(
+        id: Int,
+        label: String,
+    ) = Unit
 
     override fun onDelete(id: Int) = Unit
 }

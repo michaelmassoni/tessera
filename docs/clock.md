@@ -30,7 +30,8 @@ grid (two or more columns).
   - **Sound:** the system ringtone picker for alarm sounds, with "Default" and "Silent" options.
     No storage permission is needed.
   - **Vibrate.**
-  - **Delete**, with an undo snackbar.
+  - **Delete**, with an undo snackbar that times out (`SnackbarDuration.Long`; with an action,
+    Material 3 otherwise defaults to indefinite).
 - **Adding an alarm:** a floating action button opens the Material 3 time picker (dial or
   keyboard input). New alarms are enabled and don't repeat.
 - **Feedback:** enabling an alarm, or changing its time, shows a snackbar such as "Alarm set
@@ -90,10 +91,12 @@ grid (two or more columns).
   Start, then add more timers with the floating action button.
 - **Running timers:** shown as cards, each with a `CircularWavyProgressIndicator` (Expressive),
   the remaining time, its label, Pause/Resume, Reset, +1:00 and Delete.
+- **Labels:** tap the title ("Add label" until set) to name a timer. The original duration shows
+  under it. The name is used in the notification and on the "Time's up" screen.
 - **Scheduling:** an exact alarm on `ELAPSED_REALTIME_WAKEUP` (`setExactAndAllowWhileIdle`) for
-  each running timer. No foreground service runs while a timer counts down. A low-priority
-  ongoing notification shows the countdown (`setChronometerCountDown`) with Pause and Stop
-  actions.
+  each running timer. No foreground service runs while a timer counts down. An ongoing
+  notification shows the countdown (`setChronometerCountDown`) with Pause and Stop actions. See
+  "Lock screen and Live Updates" below.
 - **Expiry:** the same `RingingService` and full-screen UI, showing "Time's up". The actions are
   Stop and +1:00. The display counts up past zero, as on the Pixel.
 - **State:** timers are persisted with both an elapsed-realtime deadline and a wall-clock
@@ -102,7 +105,8 @@ grid (two or more columns).
 
 ## Stopwatch
 
-- **Controls:** Start/Pause (floating action button), Lap and Reset.
+- **Controls:** a matched pair of large Expressive icon buttons: Lap/Reset (round, tonal) and
+  Start/Pause (wide, filled). Both are 96dp tall and morph shape when pressed.
 - **Display:** a large `h:mm:ss.cc` readout. The ring around it shows progress through the
   current minute.
 - **Laps:** a list with the lap number, lap time and total. The fastest and slowest laps are
@@ -112,6 +116,18 @@ grid (two or more columns).
   documented.
 - **While running:** an ongoing notification with a chronometer shows the elapsed time, with
   Pause and Lap actions.
+
+## Lock screen and Live Updates
+
+- Timer and stopwatch notifications use default-importance channels with no sound or vibration
+  (`timers_live`, `stopwatch_live`). Silent (low-importance) notifications are hidden from the lock
+  screen by default, which is why 0.2 moved off them. The old `timers` and `stopwatch` channels
+  are deleted.
+- They're `VISIBILITY_PUBLIC`: a countdown isn't private, so it shows even with "hide sensitive
+  content".
+- On Android 16 QPR1+ they request promotion (`setRequestPromotedOngoing`, with
+  `POST_PROMOTED_NOTIFICATIONS`). The system then shows them as Live Updates: a status bar chip and
+  near the top of the lock screen. The user can turn this off per app.
 
 ## World clock
 
@@ -139,6 +155,7 @@ grid (two or more columns).
 |------------|-----|
 | `USE_EXACT_ALARM` (33+) / `SCHEDULE_EXACT_ALARM` (≤32) | Alarms and timers must fire at an exact time |
 | `POST_NOTIFICATIONS` | Ringing UI, timer countdown, missed alarms |
+| `POST_PROMOTED_NOTIFICATIONS` | Timer and stopwatch as Live Updates (Android 16 QPR1+; normal permission) |
 | `USE_FULL_SCREEN_INTENT` | Show the ringing alarm over the lock screen |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` | Keep sound and vibration going while an alarm or timer rings |
 | `RECEIVE_BOOT_COMPLETED` | Reschedule alarms after a reboot |

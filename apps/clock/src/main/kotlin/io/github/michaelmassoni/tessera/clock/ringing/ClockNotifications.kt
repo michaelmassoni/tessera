@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.text.format.DateFormat
 import io.github.michaelmassoni.tessera.clock.MainActivity
 import io.github.michaelmassoni.tessera.clock.R
@@ -21,6 +22,9 @@ class ClockNotifications(
     private val manager = context.getSystemService(NotificationManager::class.java)
 
     fun createChannels() {
+        // 0.1 used silent (low importance) channels, which the lock screen hides by default.
+        // Importance can't be raised on an existing channel, so they moved to new ids.
+        LEGACY_CHANNELS.forEach(manager::deleteNotificationChannel)
         manager.createNotificationChannels(
             listOf(
                 NotificationChannel(
@@ -33,16 +37,8 @@ class ClockNotifications(
                     enableVibration(false)
                     lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 },
-                NotificationChannel(
-                    CHANNEL_TIMERS,
-                    context.getString(R.string.channel_timers),
-                    NotificationManager.IMPORTANCE_LOW,
-                ),
-                NotificationChannel(
-                    CHANNEL_STOPWATCH,
-                    context.getString(R.string.channel_stopwatch),
-                    NotificationManager.IMPORTANCE_LOW,
-                ),
+                liveChannel(CHANNEL_TIMERS, R.string.channel_timers),
+                liveChannel(CHANNEL_STOPWATCH, R.string.channel_stopwatch),
                 NotificationChannel(
                     CHANNEL_MISSED,
                     context.getString(R.string.channel_missed),
@@ -50,6 +46,31 @@ class ClockNotifications(
                 ),
             ),
         )
+    }
+
+    /**
+     * Timers and the stopwatch: default importance so they show on the lock screen (silent
+     * notifications don't, by default), but without sound or vibration. Public, since a countdown
+     * isn't private.
+     */
+    private fun liveChannel(
+        id: String,
+        name: Int,
+    ) = NotificationChannel(id, context.getString(name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+        setSound(null, null)
+        enableVibration(false)
+        setShowBadge(false)
+        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    }
+
+    /**
+     * Android 16 QPR1+: asks for a Live Update, which shows as a chip in the status bar and stays near
+     * the top of the lock screen. The system decides; the notification works the same either way.
+     */
+    private fun Notification.Builder.live(): Notification.Builder {
+        setVisibility(Notification.VISIBILITY_PUBLIC)
+        if (Build.VERSION.SDK_INT_FULL >= Build.VERSION_CODES_FULL.BAKLAVA_1) setRequestPromotedOngoing(true)
+        return this
     }
 
     fun canPost(): Boolean = manager.areNotificationsEnabled()
@@ -161,7 +182,7 @@ class ClockNotifications(
                     .addAction(broadcast(R.string.action_resume, ClockReceiver.ACTION_TIMER_RESUME, timer.id))
             }
             builder.addAction(broadcast(R.string.action_stop, ClockReceiver.ACTION_TIMER_STOP, timer.id))
-            manager.notify(TIMER_NOTIFICATION_BASE + timer.id, builder.build())
+            manager.notify(TIMER_NOTIFICATION_BASE + timer.id, builder.live().build())
         }
     }
 
@@ -197,7 +218,7 @@ class ClockNotifications(
                 .addAction(broadcast(R.string.action_resume, ClockReceiver.ACTION_STOPWATCH_RESUME, 0))
                 .addAction(broadcast(R.string.action_reset, ClockReceiver.ACTION_STOPWATCH_RESET, 0))
         }
-        manager.notify(STOPWATCH_NOTIFICATION_ID, builder.build())
+        manager.notify(STOPWATCH_NOTIFICATION_ID, builder.live().build())
     }
 
     private fun formatTime(
@@ -254,8 +275,9 @@ class ClockNotifications(
 
     companion object {
         const val CHANNEL_RINGING = "ringing"
-        const val CHANNEL_TIMERS = "timers"
-        const val CHANNEL_STOPWATCH = "stopwatch"
+        const val CHANNEL_TIMERS = "timers_live"
+        const val CHANNEL_STOPWATCH = "stopwatch_live"
+        private val LEGACY_CHANNELS = listOf("timers", "stopwatch")
         const val CHANNEL_MISSED = "missed"
 
         const val RINGING_NOTIFICATION_ID = 1
