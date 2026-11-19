@@ -4,7 +4,15 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
-## 2026-11-19: Keyboard dictionary and autocorrect (Accepted)
+## 2026-11-19: Keyboard is dropped from the suite (Accepted)
+
+**Decision:** Tessera no longer includes a keyboard. The module, spec and dictionary script are
+removed; the last version is in git history (tag `keyboard-v0.2.0`).
+
+**Reason:** in testing on a real phone, fast typing dropped keys and felt laggy. A keyboard has to
+match a mature system keyboard to be worth switching to, and the maintainer chose not to pursue it.
+
+## 2026-11-19: Keyboard dictionary and autocorrect (Superseded: Keyboard dropped)
 
 **Decision:** The keyboard ships an English dictionary built from SCOWL (which words exist) and
 FrequencyWords (how common they are), and corrects typos offline. Auto-capitalisation applies to
