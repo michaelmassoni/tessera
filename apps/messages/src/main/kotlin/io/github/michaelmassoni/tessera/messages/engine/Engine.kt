@@ -12,9 +12,23 @@ data class Message(
     val outgoing: Boolean,
     val failed: Boolean = false,
     val pending: Boolean = false,
-    /** For MMS with media: a placeholder is shown alongside any text. */
+    /** For MMS with media that can't be shown inline: a placeholder is shown alongside any text. */
     val hasMedia: Boolean = false,
+    /** Pictures and other media in an MMS, shown in the bubble. */
+    val attachments: List<Attachment> = emptyList(),
+    /** An MMS that arrived as a notification but hasn't been downloaded (or failed to). */
+    val downloadable: Boolean = false,
+    /** Who sent an incoming message in a group conversation. */
+    val sender: String? = null,
 )
+
+/** A media part of an MMS: a content URI and its MIME type. */
+data class Attachment(
+    val uri: String,
+    val mime: String,
+) {
+    val isImage get() = mime.startsWith("image/")
+}
 
 data class Conversation(
     val threadId: Long,
@@ -92,11 +106,22 @@ sealed interface Row {
         val message: Message,
         /** Last of a run from the same side within [Grouping.GAP_MILLIS]: shows the time. */
         val lastInGroup: Boolean,
+        /** First of such a run: in a group conversation, shows who sent it. */
+        val firstInGroup: Boolean = true,
     ) : Row
 }
 
 object Grouping {
     const val GAP_MILLIS = 3 * 60_000L
+
+    /** Two consecutive messages share a run: same side, same sender, same day, close in time. */
+    private fun sameRun(
+        a: Message,
+        b: Message,
+        zone: ZoneId,
+    ): Boolean =
+        a.outgoing == b.outgoing && a.sender == b.sender && b.date - a.date <= GAP_MILLIS &&
+            Instant.ofEpochMilli(a.date).atZone(zone).toLocalDate() == Instant.ofEpochMilli(b.date).atZone(zone).toLocalDate()
 
     /** Rows oldest first, with day separators. */
     fun rows(
@@ -113,9 +138,10 @@ object Grouping {
                 lastDay = day
             }
             val next = sorted.getOrNull(i + 1)
-            val nextDay = next?.let { Instant.ofEpochMilli(it.date).atZone(zone).toLocalDate() }
-            val last = next == null || next.outgoing != m.outgoing || next.date - m.date > GAP_MILLIS || nextDay != day
-            rows += Row.Bubble(m, last)
+            val previous = sorted.getOrNull(i - 1)
+            val last = next == null || !sameRun(m, next, zone)
+            val first = previous == null || !sameRun(previous, m, zone)
+            rows += Row.Bubble(m, last, first)
         }
         return rows
     }
