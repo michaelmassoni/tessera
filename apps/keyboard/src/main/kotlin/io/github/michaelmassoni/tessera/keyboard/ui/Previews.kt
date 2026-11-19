@@ -9,6 +9,7 @@ import io.github.michaelmassoni.tessera.keyboard.engine.EnterAction
 import io.github.michaelmassoni.tessera.keyboard.engine.Key
 import io.github.michaelmassoni.tessera.keyboard.engine.Layout
 import io.github.michaelmassoni.tessera.keyboard.engine.ShiftState
+import io.github.michaelmassoni.tessera.keyboard.engine.Slot
 
 private object NoActions : KeyboardActions {
     override fun type(text: String) = Unit
@@ -27,12 +28,22 @@ private object NoActions : KeyboardActions {
     ) = Unit
 
     override fun dismissAccents() = Unit
+
+    override fun pick(slot: Slot) = Unit
 }
 
 @Preview(widthDp = 411)
 @Composable
 private fun LettersPreview() {
-    TesseraTheme(dynamicColor = false) { KeyboardView(KeyboardState(shift = ShiftState.Once, enter = EnterAction.Send), NoActions) }
+    TesseraTheme(dynamicColor = false) {
+        KeyboardView(
+            KeyboardState(
+                enter = EnterAction.Send,
+                suggestions = listOf(Slot("teh", Slot.Kind.Literal), Slot("the", Slot.Kind.Correction), Slot("ten", Slot.Kind.Word)),
+            ),
+            NoActions,
+        )
+    }
 }
 
 @Preview(widthDp = 411)

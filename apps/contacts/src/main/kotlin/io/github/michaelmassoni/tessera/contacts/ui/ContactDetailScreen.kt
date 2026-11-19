@@ -335,8 +335,9 @@ private fun InfoRow(
     icon: Int,
     text: String,
     label: String,
-    onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    // Last, so a trailing lambda at a call site is the click action, never composable content.
+    onClick: (() -> Unit)? = null,
 ) {
     val colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     val leading: @Composable () -> Unit = { Icon(painterResource(icon), contentDescription = null) }
