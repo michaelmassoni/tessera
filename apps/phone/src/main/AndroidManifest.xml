@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- Proximity wake lock: the screen turns off against the ear during calls. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:dataExtractionRules="@xml/data_extraction_rules"
