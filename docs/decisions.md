@@ -4,6 +4,22 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Phone is opt-in for in-call handling (Accepted)
+
+**Decision:** Phone works fully as an ordinary app: recents, favourites, contacts and the keypad,
+with calls placed through Telecom and shown by the current phone app. Its own in-call screen
+(`InCallService`) is used only after the user explicitly makes it the default phone app from
+the banner.
+
+**Reason:** A broken default phone app can stop you from answering calls. Making the in-call
+part opt-in means installing Tessera Phone can't break calling. Testing on the emulator found
+two crashes, which are now fixed:
+
+- A call-style notification posted outside a foreground service.
+- The wrong bind permission, so the default-phone role was refused.
+
+Real-device and SIM testing is still needed before recommending it as the default.
+
 ## 2026-11-19: Settings in every app; app icon styles; shared theme (Accepted)
 
 **Request:** every app gets a settings page with an App icon setting (Dark, Light and Custom,
