@@ -14,6 +14,7 @@ and needs no account.
 | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` | Show photos and videos (Android 13+) |
 | `READ_MEDIA_VISUAL_USER_SELECTED` | Android 14+ partial access: works with "Allow limited access" too |
 | `READ_EXTERNAL_STORAGE` (`maxSdkVersion` 32) | The same on Android 12 |
+| `SET_WALLPAPER` | "Set as wallpaper" in the viewer (a normal permission, granted at install) |
 
 - **Limited access:** the grid shows a banner to choose more photos or allow all.
 - **Changes need confirmation:** trash, restore, delete and favourite go through MediaStore's
@@ -45,8 +46,15 @@ and needs no account.
 - **Images:** pinch and double-tap zoom with subsampling for large images (Telephoto).
 - **Videos:** play inline with Media3 ExoPlayer (play/pause and a seek slider). Playback pauses
   when you swipe away or leave the app.
-- **Actions:** Share, Favourite, Edit (`ACTION_EDIT` to an installed editor), Use as
-  (`ACTION_ATTACH_DATA`), Info and Move to trash.
+- **Order:** the viewer walks items in exactly the grid's order (`MediaOrder`: date taken, or date
+  added when there's none, then id). MediaStore can't sort by that fallback itself, so the list is
+  sorted in Kotlin.
+- **Actions:** Share, Favourite, Edit, Set as wallpaper, Info and Move to trash.
+  - **Edit** sends `ACTION_EDIT` with read access only (Gallery can't grant write access it doesn't
+    hold), so editors save a copy. It's hidden when no editor is installed.
+  - **Set as wallpaper** (photos only) asks Home screen, Lock screen or both, and sets it directly
+    with `WallpaperManager`, so it works without a wallpaper picker app.
+- **Rotation and wallpaper changes** keep the open album and photo.
 - **Info:** a sheet with the date taken, file name, size, resolution, folder, and camera details
   from EXIF when present.
 

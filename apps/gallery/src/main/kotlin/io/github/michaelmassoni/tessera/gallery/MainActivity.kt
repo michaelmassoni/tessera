@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.gallery
 import android.Manifest
 import android.app.Activity
 import android.app.PendingIntent
+import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Intent
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
@@ -44,7 +46,11 @@ import io.github.michaelmassoni.tessera.gallery.ui.LimitedAccessBanner
 import io.github.michaelmassoni.tessera.gallery.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.gallery.ui.Viewer
 import io.github.michaelmassoni.tessera.gallery.ui.ViewerActions
+import io.github.michaelmassoni.tessera.gallery.ui.WallpaperTarget
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { MediaRepository(contentResolver) }
@@ -300,33 +306,43 @@ class MainActivity : ComponentActivity() {
             launch(MediaStore.createFavoriteRequest(contentResolver, listOf(item.uri.toUri()), !item.favorite))
         }
 
-        override fun edit(item: MediaItem) =
-            start(
-                Intent
-                    .createChooser(
-                        Intent(
-                            Intent.ACTION_EDIT,
-                        ).setDataAndType(
-                            item.uri.toUri(),
-                            item.mimeType,
-                        ).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION),
-                        getString(R.string.action_edit),
-                    ),
-            )
+        // Read access only: Gallery can't write other apps' media, and granting write it doesn't
+        // hold throws a SecurityException. Editors save their result as a new file.
+        private fun editIntent(item: MediaItem) =
+            Intent(Intent.ACTION_EDIT)
+                .setDataAndType(item.uri.toUri(), item.mimeType)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-        override fun useAs(item: MediaItem) =
-            start(
-                Intent.createChooser(
-                    Intent(
-                        Intent.ACTION_ATTACH_DATA,
-                    ).setDataAndType(
-                        item.uri.toUri(),
-                        item.mimeType,
-                    ).putExtra("mimeType", item.mimeType)
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                    getString(R.string.action_use_as),
-                ),
-            )
+        override fun canEdit(item: MediaItem): Boolean = packageManager.queryIntentActivities(editIntent(item), 0).isNotEmpty()
+
+        override fun edit(item: MediaItem) = start(Intent.createChooser(editIntent(item), getString(R.string.action_edit)))
+
+        override fun setWallpaper(
+            item: MediaItem,
+            target: WallpaperTarget,
+        ) {
+            val flags =
+                when (target) {
+                    WallpaperTarget.Home -> WallpaperManager.FLAG_SYSTEM
+                    WallpaperTarget.Lock -> WallpaperManager.FLAG_LOCK
+                    WallpaperTarget.Both -> WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK
+                }
+            lifecycleScope.launch {
+                val ok =
+                    withContext(Dispatchers.IO) {
+                        try {
+                            contentResolver.openInputStream(item.uri.toUri())?.use { stream ->
+                                WallpaperManager.getInstance(this@MainActivity).setStream(stream, null, true, flags)
+                            } != null
+                        } catch (_: IOException) {
+                            false
+                        } catch (_: SecurityException) {
+                            false
+                        }
+                    }
+                Toast.makeText(this@MainActivity, if (ok) R.string.wallpaper_set else R.string.wallpaper_failed, Toast.LENGTH_SHORT).show()
+            }
+        }
 
         override fun trash(item: MediaItem) {
             if (item.id < 0) return

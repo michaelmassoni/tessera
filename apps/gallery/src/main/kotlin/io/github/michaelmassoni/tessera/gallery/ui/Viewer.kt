@@ -77,9 +77,15 @@ interface ViewerActions {
 
     fun toggleFavorite(item: MediaItem)
 
+    /** Whether an editor app is installed for this item. */
+    fun canEdit(item: MediaItem): Boolean
+
     fun edit(item: MediaItem)
 
-    fun useAs(item: MediaItem)
+    fun setWallpaper(
+        item: MediaItem,
+        target: WallpaperTarget,
+    )
 
     fun trash(item: MediaItem)
 
@@ -106,6 +112,7 @@ fun Viewer(
     val pager = rememberPagerState(initialPage = startIndex.coerceIn(0, items.lastIndex)) { items.size }
     var controls by rememberSaveable { mutableStateOf(true) }
     var info by rememberSaveable { mutableStateOf(false) }
+    var wallpaper by rememberSaveable { mutableStateOf(false) }
     SystemBars(visible = controls)
     val current = items[pager.currentPage.coerceIn(0, items.lastIndex)]
 
@@ -167,15 +174,21 @@ fun Viewer(
                     if (current.favorite) DesignR.drawable.ic_favorite_filled else DesignR.drawable.ic_favorite,
                     stringResource(if (current.favorite) R.string.action_unfavorite else R.string.action_favorite),
                 ) { actions.toggleFavorite(current) }
-                ViewerButton(DesignR.drawable.ic_edit, stringResource(R.string.action_edit)) { actions.edit(current) }
+                val editable = remember(current.mimeType) { actions.canEdit(current) }
+                if (editable) {
+                    ViewerButton(DesignR.drawable.ic_edit, stringResource(R.string.action_edit)) { actions.edit(current) }
+                }
                 if (!current.isVideo) {
-                    ViewerButton(DesignR.drawable.ic_wallpaper, stringResource(R.string.action_use_as)) { actions.useAs(current) }
+                    ViewerButton(DesignR.drawable.ic_wallpaper, stringResource(R.string.action_wallpaper)) { wallpaper = true }
                 }
                 ViewerButton(DesignR.drawable.ic_delete, stringResource(R.string.action_trash)) { actions.trash(current) }
             }
         }
     }
     if (info) InfoSheet(current, actions, onDismiss = { info = false })
+    if (wallpaper) {
+        WallpaperSheet(onDismiss = { wallpaper = false }) { target -> actions.setWallpaper(current, target) }
+    }
 }
 
 /** Light icons on the dark viewer backdrop. */
@@ -310,6 +323,39 @@ private fun InfoSheet(
             exif?.let { e ->
                 val details = listOfNotNull(e.aperture, e.exposure, e.focalLength, e.iso).joinToString("  ·  ")
                 row(R.string.info_camera, listOfNotNull(e.camera, details.ifBlank { null }).joinToString("\n"))
+            }
+        }
+    }
+}
+
+/** Where a photo set as wallpaper goes. */
+enum class WallpaperTarget { Home, Lock, Both }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WallpaperSheet(
+    onDismiss: () -> Unit,
+    onPick: (WallpaperTarget) -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(bottom = 24.dp)) {
+            Text(
+                stringResource(R.string.action_wallpaper),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            )
+            listOf(
+                WallpaperTarget.Home to R.string.wallpaper_home,
+                WallpaperTarget.Lock to R.string.wallpaper_lock,
+                WallpaperTarget.Both to R.string.wallpaper_both,
+            ).forEach { (target, label) ->
+                ListItem(
+                    modifier =
+                        Modifier.clickable {
+                            onDismiss()
+                            onPick(target)
+                        },
+                ) { Text(stringResource(label)) }
             }
         }
     }

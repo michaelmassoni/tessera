@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import android.provider.MediaStore.Files.FileColumns
 import androidx.exifinterface.media.ExifInterface
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
+import io.github.michaelmassoni.tessera.gallery.engine.MediaOrder
 import java.io.IOException
 
 /** Camera details read from a photo's EXIF, each null when absent. */
@@ -88,7 +89,7 @@ class MediaRepository(
                     )
             }
         }
-        return items
+        return items.sortedWith(MediaOrder)
     }
 
     fun exif(uri: Uri): ExifDetails? =

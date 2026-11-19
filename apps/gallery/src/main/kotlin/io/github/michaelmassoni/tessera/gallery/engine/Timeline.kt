@@ -24,7 +24,7 @@ data class RelativeLabels(
 
 object Timeline {
     /**
-     * Groups [items] (any order) into days, newest first. Items within a day are newest first.
+     * Groups [items] (any order) into days, newest first. Items within a day follow [MediaOrder].
      * Days in the last week are labelled by weekday; days this year omit the year.
      */
     fun sections(
@@ -35,7 +35,7 @@ object Timeline {
         labels: RelativeLabels,
     ): List<DaySection> =
         items
-            .sortedByDescending { it.date }
+            .sortedWith(MediaOrder)
             .groupBy { Instant.ofEpochMilli(it.date).atZone(zone).toLocalDate() }
             .map { (day, list) -> DaySection(day, label(day, today, locale, labels), list) }
             .sortedByDescending { it.day }

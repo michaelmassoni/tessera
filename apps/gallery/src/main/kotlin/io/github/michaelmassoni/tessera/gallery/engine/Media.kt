@@ -30,3 +30,10 @@ data class Album(
     val cover: MediaItem,
     val latest: Long,
 )
+
+/**
+ * The one order media is shown in, everywhere: newest first, ties broken by id. The grid and the
+ * viewer both use it, so swiping in the viewer walks the grid exactly. (MediaStore can't sort this
+ * way itself: [MediaItem.date] falls back to the date added when there's no date taken.)
+ */
+val MediaOrder: Comparator<MediaItem> = compareByDescending<MediaItem> { it.date }.thenByDescending { it.id }
