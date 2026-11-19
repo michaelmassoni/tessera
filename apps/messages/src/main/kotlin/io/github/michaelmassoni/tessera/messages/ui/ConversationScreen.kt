@@ -23,10 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -73,7 +75,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ConversationScreen(
     thread: OpenThread,
@@ -181,37 +183,41 @@ internal fun ConversationScreen(
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
-            LazyColumn(
-                Modifier.weight(1f).fillMaxWidth(),
-                reverseLayout = true,
-                contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                items(rows, key = { r -> if (r is Row.Bubble) r.message.id else "d" + (r as Row.Day).day }) { row ->
-                    when (row) {
-                        is Row.Day -> {
-                            Text(
-                                row.day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                            )
-                        }
+            if (!thread.loaded && thread.threadId != null) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { LoadingIndicator() }
+            } else {
+                LazyColumn(
+                    Modifier.weight(1f).fillMaxWidth(),
+                    reverseLayout = true,
+                    contentPadding = PaddingValues(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(rows, key = { r -> if (r is Row.Bubble) r.message.id else "d" + (r as Row.Day).day }) { row ->
+                        when (row) {
+                            is Row.Day -> {
+                                Text(
+                                    row.day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                )
+                            }
 
-                        is Row.Bubble -> {
-                            val id = row.message.id
-                            val isSelected = id in selected
-                            val toggle = { selected = if (isSelected) selected - id else selected + id }
-                            Bubble(
-                                row,
-                                time = DateUtils.formatDateTime(context, row.message.date, DateUtils.FORMAT_SHOW_TIME),
-                                sender = if (group && !row.message.outgoing) row.message.sender?.let { names[it] ?: it } else null,
-                                selected = isSelected,
-                                onClick = { if (selected.isNotEmpty()) toggle() },
-                                onLongClick = toggle,
-                                actions = actions,
-                            )
+                            is Row.Bubble -> {
+                                val id = row.message.id
+                                val isSelected = id in selected
+                                val toggle = { selected = if (isSelected) selected - id else selected + id }
+                                Bubble(
+                                    row,
+                                    time = DateUtils.formatDateTime(context, row.message.date, DateUtils.FORMAT_SHOW_TIME),
+                                    sender = if (group && !row.message.outgoing) row.message.sender?.let { names[it] ?: it } else null,
+                                    selected = isSelected,
+                                    onClick = { if (selected.isNotEmpty()) toggle() },
+                                    onLongClick = toggle,
+                                    actions = actions,
+                                )
+                            }
                         }
                     }
                 }
@@ -401,8 +407,10 @@ private fun Composer(
 ) {
     val draft = thread.draft
     val info = SmsLength.info(draft)
+    var scheduling by rememberSaveable { mutableStateOf(false) }
     val mms = thread.attachments.isNotEmpty() || thread.addresses.size > 1
     Column(Modifier.fillMaxWidth()) {
+        thread.scheduled.forEach { ScheduledRow(it, actions) }
         if (thread.attachments.isNotEmpty()) {
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(thread.attachments) { uri ->
@@ -447,13 +455,13 @@ private fun Composer(
                     },
                 modifier = Modifier.weight(1f),
             )
-            FilledIconButton(
-                onClick = actions::send,
+            SendButton(
                 enabled = draft.isNotBlank() || thread.attachments.isNotEmpty(),
-                modifier = Modifier.padding(start = 8.dp).size(48.dp),
-            ) {
-                Icon(painterResource(DesignR.drawable.ic_send), contentDescription = stringResource(R.string.send))
-            }
+                onSend = actions::send,
+                onSchedule = { scheduling = true },
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
     }
+    if (scheduling) ScheduleSheet(actions, onDismiss = { scheduling = false })
 }

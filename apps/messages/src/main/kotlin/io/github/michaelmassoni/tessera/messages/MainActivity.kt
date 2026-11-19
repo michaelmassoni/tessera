@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -32,10 +33,13 @@ import io.github.michaelmassoni.tessera.messages.data.MessageStore
 import io.github.michaelmassoni.tessera.messages.data.MessagesRepository
 import io.github.michaelmassoni.tessera.messages.data.Mms
 import io.github.michaelmassoni.tessera.messages.data.Notifier
+import io.github.michaelmassoni.tessera.messages.data.PhoneNumbers
+import io.github.michaelmassoni.tessera.messages.data.ScheduledMessages
 import io.github.michaelmassoni.tessera.messages.data.TAG
 import io.github.michaelmassoni.tessera.messages.data.isDefaultSmsApp
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
 import io.github.michaelmassoni.tessera.messages.engine.Conversation
+import io.github.michaelmassoni.tessera.messages.engine.Message
 import io.github.michaelmassoni.tessera.messages.ui.MessagesActions
 import io.github.michaelmassoni.tessera.messages.ui.MessagesApp
 import io.github.michaelmassoni.tessera.messages.ui.MessagesState
@@ -47,6 +51,8 @@ import java.io.File
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { MessagesRepository(this) }
+    private val phoneNumbers by lazy { PhoneNumbers(this) }
+    private val scheduled by lazy { ScheduledMessages(this) }
     private val store by lazy { MessageStore(this) }
     private val local by lazy { LocalThreads(this) }
     private var state by mutableStateOf(MessagesState())
@@ -84,6 +90,9 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
         val actions = Actions()
         setTesseraContent { MessagesApp(state, open, actions) }
+        // Alarms can be lost (exact-alarm access revoked, force stop): set them again, and send
+        // anything overdue.
+        lifecycleScope.launch(Dispatchers.IO) { runCatching { scheduled.rearm() } }
         if (!hasAll()) request.launch(permissions)
     }
 
@@ -146,6 +155,14 @@ class MainActivity : ComponentActivity() {
                 state = state.copy(composing = true)
             }
         }
+    }
+
+    private fun scheduledFor(addresses: List<String>) = scheduled.all().filter { it.isFor(addresses) }
+
+    private suspend fun refreshScheduled() {
+        val addresses = open?.addresses ?: return
+        val list = withContext(Dispatchers.IO) { scheduledFor(addresses) }
+        if (open?.addresses == addresses) open = open?.copy(scheduled = list)
     }
 
     private fun showThread(thread: OpenThread) {
@@ -233,10 +250,24 @@ class MainActivity : ComponentActivity() {
         val current = open ?: return
         val thread = current.threadId
         lifecycleScope.launch {
-            val messages =
-                withContext(Dispatchers.IO) { runCatching { repository.messages(thread, current.addresses) }.getOrDefault(emptyList()) }
-            if (open?.threadId == thread && open?.addresses == current.addresses) {
-                open = open?.copy(messages = messages)
+            suspend fun load(limit: Int?) =
+                withContext(
+                    Dispatchers.IO,
+                ) { runCatching { repository.messages(thread, current.addresses, limit) }.getOrDefault(emptyList()) }
+
+            fun stillOpen() = open?.threadId == thread && open?.addresses == current.addresses
+            // Opening: show the newest messages straight away, then fill in the rest above them.
+            // (Refreshes keep what's on screen and reload everything.)
+            var first: List<Message>? = null
+            if (open?.loaded != true) {
+                first = load(FIRST_PAGE)
+                if (!stillOpen()) return@launch
+                open = open?.copy(messages = first, loaded = true)
+            }
+            // A thread shorter than the first page is already complete.
+            val messages = if (first != null && first.size < FIRST_PAGE) first else load(null)
+            if (stillOpen()) {
+                open = open?.copy(messages = messages, loaded = true, scheduled = scheduledFor(current.addresses))
                 val missing = current.addresses.filter { state.names[it] == null }
                 if (missing.isNotEmpty() && granted(Manifest.permission.READ_CONTACTS)) {
                     val found = withContext(Dispatchers.IO) { missing.mapNotNull { a -> repository.name(a)?.let { a to it } } }
@@ -303,6 +334,10 @@ class MainActivity : ComponentActivity() {
         override fun removeAttachment(uri: String) {
             open = open?.let { it.copy(attachments = it.attachments - uri) }
         }
+
+        override fun formatNumber(dialable: String) = phoneNumbers.format(dialable)
+
+        override fun isValidNumber(dialable: String) = phoneNumbers.isValid(dialable)
 
         override fun suggestions(query: String) =
             if (granted(Manifest.permission.READ_CONTACTS)) repository.suggestions(query) else emptyList()
@@ -396,11 +431,47 @@ class MainActivity : ComponentActivity() {
         override fun share(text: String) {
             startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
         }
+
+        override fun schedule(at: Long) {
+            val current = open ?: return
+            val text = current.draft.trim()
+            if (text.isEmpty() && current.attachments.isEmpty()) return
+            open = current.copy(draft = "", attachments = emptyList())
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { scheduled.schedule(current.addresses, text, current.attachments.map(String::toUri), at) }
+                refreshScheduled()
+            }
+        }
+
+        override fun cancelScheduled(id: Long) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { scheduled.cancel(id) }
+                refreshScheduled()
+            }
+        }
+
+        override fun sendScheduledNow(id: Long) {
+            lifecycleScope.launch {
+                val result = withContext(Dispatchers.IO) { runCatching { scheduled.send(id) } }
+                if (result.isFailure) toast(R.string.send_failed)
+                refreshScheduled()
+                reload()
+            }
+        }
+
+        override fun scheduleIsExact() = scheduled.exact()
+
+        override fun allowExactSchedule() {
+            startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", packageName, null)))
+        }
     }
 
     companion object {
         const val EXTRA_THREAD = "io.github.michaelmassoni.tessera.messages.THREAD"
         private const val MAX_PICTURES = 5
+
+        /** Messages shown first when a conversation opens; the rest load just after. */
+        private const val FIRST_PAGE = 100
         private val SCHEMES = setOf("sms", "smsto", "mms", "mmsto")
     }
 }

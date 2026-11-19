@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.RECEIVE_MMS" />
     <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Scheduled send: an alarm sends the message; boot re-arms them. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Only to leave our own number out of group conversations; granted with the SMS role if at all. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
@@ -91,6 +94,15 @@
         <receiver
             android:name=".data.NotificationActionReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".data.ScheduledSendReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- MMS PDUs going to and from Android's MMS service, and attachments opened in other apps. -->
         <provider

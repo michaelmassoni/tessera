@@ -27,6 +27,8 @@ A clean SMS and MMS app over the system message database. It works in two modes:
 | `RECEIVE_SMS`, `RECEIVE_MMS`, `RECEIVE_WAP_PUSH` | Receive as the default SMS app |
 | `READ_CONTACTS` | Names instead of numbers; contact suggestions |
 | `POST_NOTIFICATIONS` | New-message notifications |
+| `SCHEDULE_EXACT_ALARM` | Scheduled messages go out on time. Optional: without it they may be a few minutes late, and the schedule sheet says so with a link to allow it |
+| `RECEIVE_BOOT_COMPLETED` | Set scheduled messages' alarms again after a reboot |
 | `READ_PHONE_STATE`, `READ_PHONE_NUMBERS` | Leave your own number out of group conversations. Only used if the SMS role grants them; never asked for. |
 
 ## Receiving (default SMS app)
@@ -58,7 +60,8 @@ A clean SMS and MMS app over the system message database. It works in two modes:
 - **Conversations:**
   - Every thread, with pinned ones first. Each row shows the name or number (a group icon for
     groups), a snippet, a relative time, and an unread dot or pin.
-  - Search covers names, numbers and the latest message.
+  - Search (the icon in the top bar, which turns into a search field) covers names, numbers and
+    the latest message.
   - **Selection** (long-press):
     - Pin and unpin.
     - Archive and unarchive. Archived conversations are in their own view from the top bar.
@@ -72,7 +75,9 @@ A clean SMS and MMS app over the system message database. It works in two modes:
   - Pictures show inline (Coil). Tapping one opens it in another app through a private copy.
     Video and audio show as chips that open the same way.
   - Failed messages are marked "Not sent".
-  - **Selection** (long-press a message):
+  - Opening shows the newest 100 messages first, then loads the rest above them. MMS parts are
+    read in batches (one query per 200 messages, not one per message). A loading indicator shows
+    until the first messages are in.  - **Selection** (long-press a message):
     - Copy, share and forward the text.
     - Details (type, from or to, time) for a single message.
     - Delete, after confirmation.
@@ -82,7 +87,21 @@ A clean SMS and MMS app over the system message database. It works in two modes:
     counter.
   - Pictures or several recipients send one MMS. Pictures are re-encoded as JPEG to fit the
     carrier's size limit (`MMS_CONFIG_MAX_MESSAGE_SIZE`, 300 KB if unknown).
+  - **Scheduled send:** long-press Send. Quick choices are later today at 6 PM and tonight at 9 PM
+    (while at least 30 minutes away) and tomorrow at 8 AM, or any future date and time. Scheduled
+    messages show above the composer with Send now and Cancel.
+    - Stored by the app (the system database has no scheduled state). Pictures are copied into
+      app storage, because photo picker access doesn't outlive the app.
+    - An alarm sends them: exact when allowed, otherwise `setAndAllowWhileIdle`. Alarms are set again
+      on boot, app update, a change to exact-alarm access, and app start, and anything overdue is
+      sent then.
 - **New message:**
+  - The To field takes names or numbers, with a normal keyboard by default and a button to
+    switch to the dialpad.
+  - Numbers are laid out for the phone's country as you type ("0412 345 678", "+61 412 345
+    678"), using the platform's libphonenumber (`PhoneNumberUtils`). The field keeps bare digits.
+  - A number that isn't valid for the country gets "Check this number". It doesn't block sending,
+    and short codes (6 digits or fewer) are never flagged.
   - Contact suggestions. Tap one to message them.
   - Long-press a contact, or type a comma, to add more people for a group conversation.
 - **Other apps:**
@@ -94,6 +113,9 @@ A clean SMS and MMS app over the system message database. It works in two modes:
 
 - `SmsLength`: GSM 7-bit or UCS-2 detection, segment sizes and the counter.
 - `Addresses`: normalising numbers for matching.
+- `Recipients`: name or number, digits to send, when to check validity, and cursor mapping for
+  the formatted display.
+- `ScheduleTimes`: the quick schedule choices, and checking a picked time is ahead.
 - `Grouping`: day separators, and runs of messages (same side and sender, within 3 minutes).
 - `Pdu`: MMS PDUs (OMA-MMS-ENC with WSP encodings):
   - Decodes m-notification-ind and m-retrieve-conf, including multipart bodies, charsets and
@@ -104,7 +126,6 @@ A clean SMS and MMS app over the system message database. It works in two modes:
 ## Out of scope for v0.2
 
 - RCS.
-- Scheduled messages.
 - Retrying a failed message (delete it and send again).
 - Delivery reports.
 - Searching message text.
