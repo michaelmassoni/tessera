@@ -27,16 +27,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.messages.R
+import io.github.michaelmassoni.tessera.messages.engine.Recipients
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -51,6 +57,11 @@ internal fun NewMessage(
     modifier: Modifier = Modifier,
 ) {
     var to by rememberSaveable { mutableStateOf("") }
+    // A normal keyboard by default, so names can be typed; the dialpad is a tap away.
+    var dialpad by rememberSaveable { mutableStateOf(false) }
+    val numberMode = Recipients.looksLikeNumber(to)
+    val phoneFormat = remember(actions) { PhoneNumberTransformation(actions::formatNumber) }
+    val invalid = remember(to) { numberMode && Recipients.shouldCheck(to) && !actions.isValidNumber(to) }
     // Chosen recipients as (label, number).
     var chosen by rememberSaveable { mutableStateOf(listOf<Pair<String, String>>()) }
     val suggestions by produceState(emptyList<Pair<String, String>>(), to) {
@@ -101,12 +112,38 @@ internal fun NewMessage(
                 OutlinedTextField(
                     value = to,
                     onValueChange = { text ->
-                        // A comma or semicolon finishes a number and starts the next.
-                        if (text.endsWith(',') || text.endsWith(';')) add(text.dropLast(1), text.dropLast(1)) else to = text
+                        // A comma or semicolon finishes a number and starts the next. Numbers are kept as
+                        // bare digits; the field lays them out for display.
+                        if (text.endsWith(',') || text.endsWith(';')) {
+                            val entry = text.dropLast(1)
+                            if (Recipients.looksLikeNumber(entry)) {
+                                val number = Recipients.dialable(entry)
+                                add(Recipients.display(number, actions::formatNumber), number)
+                            } else {
+                                add(entry, entry)
+                            }
+                        } else {
+                            to = if (Recipients.looksLikeNumber(text)) Recipients.dialable(text) else text
+                        }
                     },
                     label = { Text(stringResource(R.string.to)) },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                    visualTransformation = if (numberMode) phoneFormat else VisualTransformation.None,
+                    isError = invalid,
+                    supportingText = if (invalid) ({ Text(stringResource(R.string.check_number)) }) else null,
+                    trailingIcon = {
+                        IconButton(onClick = { dialpad = !dialpad }) {
+                            Icon(
+                                painterResource(if (dialpad) DesignR.drawable.ic_keyboard else DesignR.drawable.ic_dialpad),
+                                contentDescription = stringResource(if (dialpad) R.string.use_keyboard else R.string.use_dialpad),
+                            )
+                        }
+                    },
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = if (dialpad) KeyboardType.Phone else KeyboardType.Text,
+                            imeAction = ImeAction.Next,
+                        ),
                     keyboardActions = KeyboardActions(onNext = { if (numbers().isNotEmpty()) onPick(numbers()) }),
                     modifier = Modifier.weight(1f),
                 )
@@ -145,5 +182,25 @@ internal fun NewMessage(
                 }
             }
         }
+    }
+}
+
+/** Shows a number typed as bare digits laid out for the phone's country, keeping the cursor right. */
+private class PhoneNumberTransformation(
+    private val format: (String) -> String?,
+) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val raw = text.text
+        val shown = Recipients.display(raw, format)
+        if (shown == raw) return TransformedText(text, OffsetMapping.Identity)
+        val (toShown, toRaw) = Recipients.offsets(raw, shown)
+        return TransformedText(
+            AnnotatedString(shown),
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int) = toShown[offset.coerceIn(0, raw.length)]
+
+                override fun transformedToOriginal(offset: Int) = toRaw[offset.coerceIn(0, shown.length)]
+            },
+        )
     }
 }

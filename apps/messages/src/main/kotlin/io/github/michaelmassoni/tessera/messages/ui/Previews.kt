@@ -7,6 +7,7 @@ import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
 import io.github.michaelmassoni.tessera.messages.engine.Conversation
 import io.github.michaelmassoni.tessera.messages.engine.Message
+import io.github.michaelmassoni.tessera.messages.engine.ScheduledMessage
 
 private const val T = 1_795_089_600_000L
 
@@ -41,6 +42,17 @@ private object NoActions : MessagesActions {
 
     override fun suggestions(query: String) = emptyList<Pair<String, String>>()
 
+    override fun formatNumber(dialable: String) =
+        if (dialable.length ==
+            10
+        ) {
+            "${dialable.take(4)} ${dialable.substring(4, 7)} ${dialable.substring(7)}"
+        } else {
+            null
+        }
+
+    override fun isValidNumber(dialable: String) = dialable.length == 10
+
     override fun grant() = Unit
 
     override fun openSettings() = Unit
@@ -70,6 +82,16 @@ private object NoActions : MessagesActions {
     override fun openAttachment(attachment: Attachment) = Unit
 
     override fun share(text: String) = Unit
+
+    override fun schedule(at: Long) = Unit
+
+    override fun cancelScheduled(id: Long) = Unit
+
+    override fun sendScheduledNow(id: Long) = Unit
+
+    override fun scheduleIsExact() = true
+
+    override fun allowExactSchedule() = Unit
 }
 
 private val state = MessagesState(true, conversations, names, isDefault = true, pinned = setOf(2L))
@@ -84,7 +106,18 @@ private fun ThreadPreview() {
             Message("3", "See you at seven!", T - 500_000, outgoing = false),
         )
     TesseraTheme(dynamicColor = false) {
-        MessagesApp(state, OpenThread(1, listOf("+61 412 345 678"), messages, draft = "On my way"), NoActions)
+        MessagesApp(
+            state,
+            OpenThread(
+                1,
+                listOf("+61 412 345 678"),
+                messages,
+                draft = "On my way",
+                loaded = true,
+                scheduled = listOf(ScheduledMessage(1, listOf("+61 412 345 678"), "Happy birthday!", 1_795_161_600_000)),
+            ),
+            NoActions,
+        )
     }
 }
 
@@ -106,6 +139,6 @@ private fun GroupPreview() {
             Message("5", "Perfect, see you all there", T - 500_000, outgoing = true),
         )
     TesseraTheme(dynamicColor = false, darkTheme = true) {
-        MessagesApp(state, OpenThread(3, conversations[2].addresses, messages), NoActions)
+        MessagesApp(state, OpenThread(3, conversations[2].addresses, messages, loaded = true), NoActions)
     }
 }

@@ -75,14 +75,15 @@ class MessagesRepository(
             }.takeIf { it.isNotEmpty() }
 
     /**
-     * Messages in [threadId] in date order. When not the default SMS app, adds what this app sent
-     * to [addresses] from the [SentLog].
+     * Messages in [threadId] in date order: the newest [limit] of them, or all when null. When not
+     * the default SMS app, adds what this app sent to [addresses] from the [SentLog].
      */
     fun messages(
         threadId: Long?,
         addresses: List<String>,
+        limit: Int? = null,
     ): List<Message> {
-        val messages = if (threadId == null) mutableListOf() else threadMessages(threadId, unreadOnly = false)
+        val messages = if (threadId == null) mutableListOf() else threadMessages(threadId, unreadOnly = false, limit = limit)
         if (!context.isDefaultSmsApp() && addresses.size == 1) {
             // The database copy, if this app can see it, wins over the local one.
             sentLog
@@ -94,25 +95,35 @@ class MessagesRepository(
                     }
                 }.let(messages::addAll)
         }
-        return messages.sortedBy { it.date }
+        val sorted = messages.sortedBy { it.date }
+        return if (limit == null) sorted else sorted.takeLast(limit)
     }
 
     /** Unread received messages in [thread], oldest first, for its notification. */
-    fun unreadIncoming(thread: Long): List<Message> = threadMessages(thread, unreadOnly = true).filter { !it.outgoing }.sortedBy { it.date }
+    fun unreadIncoming(thread: Long): List<Message> =
+        threadMessages(thread, unreadOnly = true, limit = null).filter { !it.outgoing }.sortedBy { it.date }
 
+    /**
+     * SMS and MMS in a thread. With a [limit], each table gives its newest [limit] rows (the caller
+     * keeps the newest overall). MMS parts and senders are read in batches, not one query per MMS,
+     * which is what made long threads slow to open.
+     */
     private fun threadMessages(
         threadId: Long,
         unreadOnly: Boolean,
+        limit: Int?,
     ): MutableList<Message> {
         val messages = mutableListOf<Message>()
         val unread = if (unreadOnly) " AND read = 0" else ""
+        // The telephony provider is SQLite and passes the sort order through, so LIMIT works here.
+        val newest = if (limit == null) null else "date DESC LIMIT $limit"
         resolver
             .query(
                 Telephony.Sms.CONTENT_URI,
                 arrayOf(Telephony.Sms._ID, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS),
                 "${Telephony.Sms.THREAD_ID} = ?$unread",
                 arrayOf(threadId.toString()),
-                null,
+                newest,
             )?.use { c ->
                 while (c.moveToNext()) {
                     val type = c.getInt(3)
@@ -129,6 +140,15 @@ class MessagesRepository(
                         )
                 }
             }
+
+        data class MmsRow(
+            val id: Long,
+            val date: Long,
+            val box: Int,
+            val notification: Boolean,
+            val subject: String?,
+        )
+        val rows = mutableListOf<MmsRow>()
         resolver
             .query(
                 Telephony.Mms.CONTENT_URI,
@@ -141,31 +161,39 @@ class MessagesRepository(
                 ),
                 "${Telephony.Mms.THREAD_ID} = ?$unread",
                 arrayOf(threadId.toString()),
-                null,
+                newest,
             )?.use { c ->
                 while (c.moveToNext()) {
-                    val id = c.getLong(0)
-                    val box = c.getInt(2)
-                    val outgoing = box != Telephony.Mms.MESSAGE_BOX_INBOX
-                    val notification = c.getInt(3) == MessageStore.TYPE_NOTIFICATION
-                    val parts = if (notification) MmsParts("", emptyList(), false) else mmsParts(id)
-                    val subject = c.getString(4)?.takeIf { it.isNotBlank() }
-                    messages +=
-                        Message(
-                            id = "m$id",
-                            body = listOfNotNull(subject, parts.text.ifEmpty { null }).joinToString("\n"),
+                    rows +=
+                        MmsRow(
+                            id = c.getLong(0),
                             // MMS dates are in seconds.
                             date = c.getLong(1) * 1000,
-                            outgoing = outgoing,
-                            failed = box == Telephony.Mms.MESSAGE_BOX_FAILED,
-                            pending = box == Telephony.Mms.MESSAGE_BOX_OUTBOX,
-                            hasMedia = parts.otherMedia,
-                            attachments = parts.attachments,
-                            downloadable = notification,
-                            sender = if (outgoing) null else mmsSender(id),
+                            box = c.getInt(2),
+                            notification = c.getInt(3) == MessageStore.TYPE_NOTIFICATION,
+                            subject = c.getString(4)?.takeIf { it.isNotBlank() },
                         )
                 }
             }
+        val parts = mmsParts(rows.filterNot { it.notification }.map { it.id })
+        val senders = mmsSenders(rows.filter { it.box == Telephony.Mms.MESSAGE_BOX_INBOX }.map { it.id })
+        rows.forEach { row ->
+            val outgoing = row.box != Telephony.Mms.MESSAGE_BOX_INBOX
+            val p = parts[row.id] ?: MmsParts("", emptyList(), false)
+            messages +=
+                Message(
+                    id = "m${row.id}",
+                    body = listOfNotNull(row.subject, p.text.ifEmpty { null }).joinToString("\n"),
+                    date = row.date,
+                    outgoing = outgoing,
+                    failed = row.box == Telephony.Mms.MESSAGE_BOX_FAILED,
+                    pending = row.box == Telephony.Mms.MESSAGE_BOX_OUTBOX,
+                    hasMedia = p.otherMedia,
+                    attachments = p.attachments,
+                    downloadable = row.notification,
+                    sender = if (outgoing) null else senders[row.id],
+                )
+        }
         return messages
     }
 
@@ -175,34 +203,39 @@ class MessagesRepository(
         val otherMedia: Boolean,
     )
 
-    /** The text and media of an MMS (the SMIL layout part is skipped). */
-    private fun mmsParts(mmsId: Long): MmsParts {
-        val text = StringBuilder()
-        val attachments = mutableListOf<Attachment>()
-        var other = false
-        resolver
-            .query("content://mms/part".toUri(), arrayOf("_id", "ct", "text"), "mid = ?", arrayOf(mmsId.toString()), null)
-            ?.use { c ->
-                while (c.moveToNext()) {
-                    val type = c.getString(1).orEmpty().lowercase()
-                    when {
-                        type == "text/plain" -> {
-                            text.append(c.getString(2).orEmpty())
-                        }
+    /** The text and media of each MMS in [ids] (the SMIL layout part is skipped), a few queries in all. */
+    private fun mmsParts(ids: List<Long>): Map<Long, MmsParts> {
+        val text = mutableMapOf<Long, StringBuilder>()
+        val attachments = mutableMapOf<Long, MutableList<Attachment>>()
+        val other = mutableSetOf<Long>()
+        ids.chunked(BATCH).forEach { chunk ->
+            resolver
+                .query("content://mms/part".toUri(), arrayOf("_id", "ct", "text", "mid"), "mid IN (${chunk.joinToString(",")})", null, null)
+                ?.use { c ->
+                    while (c.moveToNext()) {
+                        val mid = c.getLong(3)
+                        val type = c.getString(1).orEmpty().lowercase()
+                        when {
+                            type == "text/plain" -> {
+                                text.getOrPut(mid) { StringBuilder() }.append(c.getString(2).orEmpty())
+                            }
 
-                        type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/") -> {
-                            attachments +=
-                                Attachment("content://mms/part/${c.getLong(0)}", type)
-                        }
+                            type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/") -> {
+                                attachments.getOrPut(mid) { mutableListOf() } += Attachment("content://mms/part/${c.getLong(0)}", type)
+                            }
 
-                        type != "application/smil" -> {
-                            other = true
+                            type != "application/smil" -> {
+                                other += mid
+                            }
                         }
                     }
                 }
-            }
-        return MmsParts(text.toString(), attachments, other)
+        }
+        return ids.associateWith { MmsParts(text[it]?.toString().orEmpty(), attachments[it].orEmpty(), it in other) }
     }
+
+    /** Who sent each received MMS in [ids]. The provider only exposes addresses per message. */
+    private fun mmsSenders(ids: List<Long>): Map<Long, String> = ids.mapNotNull { id -> mmsSender(id)?.let { id to it } }.toMap()
 
     private fun mmsSender(mmsId: Long): String? =
         resolver
@@ -295,6 +328,9 @@ class MessagesRepository(
     }
 
     private companion object {
+        /** MMS ids per `IN (...)` query. */
+        const val BATCH = 200
+
         /** Request codes per sent message leave room for this many parts. */
         const val PARTS = 64
     }

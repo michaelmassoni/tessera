@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -24,15 +25,22 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -40,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,12 +72,18 @@ internal fun ConversationList(
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    val closeSearch = {
+        searching = false
+        query = ""
+    }
     var showArchived by rememberSaveable { mutableStateOf(false) }
     var selected by rememberSaveable { mutableStateOf(emptySet<Long>()) }
     var dialog by rememberSaveable { mutableStateOf<ListDialog?>(null) }
     val unknown = stringResource(R.string.unknown)
     val context = LocalContext.current
     BackHandler(selected.isNotEmpty()) { selected = emptySet() }
+    BackHandler(selected.isEmpty() && searching) { closeSearch() }
     BackHandler(selected.isEmpty() && showArchived) { showArchived = false }
 
     val shown =
@@ -144,6 +159,8 @@ internal fun ConversationList(
                         }
                     },
                 )
+            } else if (searching) {
+                SearchBar(query, onQuery = { query = it }, onClose = closeSearch)
             } else {
                 TopAppBar(
                     title = { Text(stringResource(if (showArchived) R.string.archived else R.string.app_name)) },
@@ -155,6 +172,9 @@ internal fun ConversationList(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { searching = true }) {
+                            Icon(painterResource(DesignR.drawable.ic_search), contentDescription = stringResource(R.string.search))
+                        }
                         if (!showArchived) {
                             IconButton(onClick = {
                                 showArchived = true
@@ -194,13 +214,6 @@ internal fun ConversationList(
                     )
                 }
             }
-            OutlinedTextField(
-                query,
-                { query = it },
-                placeholder = { Text(stringResource(R.string.search)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            )
             if (state.loaded && shown.isEmpty()) {
                 Text(
                     stringResource(if (showArchived) R.string.empty_archived else R.string.empty),
@@ -345,4 +358,47 @@ private fun ConversationRow(
             }
         }
     }
+}
+
+/** The top bar while searching: the field takes the title's place, with back to close. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchBar(
+    query: String,
+    onQuery: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    TopAppBar(
+        title = {
+            TextField(
+                value = query,
+                onValueChange = onQuery,
+                placeholder = { Text(stringResource(R.string.search)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onClose) {
+                Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+            }
+        },
+        actions = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQuery("") }) {
+                    Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
+                }
+            }
+        },
+    )
 }
