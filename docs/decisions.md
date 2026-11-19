@@ -4,6 +4,15 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Launcher and Camera are dropped from the suite (Accepted)
+
+**Decision:** Tessera no longer includes a launcher or a camera. The modules, specs and CameraX
+catalog entries are removed; the last versions are in git history (tags `launcher-v0.1.1` and
+`camera-v0.1.0`).
+
+**Reason:** the maintainer doesn't need them. The suite focuses on the apps that replace Google's
+defaults where there's a clear gap.
+
 ## 2026-11-19: Keyboard is dropped from the suite (Accepted)
 
 **Decision:** Tessera no longer includes a keyboard. The module, spec and dictionary script are
