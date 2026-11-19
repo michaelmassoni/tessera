@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.phone.call
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -18,6 +19,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.data.PhoneRepository
+import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
+import io.github.michaelmassoni.tessera.phone.engine.AudioRoute
+import io.github.michaelmassoni.tessera.phone.engine.Route
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /**
@@ -70,21 +74,73 @@ class TesseraInCallService :
         notifyCalls()
     }
 
+    // ---- Audio routes: CallEndpoint on Android 14+, CallAudioState before. ----
+
+    /** Bluetooth devices by route id, for the pre-14 API. */
+    private var bluetooth: Map<String, BluetoothDevice> = emptyMap()
+
     @Deprecated("Replaced by onCallEndpointChanged and onMuteStateChanged on API 34+")
     override fun onCallAudioStateChanged(audioState: CallAudioState) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
-        CallManager.setAudio(AudioInfo(muted = audioState.isMuted, speaker = audioState.route == CallAudioState.ROUTE_SPEAKER))
+        val mask = audioState.supportedRouteMask
+
+        @Suppress("DEPRECATION")
+        val devices = audioState.supportedBluetoothDevices.associateBy { "bt:${it.address}" }
+        bluetooth = devices
+        val available =
+            buildList {
+                if (mask and CallAudioState.ROUTE_EARPIECE != 0) add(AudioRoute(EARPIECE, Route.Earpiece))
+                if (mask and CallAudioState.ROUTE_WIRED_HEADSET != 0) add(AudioRoute(WIRED, Route.Wired))
+                if (mask and CallAudioState.ROUTE_SPEAKER != 0) add(AudioRoute(SPEAKER, Route.Speaker))
+                if (mask and CallAudioState.ROUTE_BLUETOOTH != 0) {
+                    if (devices.isEmpty()) add(AudioRoute(BLUETOOTH, Route.Bluetooth))
+                    // Device names need BLUETOOTH_CONNECT, which Phone doesn't ask for; Android 14+ names
+                    // them through CallEndpoint instead.
+                    devices.keys.forEach { id -> add(AudioRoute(id, Route.Bluetooth)) }
+                }
+            }
+        val current =
+            when (audioState.route) {
+                CallAudioState.ROUTE_SPEAKER -> Route.Speaker
+                CallAudioState.ROUTE_BLUETOOTH -> Route.Bluetooth
+                CallAudioState.ROUTE_WIRED_HEADSET -> Route.Wired
+                else -> Route.Earpiece
+            }
+        val currentId =
+            when (current) {
+                Route.Bluetooth -> audioState.activeBluetoothDevice?.let { "bt:${it.address}" } ?: BLUETOOTH
+                Route.Speaker -> SPEAKER
+                Route.Wired -> WIRED
+                else -> EARPIECE
+            }
+        CallManager.setAudio(AudioInfo(audioState.isMuted, current, currentId, available))
     }
 
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onCallEndpointChanged(callEndpoint: CallEndpoint) {
-        CallManager.setAudio(CallManager.audio.value.copy(speaker = callEndpoint.endpointType == CallEndpoint.TYPE_SPEAKER))
+        CallManager.setAudio(CallManager.audio.value.copy(current = routeOf(callEndpoint), currentId = callEndpoint.identifier.toString()))
     }
 
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onAvailableCallEndpointsChanged(availableEndpoints: List<CallEndpoint>) {
         endpoints = availableEndpoints
+        val available =
+            availableEndpoints.map {
+                val route = routeOf(it)
+                AudioRoute(it.identifier.toString(), route, if (route == Route.Bluetooth) it.endpointName.toString() else null)
+            }
+        CallManager.setAudio(CallManager.audio.value.copy(available = available))
     }
+
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun routeOf(endpoint: CallEndpoint): Route =
+        when (endpoint.endpointType) {
+            CallEndpoint.TYPE_SPEAKER -> Route.Speaker
+            CallEndpoint.TYPE_BLUETOOTH -> Route.Bluetooth
+            CallEndpoint.TYPE_WIRED_HEADSET -> Route.Wired
+            CallEndpoint.TYPE_STREAMING -> Route.Streaming
+            else -> Route.Earpiece
+        }
 
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onMuteStateChanged(isMuted: Boolean) {
@@ -93,16 +149,18 @@ class TesseraInCallService :
 
     override fun mute(on: Boolean) = setMuted(on)
 
-    override fun speaker(on: Boolean) {
+    override fun route(id: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val wanted = if (on) CallEndpoint.TYPE_SPEAKER else CallEndpoint.TYPE_EARPIECE
-            val target =
-                endpoints.firstOrNull { it.endpointType == wanted }
-                    ?: endpoints.firstOrNull { it.endpointType != CallEndpoint.TYPE_SPEAKER }
-            if (target != null) requestCallEndpointChange(target, mainExecutor) { }
-        } else {
-            @Suppress("DEPRECATION")
-            setAudioRoute(if (on) CallAudioState.ROUTE_SPEAKER else CallAudioState.ROUTE_WIRED_OR_EARPIECE)
+            endpoints.firstOrNull { it.identifier.toString() == id }?.let { requestCallEndpointChange(it, mainExecutor) { } }
+            return
+        }
+        @Suppress("DEPRECATION")
+        when (id) {
+            EARPIECE -> setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+            WIRED -> setAudioRoute(CallAudioState.ROUTE_WIRED_HEADSET)
+            SPEAKER -> setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+            BLUETOOTH -> setAudioRoute(CallAudioState.ROUTE_BLUETOOTH)
+            else -> bluetooth[id]?.let(::requestBluetoothAudio)
         }
     }
 
@@ -184,6 +242,12 @@ class TesseraInCallService :
 
     companion object {
         const val CHANNEL = "calls"
+
+        // Route ids for the pre-14 audio API.
+        private const val EARPIECE = "earpiece"
+        private const val WIRED = "wired"
+        private const val SPEAKER = "speaker"
+        private const val BLUETOOTH = "bluetooth"
         const val NOTIFICATION_ID = 1
         const val ACTION_ANSWER = "io.github.michaelmassoni.tessera.phone.ANSWER"
         const val ACTION_DECLINE = "io.github.michaelmassoni.tessera.phone.DECLINE"

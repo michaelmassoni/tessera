@@ -16,8 +16,8 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Screen off near the ear during calls | **P1** | No proximity wake lock, so your cheek can press Mute or Hang up. Use `PROXIMITY_SCREEN_OFF_WAKE_LOCK` while a call is active on the earpiece. |
-| Audio route picker | **P1** | Only a speaker toggle. Needs earpiece, speaker, Bluetooth and wired headset (`CallEndpoint` on Android 14+, `CallAudioState` routes before that). |
+| ~~Screen off near the ear during calls~~ | Done in 0.2 | Not verifiable on the emulator (it has no earpiece route). |
+| ~~Audio route picker~~ | Done in 0.2 | Bluetooth needs testing on a real phone. |
 | Voicemail | P2 | Long-press 1 to call voicemail (`TelephonyManager.voiceMailNumber`). Visual voicemail depends on the carrier and is out of scope. |
 | Dual SIM | P2 | Ask which SIM to use, or use a per-contact default, through `PhoneAccountHandle`. |
 | Quick reply on decline | P2 | "Can't talk now…" texts, which need `RESPOND_VIA_MESSAGE` handling. |
@@ -125,8 +125,7 @@ section).
 
 ## Suggested order
 
-1. **Phone P1s** (proximity sensor and audio routes). Small, and they make calls usable as the
-   default phone app.
+1. ~~**Phone P1s** (proximity sensor and audio routes).~~ Done in Phone 0.2.
 2. ~~**Messages as default SMS app.**~~ Done in Messages 0.2.
 3. **Gallery editor, Calendar week/day and single-instance edits, Music playlists and queue
    restore, Files trash.**
