@@ -238,13 +238,13 @@ private fun Glance(
                 .getTimeFormat(context)
                 .format(Date(now)),
             color = color,
-            style = MaterialTheme.typography.displayLarge.copy(fontSize = 64.sp),
+            style = MaterialTheme.typography.displayLarge.copy(fontSize = 64.sp, shadow = wallpaperShadow()),
             modifier = Modifier.clickable(onClick = actions::openClock),
         )
         Text(
             DateFormat.getDateInstance(DateFormat.FULL).format(Date(now)),
             color = color,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium.copy(shadow = wallpaperShadow()),
             modifier = Modifier.clickable(onClick = actions::openCalendar),
         )
     }
@@ -486,3 +486,11 @@ private fun ShortcutIcon(
     }
     icon?.let { Image(it, contentDescription = null, modifier = Modifier.size(24.dp)) } ?: Spacer(Modifier.width(24.dp))
 }
+
+/** A soft shadow so text on the wallpaper stays readable over light and dark patches alike. */
+@Composable
+private fun wallpaperShadow() =
+    androidx.compose.ui.graphics.Shadow(
+        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f),
+        blurRadius = 8f,
+    )
