@@ -24,7 +24,7 @@ design system.
 | Calendar   | `io.github.michaelmassoni.tessera.calendar`   | v0.1: month and schedule views, editor, repeating events, reminders, ICS import ([spec](docs/calendar.md)) |
 | Music      | `io.github.michaelmassoni.tessera.music`      | v0.1: songs, albums, artists, search, background playback with media controls ([spec](docs/music.md)) |
 | Phone      | `io.github.michaelmassoni.tessera.phone`      | v0.1 (experimental): favourites, recents, contacts, keypad; in-call screen when set as default ([spec](docs/phone.md)) |
-| Messages   | `io.github.michaelmassoni.tessera.messages`   | v0.1: read conversations (SMS and MMS text), send SMS; not yet a default SMS app ([spec](docs/messages.md)) |
+| Messages   | `io.github.michaelmassoni.tessera.messages`   | v0.2: default SMS app: SMS and MMS (pictures, groups), notifications with reply, pin, archive, delete, block ([spec](docs/messages.md)) |
 
 Every app has Settings with theme (light/dark, wallpaper colours, pure black, one theme for all Tessera apps) and app icon (Colour, Light, Dark or custom colours).
 
