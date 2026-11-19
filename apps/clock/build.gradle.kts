@@ -8,12 +8,14 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.clock"
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
     }
 }
 
 dependencies {
     implementation(libs.compose.material3.navigation.suite)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

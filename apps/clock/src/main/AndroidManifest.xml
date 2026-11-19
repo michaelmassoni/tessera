@@ -55,6 +55,23 @@
             android:exported="false"
             android:foregroundServiceType="systemExempted" />
 
+        <!-- Home screen and lock screen widget: the time, date and next alarm. -->
+        <receiver
+            android:name=".widget.ClockWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_clock_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.app.action.NEXT_ALARM_CLOCK_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/clock_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".ringing.ClockReceiver"
             android:directBootAware="true"

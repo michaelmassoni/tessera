@@ -4,6 +4,18 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-20: Widgets use Jetpack Glance, with a RemoteViews layout only for TextClock (Proposed)
+
+**Decision:** home screen widgets are written with Jetpack Glance (open source, Compose-style,
+colours from the wallpaper through `GlanceTheme`). Glance has no `TextClock`, the only way for a
+widget to show the time ticking without the app waking every minute. So a widget that shows the
+live time (Clock's) may use one RemoteViews XML layout for that part, embedded with
+`AndroidRemoteViews`. This is an exception to "no XML layouts" in CLAUDE.md, which is why it's
+proposed rather than accepted.
+
+**Alternative considered:** a Glance `Text` redrawn by an alarm every minute. It wakes the app
+1,440 times a day, drifts when the alarm is late, and stops when the app is force-stopped.
+
 ## 2026-11-19: Messages is a full default SMS app (Accepted)
 
 **Decision:** Messages 0.2 can be the default SMS app. It receives SMS and MMS, notifies, records
