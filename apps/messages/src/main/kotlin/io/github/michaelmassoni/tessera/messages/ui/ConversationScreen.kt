@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -39,6 +40,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -186,37 +188,49 @@ internal fun ConversationScreen(
             if (!thread.loaded && thread.threadId != null) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { LoadingIndicator() }
             } else {
+                val listState = rememberLazyListState()
+                // The newest message is item 0 (the list is reversed). When one arrives, a reversed list
+                // stays on what was showing, leaving it just out of sight: follow it if you sent it, or
+                // if you were already at the bottom.
+                val newest = thread.messages.maxByOrNull { it.date }
+                LaunchedEffect(newest?.key) {
+                    if (newest != null && (newest.outgoing || listState.firstVisibleItemIndex <= 1)) listState.animateScrollToItem(0)
+                }
                 LazyColumn(
                     Modifier.weight(1f).fillMaxWidth(),
+                    state = listState,
                     reverseLayout = true,
                     contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    items(rows, key = { r -> if (r is Row.Bubble) r.message.id else "d" + (r as Row.Day).day }) { row ->
-                        when (row) {
-                            is Row.Day -> {
-                                Text(
-                                    row.day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                )
-                            }
+                    items(rows, key = { r -> if (r is Row.Bubble) r.message.key else "d" + (r as Row.Day).day }) { row ->
+                        // New bubbles fade in and the rest slide up to make room.
+                        Box(Modifier.animateItem()) {
+                            when (row) {
+                                is Row.Day -> {
+                                    Text(
+                                        row.day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                    )
+                                }
 
-                            is Row.Bubble -> {
-                                val id = row.message.id
-                                val isSelected = id in selected
-                                val toggle = { selected = if (isSelected) selected - id else selected + id }
-                                Bubble(
-                                    row,
-                                    time = DateUtils.formatDateTime(context, row.message.date, DateUtils.FORMAT_SHOW_TIME),
-                                    sender = if (group && !row.message.outgoing) row.message.sender?.let { names[it] ?: it } else null,
-                                    selected = isSelected,
-                                    onClick = { if (selected.isNotEmpty()) toggle() },
-                                    onLongClick = toggle,
-                                    actions = actions,
-                                )
+                                is Row.Bubble -> {
+                                    val id = row.message.id
+                                    val isSelected = id in selected
+                                    val toggle = { selected = if (isSelected) selected - id else selected + id }
+                                    Bubble(
+                                        row,
+                                        time = DateUtils.formatDateTime(context, row.message.date, DateUtils.FORMAT_SHOW_TIME),
+                                        sender = if (group && !row.message.outgoing) row.message.sender?.let { names[it] ?: it } else null,
+                                        selected = isSelected,
+                                        onClick = { if (selected.isNotEmpty()) toggle() },
+                                        onLongClick = toggle,
+                                        actions = actions,
+                                    )
+                                }
                             }
                         }
                     }
