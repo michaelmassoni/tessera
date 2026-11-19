@@ -4,6 +4,23 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Messages isn't a default-SMS-app candidate yet (Accepted)
+
+**Decision:** Messages v0.1 doesn't declare the components that would let it become the default
+SMS app. It reads every conversation, sends SMS, and keeps a private log of what it sent.
+
+**Reason:**
+
+- **MMS:** a default SMS app must receive MMS, which needs WAP-push PDU download and decoding
+  with no public API. Becoming default without that would silently lose picture messages and
+  group chats.
+- **Hidden sent messages:** Android records SMS sent by a non-default app in the shared database,
+  but hides those rows from the app that sent them. Testing showed this. The private sent log
+  lets them appear in Tessera's own conversation view; every other messaging app sees them from
+  the database.
+
+**Next:** MMS receiving (PDU parsing, download through `SmsManager.downloadMultimediaMessage`)
+before offering the default role.
 ## 2026-11-19: Phone is opt-in for in-call handling (Accepted)
 
 **Decision:** Phone works fully as an ordinary app: recents, favourites, contacts and the keypad,
