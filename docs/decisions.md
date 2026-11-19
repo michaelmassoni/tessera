@@ -4,6 +4,23 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Messages is a full default SMS app (Accepted)
+
+**Decision:** Messages 0.2 can be the default SMS app. It receives SMS and MMS, notifies, records
+what it sends, and deletes, marks read and blocks. The maintainer asked for delete and mark as
+read, and Android only allows those for the default app.
+
+**How MMS works without hidden APIs:** Android moves the bytes (`SmsManager` downloads and sends
+over the carrier's MMS connection). The app decodes and encodes the PDUs itself
+(`engine/Pdu.kt`, unit tested) and writes the messages through the public `Telephony` provider.
+
+**Risk:** MMS behaviour varies by carrier and can't be tested on the emulator. Until it's been
+tested on a real phone, it stays opt-in through the "Set as default" banner, and the previous
+messaging app can be made default again at any time.
+
+**Pin and archive** are kept in the app's own preferences, because the message database has no
+field for them.
+
 ## 2026-11-19: Launcher and Camera are dropped from the suite (Accepted)
 
 **Decision:** Tessera no longer includes a launcher or a camera. The modules, specs and CameraX
@@ -41,7 +58,7 @@ sentence starts in every ordinary text field unless turned off.
 **Privacy:** the keyboard still has no network permission. Learned words are stored only in the
 keyboard's own preferences, and nothing is learned in incognito fields.
 
-## 2026-11-19: Messages isn't a default-SMS-app candidate yet (Accepted)
+## 2026-11-19: Messages isn't a default-SMS-app candidate yet (Superseded the same day)
 
 **Decision:** Messages v0.1 doesn't declare the components that would let it become the default
 SMS app. It reads every conversation, sends SMS, and keeps a private log of what it sent.
