@@ -26,8 +26,9 @@ and no network.
   - Deleted notes go to Trash and are removed permanently after 7 days. They can be restored or
     deleted for good from there.
 - **New note:** a FAB creates a text note. A second, smaller FAB creates a checklist.
-- **Selection:** long-press starts selection mode, with pin, archive, label, delete and share
-  actions in a contextual top bar.
+- **Selection:** long-press starts selection mode. The contextual top bar shows pin, archive and
+  delete as icons, and select all, labels and share in its menu, so the count stays on one line
+  at phone width.
 
 ### Editor
 
