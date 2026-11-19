@@ -48,7 +48,12 @@
     <string name="action_restore">Restore</string>
     <string name="action_delete_forever">Delete forever</string>
     <string name="action_edit">Edit</string>
-    <string name="action_use_as">Use as</string>
+    <string name="action_wallpaper">Set as wallpaper</string>
+    <string name="wallpaper_home">Home screen</string>
+    <string name="wallpaper_lock">Lock screen</string>
+    <string name="wallpaper_both">Home and lock screens</string>
+    <string name="wallpaper_set">Wallpaper set</string>
+    <string name="wallpaper_failed">Couldn\'t set the wallpaper</string>
     <string name="action_info">Info</string>
     <string name="action_play">Play</string>
     <string name="action_pause">Pause</string>
