@@ -121,6 +121,5 @@ gitignored.
 2. Contacts, Notes
 3. Gallery, Calendar, Music
 4. Phone, Messages (need a real device for testing)
-5. Camera, Launcher
 
-Out of scope: Keyboard (dropped 2026-11-19, see docs/decisions.md), Maps, cloud Photos and Gmail-style services (no offline equivalent).
+Out of scope: Keyboard, Launcher and Camera (dropped 2026-11-19, see docs/decisions.md), Maps, cloud Photos and Gmail-style services (no offline equivalent).
