@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Two beamed notes. Drawn in white; also the monochrome layer. -->
+<!-- A music note (Material Symbols "music_note", Apache 2.0), scaled to 42dp and centred in the 66dp safe
+     zone. Drawn in white; also the monochrome layer. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M46,36l30,-6v34a7,7 0,1 1,-4 -6.3v-19.2l-22,4.4v25.1a7,7 0,1 1,-4 -6.3z" />
+    <group
+        android:scaleX="0.0583"
+        android:scaleY="0.0583"
+        android:translateX="26"
+        android:translateY="26">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M400,840Q334,840 287,793Q240,746 240,680Q240,614 287,567Q334,520 400,520Q423,520 442.5,525.5Q462,531 480,542L480,120L720,120L720,280L560,280L560,680Q560,746 513,793Q466,840 400,840Z" />
+    </group>
 </vector>
