@@ -43,7 +43,10 @@ fun ComponentActivity.setTesseraContent(content: @Composable () -> Unit) {
     if (started.compareAndSet(false, true)) {
         val app = applicationContext
         val settings = TesseraSettings.get(app)
-        thread(name = "tessera-settings-pull") { settings.pullFromPeers() }
+        thread(name = "tessera-settings-pull") {
+            val version = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode }.getOrDefault(-1L)
+            if (settings.needsPull(version)) settings.pullFromPeers(version)
+        }
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_STOP) applyLauncherAlias(app, settings.icon.value.style)

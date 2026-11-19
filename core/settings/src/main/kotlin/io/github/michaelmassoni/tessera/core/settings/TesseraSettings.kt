@@ -50,10 +50,19 @@ class TesseraSettings internal constructor(
         return true
     }
 
+    /**
+     * Whether to ask the other apps for their theme at start-up. Changes are pushed to every app
+     * when they happen, so this is only needed once per installed version: the first launch (the
+     * app may have been installed after the theme was chosen), and after an update (a push may
+     * have arrived mid-install).
+     * Asking starts every other Tessera app's process, so it isn't done on every launch.
+     */
+    fun needsPull(versionCode: Long): Boolean = prefs.getLong(KEY_PULLED_VERSION, -1) != versionCode
+
     /** Adopt the shared theme of the other apps, if they have one. Blocking: call off the main thread. */
-    fun pullFromPeers() {
-        val next = SyncRules.pull(_shared.value, peers.readAll()) ?: return
-        store(next)
+    fun pullFromPeers(versionCode: Long = -1) {
+        SyncRules.pull(_shared.value, peers.readAll())?.let(::store)
+        prefs.edit { putLong(KEY_PULLED_VERSION, versionCode) }
     }
 
     fun setIcon(icon: IconSettings) {
@@ -112,6 +121,7 @@ class TesseraSettings internal constructor(
         private const val KEY_BLACK = "pure_black"
         private const val KEY_SYNC = "sync_all"
         private const val KEY_UPDATED = "updated_at"
+        private const val KEY_PULLED_VERSION = "pulled_version"
         private const val KEY_ICON_STYLE = "icon_style"
         private const val KEY_ICON_FG = "icon_foreground"
         private const val KEY_ICON_BG = "icon_background"
