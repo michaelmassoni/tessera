@@ -24,7 +24,7 @@ class MessagesRepository(
 ) {
     private val resolver = context.contentResolver
     private val addressCache = mutableMapOf<String, String>()
-    private val nameCache = mutableMapOf<String, String?>()
+    private var contactNumbers: List<Pair<String, String>>? = null
     private val sentLog = SentLog(context)
 
     fun conversations(): List<Conversation> = conversations(null, null)
@@ -251,19 +251,35 @@ class MessagesRepository(
                         addresses.all { a -> c.addresses.any { Addresses.same(it, a) } }
                 }?.threadId
 
-    fun name(address: String): String? =
-        nameCache.getOrPut(address) {
-            runCatching {
+    fun name(address: String): String? = names(listOf(address))[address]
+
+    /**
+     * Contact names for [addresses]. Every contact number is read in one query and kept until
+     * [forgetContacts] (called when Contacts change), rather than one lookup per conversation.
+     */
+    @Synchronized
+    fun names(addresses: Collection<String>): Map<String, String> {
+        val numbers =
+            contactNumbers ?: runCatching {
+                val list = mutableListOf<Pair<String, String>>()
                 resolver
                     .query(
-                        Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(address)),
-                        arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY),
                         null,
                         null,
                         null,
-                    )?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
-            }.getOrNull()
-        }
+                    )?.use { c -> while (c.moveToNext()) list += c.getString(0).orEmpty() to c.getString(1).orEmpty() }
+                list.toList()
+            }.getOrNull()?.also { contactNumbers = it } ?: emptyList()
+        return Addresses.names(addresses, numbers)
+    }
+
+    /** Contacts changed: read names again next time. */
+    @Synchronized
+    fun forgetContacts() {
+        contactNumbers = null
+    }
 
     /** Contacts with numbers matching [query] by name or digits, for the new-message screen. */
     fun suggestions(query: String): List<Pair<String, String>> {

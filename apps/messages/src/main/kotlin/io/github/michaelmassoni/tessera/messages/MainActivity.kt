@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -74,10 +75,30 @@ class MainActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else null,
         ).toTypedArray()
 
+    private val handler = Handler(Looper.getMainLooper())
+    private val reloadSoon = Runnable { reload() }
+
+    /**
+     * One incoming message notifies several of the URIs observed (and a sync can notify many
+     * times), so changes are gathered into a single reload shortly after the last one.
+     */
     private val observer =
-        object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) = reload()
+        object : ContentObserver(handler) {
+            override fun onChange(selfChange: Boolean) {
+                handler.removeCallbacks(reloadSoon)
+                handler.postDelayed(reloadSoon, RELOAD_DELAY_MS)
+            }
         }
+
+    /** A contact was added or renamed: names are read again, then the list reloads. */
+    private val contactsObserver =
+        object : ContentObserver(handler) {
+            override fun onChange(selfChange: Boolean) {
+                repository.forgetContacts()
+                observer.onChange(selfChange)
+            }
+        }
+    private var observingContacts = false
 
     private val request = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { reload() }
     private val role = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { reload() }
@@ -112,6 +133,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (observing) contentResolver.unregisterContentObserver(observer)
+        if (observingContacts) contentResolver.unregisterContentObserver(contactsObserver)
+        handler.removeCallbacks(reloadSoon)
         super.onDestroy()
     }
 
@@ -213,21 +236,17 @@ class MainActivity : ComponentActivity() {
             }
             observing = true
         }
+        if (!observingContacts && granted(Manifest.permission.READ_CONTACTS)) {
+            contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contactsObserver)
+            observingContacts = true
+        }
         lifecycleScope.launch {
             val (conversations, names) =
                 withContext(Dispatchers.IO) {
                     val list = runCatching { repository.conversations() }.getOrDefault(emptyList())
                     val names =
                         if (granted(Manifest.permission.READ_CONTACTS)) {
-                            list
-                                .flatMap { it.addresses }
-                                .distinct()
-                                .mapNotNull { a ->
-                                    repository.name(a)?.let {
-                                        a to
-                                            it
-                                    }
-                                }.toMap()
+                            repository.names(list.flatMap { it.addresses }.distinct())
                         } else {
                             emptyMap()
                         }
@@ -278,7 +297,7 @@ class MainActivity : ComponentActivity() {
                     }
                 val missing = current.addresses.filter { state.names[it] == null }
                 if (missing.isNotEmpty() && granted(Manifest.permission.READ_CONTACTS)) {
-                    val found = withContext(Dispatchers.IO) { missing.mapNotNull { a -> repository.name(a)?.let { a to it } } }
+                    val found = withContext(Dispatchers.IO) { repository.names(missing) }
                     if (found.isNotEmpty()) state = state.copy(names = state.names + found)
                 }
             }
@@ -482,6 +501,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_THREAD = "io.github.michaelmassoni.tessera.messages.THREAD"
         private const val MAX_PICTURES = 5
+        private const val RELOAD_DELAY_MS = 300L
 
         /** Messages shown first when a conversation opens; the rest load just after. */
         private const val FIRST_PAGE = 100
