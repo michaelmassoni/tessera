@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
 import io.github.michaelmassoni.tessera.messages.engine.Conversation
 import io.github.michaelmassoni.tessera.messages.engine.Message
+import io.github.michaelmassoni.tessera.messages.engine.ScheduledMessage
 
 data class MessagesState(
     val loaded: Boolean = false,
@@ -36,6 +37,10 @@ data class OpenThread(
     val addresses: List<String>,
     val messages: List<Message> = emptyList(),
     val draft: String = "",
+    /** False until the first messages have been read, so the screen can show it is loading. */
+    val loaded: Boolean = false,
+    /** Messages scheduled to send later in this conversation, soonest first. */
+    val scheduled: List<ScheduledMessage> = emptyList(),
     /** Pictures waiting to be sent with the draft (content URIs). */
     val attachments: List<String> = emptyList(),
 )
@@ -62,6 +67,11 @@ interface MessagesActions {
     fun removeAttachment(uri: String)
 
     fun suggestions(query: String): List<Pair<String, String>>
+
+    /** [dialable] laid out for the phone's country, or null. */
+    fun formatNumber(dialable: String): String?
+
+    fun isValidNumber(dialable: String): Boolean
 
     fun grant()
 
@@ -92,6 +102,19 @@ interface MessagesActions {
     fun openAttachment(attachment: Attachment)
 
     fun share(text: String)
+
+    /** Schedules the draft to send at [at] (epoch milliseconds). */
+    fun schedule(at: Long)
+
+    fun cancelScheduled(id: Long)
+
+    fun sendScheduledNow(id: Long)
+
+    /** Whether scheduled messages go out on time, or may be a few minutes late. */
+    fun scheduleIsExact(): Boolean
+
+    /** Opens the setting that lets scheduled messages go out on time. */
+    fun allowExactSchedule()
 }
 
 private val Wide = 840.dp
