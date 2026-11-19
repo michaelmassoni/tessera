@@ -20,4 +20,25 @@ class KeyboardPrefs(
     var doubleSpacePeriod: Boolean
         get() = prefs.getBoolean("double_space_period", true)
         set(value) = prefs.edit { putBoolean("double_space_period", value) }
+
+    var suggestions: Boolean
+        get() = prefs.getBoolean("suggestions", true)
+        set(value) = prefs.edit { putBoolean("suggestions", value) }
+
+    var autocorrect: Boolean
+        get() = prefs.getBoolean("autocorrect", true)
+        set(value) = prefs.edit { putBoolean("autocorrect", value) }
+
+    var autoCaps: Boolean
+        get() = prefs.getBoolean("auto_caps", true)
+        set(value) = prefs.edit { putBoolean("auto_caps", value) }
+
+    var blockOffensive: Boolean
+        get() = prefs.getBoolean("block_offensive", true)
+        set(value) = prefs.edit { putBoolean("block_offensive", value) }
+
+    /** Words the user kept, as dictionary keys. Stored only on this device. */
+    var learned: Set<String>
+        get() = prefs.getStringSet("learned", emptySet()).orEmpty()
+        set(value) = prefs.edit { putStringSet("learned", value) }
 }
