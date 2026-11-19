@@ -7,7 +7,7 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.launcher"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
 }
