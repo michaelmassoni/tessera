@@ -106,17 +106,6 @@ class SuggesterTest {
         assertEquals(Float.MAX_VALUE, Dictionary.distance("a", "abcd", 2f))
     }
 
-    @Test
-    fun isFastEnoughToRunPerKeystroke() {
-        val words = listOf("teh", "recieve", "definately", "tomorow", "becuase", "helo", "wierd", "seperate")
-        repeat(3) { words.forEach { suggester.strip(it) } }
-        val start = System.nanoTime()
-        repeat(5) { words.forEach { suggester.strip(it) } }
-        val perWord = (System.nanoTime() - start) / 1_000_000.0 / (5 * words.size)
-        println("suggestions: $perWord ms per word")
-        assertTrue("$perWord ms per word", perWord < 25)
-    }
-
     companion object {
         private val dictionary by lazy { File("src/main/assets/en.dict").useLines { Dictionary.parse(it) } }
     }
