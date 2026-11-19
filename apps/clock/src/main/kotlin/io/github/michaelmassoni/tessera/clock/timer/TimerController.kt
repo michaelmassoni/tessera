@@ -50,6 +50,11 @@ class TimerController(
 
     fun reset(id: Int) = change(id) { it.reset() }
 
+    fun setLabel(
+        id: Int,
+        label: String,
+    ) = change(id) { it.copy(label = label.trim()) }
+
     fun addMinute(id: Int) = change(id) { it.addMinute(time.elapsedRealtime(), time.currentTimeMillis()) }
 
     fun expire(id: Int): ClockTimer? = change(id) { it.expire() }

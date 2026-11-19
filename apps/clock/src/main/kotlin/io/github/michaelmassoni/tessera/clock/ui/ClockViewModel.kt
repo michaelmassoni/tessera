@@ -114,6 +114,11 @@ class ClockViewModel(
 
     fun addMinute(id: Int) = background { graph.timers.addMinute(id) }
 
+    fun setTimerLabel(
+        id: Int,
+        label: String,
+    ) = background { graph.timers.setLabel(id, label) }
+
     fun deleteTimer(id: Int) = background { graph.timers.delete(id) }
 
     // ------------------------------------------------------------------ stopwatch
