@@ -69,7 +69,11 @@ A clean SMS and MMS app over the system message database. It works in two modes:
     - Block (one-to-one conversations), after confirmation.
     - Delete, after confirmation.
   - Pin and archive are kept by the app, because the system database has no field for them.
-- **Conversation:**
+  - Names come from one query over every contact number, matched by the last 8 digits
+    (`Addresses.names`), and are read again when Contacts change. Numbers with no contact show a
+    person icon.
+  - Database changes are gathered into one reload 300 ms after the last (an incoming message
+    notifies several URIs).- **Conversation:**
   - Bubbles, day separators and a time under each run of messages.
   - In groups, the sender's name above each run.
   - Pictures show inline (Coil). Tapping one opens it in another app through a private copy.

@@ -89,6 +89,28 @@ object Addresses {
         return if (trimmed.startsWith("+")) "+$digits" else digits
     }
 
+    /**
+     * The key two numbers share when [same] says they match: the last 8 digits, or all of them when
+     * shorter. Used to match many numbers at once.
+     */
+    fun key(address: String): String {
+        val digits = normalize(address).trimStart('+')
+        return if (digits.length >= 8) digits.takeLast(8) else digits
+    }
+
+    /**
+     * Contact names for [addresses], from every contact number at once ([contacts] as number to
+     * name), instead of one lookup per address.
+     */
+    fun names(
+        addresses: Collection<String>,
+        contacts: List<Pair<String, String>>,
+    ): Map<String, String> {
+        val byKey = HashMap<String, String>()
+        contacts.forEach { (number, name) -> if (name.isNotBlank()) byKey.putIfAbsent(key(number), name) }
+        return addresses.mapNotNull { a -> key(a).takeIf { it.isNotEmpty() }?.let(byKey::get)?.let { a to it } }.toMap()
+    }
+
     /** True if [a] and [b] look like the same number (same last 8 digits, or equal when short). */
     fun same(
         a: String,
