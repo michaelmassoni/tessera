@@ -23,6 +23,7 @@ design system.
 | Gallery    | `io.github.michaelmassoni.tessera.gallery`    | v0.1: timeline, albums, viewer with zoom and video, favourites, trash, picker ([spec](docs/gallery.md)) |
 | Calendar   | `io.github.michaelmassoni.tessera.calendar`   | v0.1: month and schedule views, editor, repeating events, reminders, ICS import ([spec](docs/calendar.md)) |
 | Music      | `io.github.michaelmassoni.tessera.music`      | v0.1: songs, albums, artists, search, background playback with media controls ([spec](docs/music.md)) |
+| Camera     | `io.github.michaelmassoni.tessera.camera`     | v0.1: photo and video, tap to focus, zoom, flash, capture intents for other apps ([spec](docs/camera.md)) |
 
 Every app has Settings with theme (light/dark, wallpaper colours, pure black, one theme for all Tessera apps) and app icon (Colour, Light, Dark or custom colours).
 
