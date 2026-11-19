@@ -17,9 +17,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,24 +77,31 @@ fun StopwatchScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 24.dp),
                 ) {
-                    FilledTonalButton(
+                    // A matched pair: same height and shape family, round at rest and squaring
+                    // when pressed. The primary one is wide.
+                    FilledTonalIconButton(
                         onClick = if (stopwatch.running) actions::onLap else actions::onReset,
                         enabled = !stopwatch.isReset,
-                        shapes = ButtonDefaults.shapes(),
-                        modifier = Modifier.height(56.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        modifier = Modifier.size(IconButtonDefaults.largeContainerSize()),
                     ) {
                         Icon(
                             painterResource(
                                 if (stopwatch.running) DesignR.drawable.ic_flag else DesignR.drawable.ic_restart_alt,
                             ),
-                            contentDescription = null,
-                        )
-                        Text(
-                            stringResource(if (stopwatch.running) R.string.action_lap else R.string.action_reset),
-                            modifier = Modifier.padding(start = 8.dp),
+                            contentDescription =
+                                stringResource(if (stopwatch.running) R.string.action_lap else R.string.action_reset),
+                            modifier = Modifier.size(IconButtonDefaults.largeIconSize),
                         )
                     }
-                    LargeFloatingActionButton(onClick = if (stopwatch.running) actions::onPause else actions::onStart) {
+                    FilledIconButton(
+                        onClick = if (stopwatch.running) actions::onPause else actions::onStart,
+                        shapes = IconButtonDefaults.shapes(),
+                        modifier =
+                            Modifier.size(
+                                IconButtonDefaults.largeContainerSize(IconButtonDefaults.IconButtonWidthOption.Wide),
+                            ),
+                    ) {
                         Icon(
                             painterResource(
                                 if (stopwatch.running) DesignR.drawable.ic_pause else DesignR.drawable.ic_play_arrow,
@@ -100,7 +110,7 @@ fun StopwatchScreen(
                                 stringResource(
                                     if (stopwatch.running) R.string.action_pause else R.string.action_start,
                                 ),
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(IconButtonDefaults.largeIconSize),
                         )
                     }
                 }

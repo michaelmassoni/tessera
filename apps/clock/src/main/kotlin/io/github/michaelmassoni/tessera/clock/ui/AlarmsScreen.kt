@@ -437,7 +437,7 @@ fun TimePickerDialog(
 }
 
 @Composable
-private fun LabelDialog(
+internal fun LabelDialog(
     initial: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
