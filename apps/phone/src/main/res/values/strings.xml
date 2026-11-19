@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Phone</string>
+    <string name="tab_favourites">Favourites</string>
+    <string name="tab_recents">Recents</string>
+    <string name="tab_contacts">Contacts</string>
+    <string name="tab_keypad">Keypad</string>
+    <string name="settings">Settings</string>
+    <string name="permissions_needed">Phone needs access to calls, call history and contacts.</string>
+    <string name="grant">Allow</string>
+    <string name="not_default">Calls still open in your current phone app.</string>
+    <string name="make_default">Set as default</string>
+    <string name="empty_favourites">Star contacts to see them here</string>
+    <string name="empty_recents">No recent calls</string>
+    <string name="unknown_number">Unknown number</string>
+    <string name="call_back">Call %1$s</string>
+    <string name="call">Call</string>
+    <string name="delete_digit">Delete</string>
+    <string name="search_contacts">Search contacts</string>
+    <string name="cancel">Cancel</string>
+    <string name="copied">Number copied</string>
+    <string name="type_incoming">Incoming call</string>
+    <string name="type_outgoing">Outgoing call</string>
+    <string name="type_missed">Missed call</string>
+    <string name="type_rejected">Declined call</string>
+    <string name="type_blocked">Blocked call</string>
+
+    <string name="state_incoming">Incoming call</string>
+    <string name="state_calling">Calling…</string>
+    <string name="state_holding">On hold</string>
+    <string name="state_ended">Call ended</string>
+    <string name="answer">Answer</string>
+    <string name="decline">Decline</string>
+    <string name="hang_up">Hang up</string>
+    <string name="mute">Mute</string>
+    <string name="keypad">Keypad</string>
+    <string name="speaker">Speaker</string>
+    <string name="hold">Hold</string>
+    <string name="hide_keypad">Hide keypad</string>
+    <string name="channel_calls">Calls</string>
+</resources>
