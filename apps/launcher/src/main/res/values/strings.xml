@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Launcher</string>
+    <string name="search_apps">Search apps</string>
+    <string name="pin_hint">Long-press an app in the app list to pin it here. Swipe up to see all apps.</string>
+    <string name="not_default">Tessera Launcher isn\'t your home app yet.</string>
+    <string name="make_default">Set as home</string>
+    <string name="app_options">App options</string>
+    <string name="work_app">%1$s (work)</string>
+    <string name="pin">Pin to home</string>
+    <string name="unpin">Unpin</string>
+    <string name="move_left">Move left</string>
+    <string name="move_right">Move right</string>
+    <string name="app_info">App info</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="settings_home">Home screen</string>
+    <string name="settings_themed_icons">Themed icons</string>
+    <string name="settings_themed_icons_summary">Draw supported app icons in your theme colours</string>
+</resources>

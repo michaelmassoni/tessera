@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A 2×2 grid of rounded app tiles. Drawn in white; also the monochrome layer. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M40,34h8q6,0 6,6v0q0,0 0,0v8q0,6 -6,6h-8q-6,0 -6,-6v-8q0,-6 6,-6z M66,34a10,10 0,1 1,0 20a10,10 0,1 1,0 -20z M40,58h8q6,0 6,6v8q0,6 -6,6h-8q-6,0 -6,-6v-8q0,-6 6,-6z M64,58h8q6,0 6,6v8q0,6 -6,6h-8q-6,0 -6,-6v-8q0,-6 6,-6z" />
+</vector>
