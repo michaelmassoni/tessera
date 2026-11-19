@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Clock widget's content. Glance has no TextClock, so this is a RemoteViews layout (see
+     docs/decisions.md); Glance draws the background and handles taps around it. Colours follow
+     the wallpaper and dark mode. The date format is set from the locale at runtime. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp">
+
+    <TextClock
+        android:id="@+id/widget_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif"
+        android:format12Hour="h:mm"
+        android:format24Hour="HH:mm"
+        android:includeFontPadding="false"
+        android:textColor="@color/widget_on_surface"
+        android:textSize="56sp" />
+
+    <TextClock
+        android:id="@+id/widget_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="sans-serif-medium"
+        android:format12Hour="EEE, MMM d"
+        android:format24Hour="EEE, MMM d"
+        android:textColor="@color/widget_on_surface_variant"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/widget_alarm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:drawablePadding="6dp"
+        android:drawableStart="@drawable/ic_alarm_small"
+        android:drawableTint="@color/widget_primary"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center_vertical"
+        android:minHeight="32dp"
+        android:textColor="@color/widget_primary"
+        android:textSize="15sp"
+        android:visibility="gone" />
+</LinearLayout>

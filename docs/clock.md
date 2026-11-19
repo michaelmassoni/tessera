@@ -129,6 +129,18 @@ grid (two or more columns).
   `POST_PROMOTED_NOTIFICATIONS`). The system then shows them as Live Updates: a status bar chip and
   near the top of the lock screen. The user can turn this off per app.
 
+## Widget
+
+- **Clock** (4×2, resizable, home screen and lock screen): the time and date, and the next alarm
+  underneath with an alarm icon, as on Pixel. Tapping it opens the Clock tab; tapping the alarm
+  opens Alarm.
+- The time and date are `TextClock`s, so they tick without waking the app (see
+  docs/decisions.md). The date follows the locale's order ("Fri, Nov 20", "Fr., 20. Nov.").
+- The next alarm is `AlarmManager.getNextAlarmClock()`, from any app, and updates on
+  `ACTION_NEXT_ALARM_CLOCK_CHANGED`, time zone, time and locale changes.
+- Colours come from the wallpaper (`GlanceTheme`, and the system palette for the TextClocks), in
+  light and dark.
+
 ## World clock
 
 - **Local time:** large local time and date at the top.
