@@ -20,6 +20,8 @@ data class MediaItem(
     val relativePath: String = "",
     /** For trashed items: when the system will delete it. */
     val expires: Long = 0,
+    /** When the file last changed: images are cached per version, so an edited photo reloads. */
+    val modified: Long = 0,
 )
 
 /** A folder of media. */
