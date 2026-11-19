@@ -25,6 +25,7 @@ design system.
 | Music      | `io.github.michaelmassoni.tessera.music`      | v0.1: songs, albums, artists, search, background playback with media controls ([spec](docs/music.md)) |
 | Camera     | `io.github.michaelmassoni.tessera.camera`     | v0.1: photo and video, tap to focus, zoom, flash, capture intents for other apps ([spec](docs/camera.md)) |
 | Launcher   | `io.github.michaelmassoni.tessera.launcher`   | v0.1: home screen with clock and pinned apps, app drawer with search, shortcuts, work profile, themed icons ([spec](docs/launcher.md)) |
+| Keyboard   | `io.github.michaelmassoni.tessera.keyboard`   | v0.1: QWERTY, symbols, number pads, accents, auto-caps; no internet permission ([spec](docs/keyboard.md)) |
 
 Every app has Settings with theme (light/dark, wallpaper colours, pure black, one theme for all Tessera apps) and app icon (Colour, Light, Dark or custom colours).
 
