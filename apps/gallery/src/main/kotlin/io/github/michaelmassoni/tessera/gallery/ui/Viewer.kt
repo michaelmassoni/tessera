@@ -59,6 +59,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.state.rememberPlayPauseButtonState
 import androidx.media3.ui.compose.state.rememberProgressStateWithTickCount
+import coil3.request.ImageRequest
 import io.github.michaelmassoni.tessera.gallery.R
 import io.github.michaelmassoni.tessera.gallery.data.ExifDetails
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
@@ -104,6 +105,7 @@ fun Viewer(
     actions: ViewerActions,
     modifier: Modifier = Modifier,
     trashMode: Boolean = false,
+    onEditPhoto: (MediaItem) -> Unit = {},
 ) {
     if (items.isEmpty()) {
         LaunchedEffect(Unit) { actions.close() }
@@ -124,8 +126,21 @@ fun Viewer(
             if (item.isVideo) {
                 VideoPage(item, isCurrent = page == pager.currentPage, showControls = controls, onTap = { controls = !controls })
             } else {
+                // Keyed by the modified time as well, so a photo saved over by the editor reloads.
+                val context = LocalContext.current
+                val request =
+                    remember(
+                        item.uri,
+                        item.modified,
+                    ) {
+                        ImageRequest
+                            .Builder(context)
+                            .data(item.uri)
+                            .memoryCacheKey("${item.uri}:${item.modified}")
+                            .build()
+                    }
                 ZoomableAsyncImage(
-                    model = item.uri,
+                    model = request,
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxSize(),
                     onClick = { controls = !controls },
@@ -174,9 +189,12 @@ fun Viewer(
                     if (current.favorite) DesignR.drawable.ic_favorite_filled else DesignR.drawable.ic_favorite,
                     stringResource(if (current.favorite) R.string.action_unfavorite else R.string.action_favorite),
                 ) { actions.toggleFavorite(current) }
-                val editable = remember(current.mimeType) { actions.canEdit(current) }
+                // Photos open the built-in editor; videos go to another app, when one is installed.
+                val editable = remember(current.mimeType) { !current.isVideo || actions.canEdit(current) }
                 if (editable) {
-                    ViewerButton(DesignR.drawable.ic_edit, stringResource(R.string.action_edit)) { actions.edit(current) }
+                    ViewerButton(DesignR.drawable.ic_edit, stringResource(R.string.action_edit)) {
+                        if (current.isVideo) actions.edit(current) else onEditPhoto(current)
+                    }
                 }
                 if (!current.isVideo) {
                     ViewerButton(DesignR.drawable.ic_wallpaper, stringResource(R.string.action_wallpaper)) { wallpaper = true }

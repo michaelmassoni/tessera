@@ -36,10 +36,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettings
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.gallery.data.EditorIO
 import io.github.michaelmassoni.tessera.gallery.data.ExifDetails
 import io.github.michaelmassoni.tessera.gallery.data.MediaRepository
 import io.github.michaelmassoni.tessera.gallery.engine.DaySection
+import io.github.michaelmassoni.tessera.gallery.engine.EditState
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
+import io.github.michaelmassoni.tessera.gallery.ui.EditorActions
 import io.github.michaelmassoni.tessera.gallery.ui.GalleryApp
 import io.github.michaelmassoni.tessera.gallery.ui.GridActions
 import io.github.michaelmassoni.tessera.gallery.ui.LimitedAccessBanner
@@ -79,6 +82,18 @@ class MainActivity : ComponentActivity() {
             if (access != Access.None) viewModel.refresh()
         }
 
+    /** Asked before the editor saves over an original; [pendingWrite] runs if the user allows it. */
+    private var pendingWrite: (() -> Unit)? = null
+    private var pendingWriteCancelled: (() -> Unit)? = null
+    private val writeRequest =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            val run = pendingWrite
+            val cancel = pendingWriteCancelled
+            pendingWrite = null
+            pendingWriteCancelled = null
+            if (result.resultCode == Activity.RESULT_OK) run?.invoke() else cancel?.invoke()
+        }
+
     private val mediaRequest =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
             viewModel.clearSelection()
@@ -92,6 +107,7 @@ class MainActivity : ComponentActivity() {
         contentResolver.registerContentObserver(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), true, observer)
         val grid = Grid()
         val viewer = ViewerImpl()
+        val editor = EditorImpl()
         setTesseraContent {
             val settings by TesseraSettings.get(this).shared.collectAsStateWithLifecycle()
             val single = external
@@ -134,6 +150,7 @@ class MainActivity : ComponentActivity() {
                             gridActions = grid,
                             viewerActions = viewer,
                             dynamicColor = settings.theme.dynamicColor,
+                            editorActions = if (pickMode) null else editor,
                             pickMode = pickMode,
                             pickMultiple = pickMultiple,
                         )
@@ -350,5 +367,55 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun exif(item: MediaItem): ExifDetails? = repository.exif(item.uri.toUri())
+    }
+
+    private inner class EditorImpl : EditorActions {
+        private val io by lazy { EditorIO(contentResolver) }
+        private val external = ViewerImpl()
+
+        override fun preview(item: MediaItem) = io.preview(item.uri.toUri())
+
+        override fun histogram(bitmap: android.graphics.Bitmap) = io.histogram(bitmap)
+
+        override fun saveCopy(
+            item: MediaItem,
+            state: EditState,
+            onDone: (Boolean) -> Unit,
+        ) = save(onDone, R.string.edit_saved) { io.saveCopy(item, state) }
+
+        override fun overwrite(
+            item: MediaItem,
+            state: EditState,
+            onDone: (Boolean) -> Unit,
+        ) {
+            // Gallery can only write other apps' photos once the system has asked the user.
+            pendingWrite = {
+                save(onDone, R.string.edit_saved_over) { io.overwrite(item, state) }
+            }
+            pendingWriteCancelled = { onDone(false) }
+            writeRequest.launch(
+                IntentSenderRequest.Builder(MediaStore.createWriteRequest(contentResolver, listOf(item.uri.toUri())).intentSender).build(),
+            )
+        }
+
+        override fun canEditElsewhere(item: MediaItem) = external.canEdit(item)
+
+        override fun editElsewhere(item: MediaItem) = external.edit(item)
+
+        private fun save(
+            onDone: (Boolean) -> Unit,
+            message: Int,
+            block: () -> Unit,
+        ) {
+            lifecycleScope.launch {
+                val ok =
+                    withContext(
+                        Dispatchers.IO,
+                    ) { runCatching(block).onFailure { android.util.Log.w("Gallery", "Saving an edit failed", it) }.isSuccess }
+                Toast.makeText(this@MainActivity, if (ok) message else R.string.edit_failed, Toast.LENGTH_SHORT).show()
+                viewModel.refresh()
+                onDone(ok)
+            }
+        }
     }
 }

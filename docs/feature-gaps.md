@@ -50,13 +50,13 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Basic editor: crop, rotate, straighten | **P1** | Currently hands off to another app with `ACTION_EDIT`, which most de-Googled phones don't have. |
+| ~~Basic editor: crop, rotate, straighten~~ | Done in Gallery 0.2 | Also flip, brightness, contrast, saturation, warmth and Auto. |
 | Move or copy to an album, create an album | P2 | Through MediaStore `RELATIVE_PATH` updates (with user confirmation). |
 | Rotate in the viewer | P2 | Writes the EXIF orientation. |
 | Search | P2 | By file name, folder and date; no on-device AI. |
 | Slideshow, sort options, hidden albums | P3 | |
 | Motion photos, video trimming | P3 | |
-| One-tap auto enhance | P3 | Part of the editor: automatic levels and contrast, done on the device. Google Photos made its (cloud) version worldwide in 2026. |
+| ~~One-tap auto enhance~~ | Done in Gallery 0.2 | Automatic levels on the device. |
 | Albums and viewer previews | P2 | No screenshot tests cover them, so dark theme isn't checked there. |
 
 ## Calendar
@@ -196,7 +196,7 @@ Clock also added Live Updates for timers this year; Tessera Clock has had them s
 2. ~~**Messages as default SMS app.**~~ Done in Messages 0.2.
 3. **Quick fixes from the audits:** the Notes selection bar, Clock preview backgrounds, the
    unknown-number avatar in Phone and Messages, the theme sync pull, and debounced observers.
-4. **Gallery thumbnails** (the performance P1), then the **Gallery editor**.
+4. ~~**Gallery thumbnails**, then the **Gallery editor**.~~ Done in Gallery 0.1.4 and 0.2.
 5. **Widgets:** Clock and Calendar first, then Notes and Music.
 6. **Calendar week/day and single-instance edits, Music playlists and queue restore, Files
    trash.**

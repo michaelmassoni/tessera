@@ -43,6 +43,7 @@ class MediaRepository(
             FileColumns.IS_FAVORITE,
             FileColumns.RELATIVE_PATH,
             FileColumns.DATE_EXPIRES,
+            FileColumns.DATE_MODIFIED,
         )
 
     /** Every visible (not trashed, not pending) photo and video. */
@@ -86,6 +87,7 @@ class MediaRepository(
                         favorite = c.getInt(12) != 0,
                         relativePath = c.getString(13).orEmpty(),
                         expires = c.getLong(14) * 1000,
+                        modified = c.getLong(15) * 1000,
                     )
             }
         }
