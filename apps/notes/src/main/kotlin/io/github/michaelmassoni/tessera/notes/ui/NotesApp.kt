@@ -24,6 +24,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -64,6 +66,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.notes.EditorState
 import io.github.michaelmassoni.tessera.notes.ListState
@@ -425,15 +428,32 @@ private fun SelectionBar(
                 Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.action_close))
             }
         },
-        title = { Text(pluralStringResource(R.plurals.selected_count, count, count)) },
+        title = { Text(pluralStringResource(R.plurals.selected_count, count, count), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        // The common actions as icons; the rest in a menu, so the title keeps its room at phone width.
         actions = {
             val action: @Composable (Int, Int, () -> Unit) -> Unit = { icon, label, onClick ->
                 IconButton(onClick = onClick) { Icon(painterResource(icon), contentDescription = stringResource(label)) }
             }
-            action(DesignR.drawable.ic_select_all, R.string.action_select_all, actions::selectAll)
+            var menu by remember { mutableStateOf(false) }
+            val more: @Composable (List<Pair<Int, () -> Unit>>) -> Unit = { items ->
+                Box {
+                    IconButton(onClick = { menu = true }) {
+                        Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        items.forEach { (label, onClick) ->
+                            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                                menu = false
+                                onClick()
+                            })
+                        }
+                    }
+                }
+            }
             if (state.view == NoteView.Trash) {
                 action(DesignR.drawable.ic_restore_from_trash, R.string.action_restore) { actions.restore(state.selection) }
                 action(DesignR.drawable.ic_delete_forever, R.string.action_delete_forever, onDeleteForever)
+                more(listOf(R.string.action_select_all to actions::selectAll))
             } else {
                 val allPinned = state.notes.filter { it.id in state.selection }.all { it.pinned }
                 if (state.view != NoteView.Archive) {
@@ -443,14 +463,19 @@ private fun SelectionBar(
                         actions::pinSelection,
                     )
                 }
-                action(DesignR.drawable.ic_label, R.string.action_labels, onLabelSelection)
                 action(
                     if (state.view == NoteView.Archive) DesignR.drawable.ic_unarchive else DesignR.drawable.ic_archive,
                     if (state.view == NoteView.Archive) R.string.action_unarchive else R.string.action_archive,
                     actions::archiveSelection,
                 )
-                action(DesignR.drawable.ic_share, R.string.action_share, actions::shareSelection)
                 action(DesignR.drawable.ic_delete, R.string.action_delete, actions::trashSelection)
+                more(
+                    listOf(
+                        R.string.action_select_all to actions::selectAll,
+                        R.string.action_labels to onLabelSelection,
+                        R.string.action_share to actions::shareSelection,
+                    ),
+                )
             }
         },
     )
