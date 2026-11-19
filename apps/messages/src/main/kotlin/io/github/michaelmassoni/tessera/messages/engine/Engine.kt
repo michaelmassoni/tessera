@@ -20,6 +20,11 @@ data class Message(
     val downloadable: Boolean = false,
     /** Who sent an incoming message in a group conversation. */
     val sender: String? = null,
+    /**
+     * What the conversation list keys the bubble by. Usually [id]; a sent message keeps the key of
+     * the bubble shown while it was sending, so it doesn't disappear and reappear.
+     */
+    val key: String = id,
 )
 
 /** A media part of an MMS: a content URI and its MIME type. */
