@@ -4,6 +4,26 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-19: Keyboard dictionary and autocorrect (Accepted)
+
+**Decision:** The keyboard ships an English dictionary built from SCOWL (which words exist) and
+FrequencyWords (how common they are), and corrects typos offline. Auto-capitalisation applies to
+sentence starts in every ordinary text field unless turned off.
+
+**Reason:**
+
+- **Two sources:** FrequencyWords alone strips apostrophes and contains subtitle typos ("helo"),
+  so it can't say which words are real. SCOWL is the list spell checkers use, but has no
+  frequencies.
+- **Licences:** SCOWL's licence is permissive. FrequencyWords' content is CC BY-SA 4.0, which is
+  one-way compatible with GPLv3. Attribution is in `assets/en.dict.NOTICE` and on the keyboard's
+  settings screen.
+- **Capitalisation:** many apps (including Compose text fields by default) don't set
+  `TYPE_TEXT_FLAG_CAP_SENTENCES`, so following only the field gave no capitals in most apps.
+
+**Privacy:** the keyboard still has no network permission. Learned words are stored only in the
+keyboard's own preferences, and nothing is learned in incognito fields.
+
 ## 2026-11-19: Messages isn't a default-SMS-app candidate yet (Accepted)
 
 **Decision:** Messages v0.1 doesn't declare the components that would let it become the default
