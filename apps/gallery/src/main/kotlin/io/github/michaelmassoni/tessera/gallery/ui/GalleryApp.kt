@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -112,8 +113,9 @@ fun GalleryApp(
     now: () -> Long = System::currentTimeMillis,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var album by remember { mutableStateOf<Collection?>(null) }
-    var viewing by remember { mutableStateOf<Pair<Collection, Long>?>(null) }
+    // Saveable, so rotating or a wallpaper change (which recreates the activity) keeps your place.
+    var album by rememberSaveable(stateSaver = CollectionSaver) { mutableStateOf<Collection?>(null) }
+    var viewing by rememberSaveable(stateSaver = ViewingSaver) { mutableStateOf<Pair<Collection, Long>?>(null) }
 
     BackHandler(viewing == null && state.selection.isNotEmpty()) { gridActions.clearSelection() }
     BackHandler(viewing == null && state.selection.isEmpty() && album != null) { album = null }
@@ -510,3 +512,35 @@ fun LimitedAccessBanner(
         }
     }
 }
+
+private fun Collection.encode(): List<Any> =
+    when (this) {
+        Collection.All -> listOf("all")
+        is Collection.Folder -> listOf("folder", id, name)
+        Collection.Favorites -> listOf("favorites")
+        Collection.Videos -> listOf("videos")
+        Collection.Trash -> listOf("trash")
+    }
+
+private fun decodeCollection(v: List<Any>): Collection =
+    when (v[0]) {
+        "folder" -> Collection.Folder(v[1] as Long, v[2] as String)
+        "favorites" -> Collection.Favorites
+        "videos" -> Collection.Videos
+        "trash" -> Collection.Trash
+        else -> Collection.All
+    }
+
+private val CollectionSaver: Saver<Collection?, Any> =
+    Saver(save = { it?.encode() ?: emptyList<Any>() }, restore = { v ->
+        (v as List<*>).filterNotNull().takeIf { it.isNotEmpty() }?.let(::decodeCollection)
+    })
+
+private val ViewingSaver: Saver<Pair<Collection, Long>?, Any> =
+    Saver(
+        save = { it?.let { (c, id) -> listOf(id) + c.encode() } ?: emptyList<Any>() },
+        restore = { v ->
+            val list = (v as List<*>).filterNotNull()
+            if (list.isEmpty()) null else decodeCollection(list.drop(1)) to (list[0] as Long)
+        },
+    )

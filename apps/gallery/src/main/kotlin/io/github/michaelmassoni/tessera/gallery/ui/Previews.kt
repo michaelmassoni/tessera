@@ -64,7 +64,12 @@ private object NoViewer : ViewerActions {
 
     override fun edit(item: MediaItem) = Unit
 
-    override fun useAs(item: MediaItem) = Unit
+    override fun canEdit(item: MediaItem) = true
+
+    override fun setWallpaper(
+        item: MediaItem,
+        target: WallpaperTarget,
+    ) = Unit
 
     override fun trash(item: MediaItem) = Unit
 

@@ -46,6 +46,22 @@ class TimelineTest {
         assertEquals(listOf(2L, 1L), sections[0].items.map { it.id })
     }
 
+    @Test fun `reading the sections in order gives the same order as the viewer`() {
+        // Shuffled, with two items sharing a timestamp: the grid and the viewer must still agree,
+        // or swiping in the viewer jumps around the timeline.
+        val items =
+            listOf(
+                item(7, LocalDateTime.of(2026, 6, 3, 10, 0)),
+                item(3, LocalDateTime.of(2026, 11, 16, 9, 0)),
+                item(9, LocalDateTime.of(2026, 11, 16, 9, 0)),
+                item(1, LocalDateTime.of(2026, 11, 16, 14, 0)),
+                item(5, LocalDateTime.of(2026, 11, 15, 8, 0)),
+            )
+        val grid = Timeline.sections(items, today, zone, Locale.ENGLISH, labels).flatMap { it.items }.map { it.id }
+        assertEquals(items.sortedWith(MediaOrder).map { it.id }, grid)
+        assertEquals(listOf(1L, 9L, 3L, 5L, 7L), grid)
+    }
+
     @Test fun `albums put camera and screenshots first, then most recent`() {
         val items =
             listOf(
