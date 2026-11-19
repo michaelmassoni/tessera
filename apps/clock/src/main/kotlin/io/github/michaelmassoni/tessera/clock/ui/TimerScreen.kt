@@ -297,7 +297,7 @@ private object NoTimerActions : TimerActions {
 @TesseraPreviews
 @Composable
 private fun TimersPreview() {
-    TesseraTheme(dynamicColor = false) {
+    ClockPreview {
         TimerList(
             timers =
                 listOf(
@@ -314,7 +314,7 @@ private fun TimersPreview() {
 @TesseraPreviews
 @Composable
 private fun TimerKeypadPreview() {
-    TesseraTheme(dynamicColor = false) {
+    ClockPreview {
         TimerKeypad(input = TimerInput("130"), onInput = {}, onStart = {})
     }
 }

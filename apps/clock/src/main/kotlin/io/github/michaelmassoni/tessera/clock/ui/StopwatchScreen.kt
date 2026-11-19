@@ -194,7 +194,7 @@ private object NoStopwatchActions : StopwatchActions {
 @TesseraPreviews
 @Composable
 private fun StopwatchPreview() {
-    TesseraTheme(dynamicColor = false) {
+    ClockPreview {
         StopwatchScreen(
             stopwatch =
                 Stopwatch()
