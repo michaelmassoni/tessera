@@ -54,6 +54,7 @@ import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.gallery.Collection
 import io.github.michaelmassoni.tessera.gallery.GalleryState
 import io.github.michaelmassoni.tessera.gallery.R
+import io.github.michaelmassoni.tessera.gallery.data.Thumbnail
 import io.github.michaelmassoni.tessera.gallery.engine.Album
 import io.github.michaelmassoni.tessera.gallery.engine.DaySection
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
@@ -415,7 +416,12 @@ private fun AlbumTile(
                 contentAlignment = Alignment.Center,
             ) {
                 if (cover != null) {
-                    AsyncImage(cover.uri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    AsyncImage(
+                        Thumbnail(cover.uri),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 } else {
                     Icon(
                         painterResource(icon),

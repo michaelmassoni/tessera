@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.michaelmassoni.tessera.gallery.R
+import io.github.michaelmassoni.tessera.gallery.data.Thumbnail
 import io.github.michaelmassoni.tessera.gallery.engine.DaySection
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
 import io.github.michaelmassoni.tessera.gallery.engine.formatDuration
@@ -159,7 +160,7 @@ private fun MediaCell(
     ) {
         val inset = if (selected) Modifier.padding(12.dp).clip(RoundedCornerShape(12.dp)) else Modifier
         AsyncImage(
-            model = item.uri,
+            model = Thumbnail(item.uri),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize().then(inset),

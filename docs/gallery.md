@@ -29,7 +29,10 @@ and needs no account.
   "Yesterday", weekday names this week, then dates).
   - The columns adapt to the window width: 3 on a phone, more on larger screens.
   - Videos show their duration and favourites show a heart.
-- **Selection:** long-press starts selection; tapping a day heading selects that day. The
+  - Grid cells and album covers use MediaStore's cached thumbnails (`loadThumbnail`, through a
+    Coil fetcher) instead of decoding the original or a video frame. On the emulator, scrolling 78
+    items (72 photos of 12 MP, 6 videos) read 4 MB instead of over 300 MB, with about half the app
+    CPU time. The viewer still loads the full item.- **Selection:** long-press starts selection; tapping a day heading selects that day. The
   contextual bar offers Share, Favourite and Move to trash.
 
 ### Albums
