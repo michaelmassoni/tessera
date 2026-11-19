@@ -282,7 +282,7 @@ private fun Drawer(
     val focus = remember { FocusRequester() }
     LaunchedEffect(focusSearch) { if (focusSearch) focus.requestFocus() }
     val grid = rememberLazyGridState()
-    Surface(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f), modifier = Modifier.fillMaxSize()) {
+    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
