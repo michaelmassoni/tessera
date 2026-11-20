@@ -91,7 +91,7 @@ section).
 | "Upcoming alarm" notification with Dismiss now | P2 | Pixel shows it 2 hours before. |
 | Gradually increasing volume | P2 | |
 | Skip the next occurrence of a repeating alarm | P2 | |
-| Widgets (digital, analog, next alarm) | P2 | |
+| ~~Widget (time, date, next alarm)~~ | Done in Clock 0.3 | An analog style is still open. |
 | Bedtime | P3 | |
 | "Timer starter" widget | P3 | One-tap preset timers. Google Clock was reported to add one in July 2026. |
 

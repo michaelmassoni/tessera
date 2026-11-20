@@ -37,6 +37,9 @@
     <string name="alarm_add_label">Add label</string>
     <string name="alarm_label">Label</string>
     <string name="timer_edit_label">Edit label</string>
+    <string name="widget_clock_name">Clock</string>
+    <string name="widget_clock_description">The time and date, and your next alarm</string>
+    <string name="widget_next_alarm">Next alarm %1$s</string>
     <string name="alarm_vibrate">Vibrate</string>
     <string name="alarm_select_time">Select time</string>
     <string name="alarm_set_for">Alarm set for %1$s from now</string>
