@@ -15,13 +15,6 @@ first-party on current Android, with no ads, no tracking and no Google Play Serv
 
 [<img src="docs/badges/badge_obtainium.png" alt="Get it on Obtainium" height="48">](#install)
 
-<img src="docs/screenshots/calendar-light.png#gh-light-mode-only" width="240" alt="Calendar"/>&nbsp;
-<img src="docs/screenshots/messages-light.png#gh-light-mode-only" width="240" alt="Messages"/>&nbsp;
-<img src="docs/screenshots/gallery-light.png#gh-light-mode-only" width="240" alt="Gallery"/>
-<img src="docs/screenshots/calendar-dark.png#gh-dark-mode-only" width="240" alt="Calendar"/>&nbsp;
-<img src="docs/screenshots/messages-dark.png#gh-dark-mode-only" width="240" alt="Messages"/>&nbsp;
-<img src="docs/screenshots/gallery-dark.png#gh-dark-mode-only" width="240" alt="Gallery"/>
-
 </div>
 
 > [!NOTE]
