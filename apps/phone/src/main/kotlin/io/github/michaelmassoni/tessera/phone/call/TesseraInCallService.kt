@@ -183,6 +183,8 @@ class TesseraInCallService :
             Person
                 .Builder()
                 .setName(call.name ?: call.number)
+                // Lets Do Not Disturb match the caller against starred contacts.
+                .apply { if (call.number.isNotBlank()) setUri("tel:${call.number}") }
                 .setImportant(true)
                 .build()
         val style =
@@ -193,13 +195,17 @@ class TesseraInCallService :
             }
         val builder =
             NotificationCompat
-                .Builder(this, CHANNEL)
+                .Builder(this, if (call.ringing) CHANNEL_INCOMING else CHANNEL_ONGOING)
                 .setSmallIcon(DesignR.drawable.ic_call)
                 .setStyle(style)
+                // CallStyle's caller isn't in the people list Do Not Disturb checks for starred contacts.
+                .addPerson(person)
                 .setContentIntent(open)
                 .setOngoing(true)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
+                // The channels are silent (Telecom rings); state updates shouldn't pop up again either.
+                .setOnlyAlertOnce(true)
         if (call.ringing) builder.setFullScreenIntent(open, true)
         if (call.active && call.connectedAt > 0) builder.setUsesChronometer(true).setWhen(call.connectedAt)
         // Call-style notifications must belong to a foreground service; a call in progress is one.
@@ -241,7 +247,12 @@ class TesseraInCallService :
         )
 
     companion object {
-        const val CHANNEL = "calls"
+        /** Silent channels: Telecom plays the ringtone and vibrates, as the user's settings say. */
+        const val CHANNEL_INCOMING = "incoming_calls"
+        const val CHANNEL_ONGOING = "ongoing_calls"
+
+        /** Before 0.2.3 this channel made the notification sound, and Telecom didn't ring at all. */
+        private const val OLD_CHANNEL = "calls"
 
         // Route ids for the pre-14 audio API.
         private const val EARPIECE = "earpiece"
@@ -256,9 +267,21 @@ class TesseraInCallService :
 
         fun ensureChannel(context: Context) {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
-            if (manager.getNotificationChannel(CHANNEL) != null) return
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL, context.getString(R.string.channel_calls), NotificationManager.IMPORTANCE_HIGH),
+            manager.deleteNotificationChannel(OLD_CHANNEL)
+
+            fun silent(
+                id: String,
+                name: Int,
+                importance: Int,
+            ) = NotificationChannel(id, context.getString(name), importance).apply {
+                setSound(null, null)
+                enableVibration(false)
+            }
+            manager.createNotificationChannels(
+                listOf(
+                    silent(CHANNEL_INCOMING, R.string.channel_incoming_calls, NotificationManager.IMPORTANCE_HIGH),
+                    silent(CHANNEL_ONGOING, R.string.channel_ongoing_calls, NotificationManager.IMPORTANCE_DEFAULT),
+                ),
             )
         }
     }
