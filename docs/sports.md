@@ -50,13 +50,24 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
 
 ## Live Updates
 
-While a followed team plays, its score is in an ongoing notification (asking to be promoted to a
-Live Update on Android 16 QPR1+): "HOU 115 – 117 DEN", "3:20 - 4th". When it ends, a dismissible
-final score stays for up to three hours.
+While a followed team plays, its score is in an ongoing notification, promoted to a Live Update on
+Android 16 QPR1+ (0.2.1):
 
-A WorkManager job checks about every minute while a followed game is live, and otherwise sleeps
-until a minute before the next one starts. It's not a foreground service: Android doesn't let an
-app start one from the background for this, so in deep sleep updates can come less often. The
+- Title: each team beside its own score, away first as in the app: "Rockets 115 · Nuggets 117".
+- Text: the clock and who leads: "3:20 - 4th · Nuggets by 2" ("Tied" when level).
+- Status bar chip: your team and its margin, "DEN +2" / "DEN −3" / "DEN =".
+- Android 16: a progress bar of the game, a segment per quarter, half or inning, between the
+  away and home logos (the dark-background logos in dark mode). Older Android: your team's logo.
+- When it ends, a dismissible "Final · Nuggets win" stays for up to three hours.
+
+Refreshing: a WorkManager job finds what's live (the full followed-games fetch), then keeps running
+while anything is: every 15 s it asks ESPN's current scoreboard for that league only (one small
+request; ESPN caches scoreboards for up to about 10 s, so faster wouldn't be fresher), and right
+away when the screen comes on. Each run watches for 9 minutes and hands over to the next
+(WorkManager stops a run at 10). Between games it sleeps until a minute before the next one.
+It's not a foreground service: Android doesn't let an app start one from the background for
+this, so with the screen off and the phone idle Android may hold checks back; turning the screen
+on lets them run within a few seconds. While the app is open, live games refresh every 15 s too. The
 notification permission is asked when teams are picked.
 
 ## Engine (pure Kotlin, unit tested)
