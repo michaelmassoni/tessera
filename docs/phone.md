@@ -42,6 +42,7 @@ covers the incoming-call screen.
     the time.
   - Answered calls show how long they lasted after the time ("6:15 PM · 3 min, 20 sec", from
     `CallLog.Calls.DURATION`, formatted with `MeasureFormat` in the phone's language).
+  - The call log and contact numbers are read in parallel on every resume.
   - Tap to call back. Long-press for a sheet of options: View contact (a saved number) or Create
     new contact and Add to a contact (an unsaved one, through the contacts app's insert and
     insert-or-edit intents), Send message (`smsto:`), Copy number, and Edit number before call

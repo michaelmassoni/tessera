@@ -28,6 +28,7 @@ import io.github.michaelmassoni.tessera.phone.ui.PhoneActions
 import io.github.michaelmassoni.tessera.phone.ui.PhoneApp
 import io.github.michaelmassoni.tessera.phone.ui.PhoneState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
@@ -83,8 +84,9 @@ class MainActivity : ComponentActivity() {
         val isDefault = getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_DIALER) == true
         lifecycleScope.launch {
             val repo = PhoneRepository(contentResolver)
+            // The call log and the contacts are read at the same time; this runs on every resume.
             val calls =
-                withContext(Dispatchers.IO) {
+                async(Dispatchers.IO) {
                     if (granted(
                             Manifest.permission.READ_CALL_LOG,
                         )
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             val numbers =
-                withContext(Dispatchers.IO) {
+                async(Dispatchers.IO) {
                     if (granted(
                             Manifest.permission.READ_CONTACTS,
                         )
@@ -105,7 +107,8 @@ class MainActivity : ComponentActivity() {
                         emptyList()
                     }
                 }
-            state = PhoneState(true, CallLogGrouping.sections(calls, ZoneId.systemDefault()), numbers, isDefault, hasAll())
+            val sections = withContext(Dispatchers.Default) { CallLogGrouping.sections(calls.await(), ZoneId.systemDefault()) }
+            state = PhoneState(true, sections, numbers.await(), isDefault, hasAll())
         }
     }
 
