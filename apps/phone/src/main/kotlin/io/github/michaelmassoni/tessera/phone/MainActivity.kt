@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.phone
 
 import android.Manifest
 import android.app.role.RoleManager
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -19,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.phone.data.ContactNumber
 import io.github.michaelmassoni.tessera.phone.data.PhoneRepository
 import io.github.michaelmassoni.tessera.phone.engine.CallLogGrouping
 import io.github.michaelmassoni.tessera.phone.ui.PhoneActions
@@ -124,6 +127,32 @@ class MainActivity : ComponentActivity() {
                 Build.VERSION_CODES.TIRAMISU
             ) {
                 Toast.makeText(this@MainActivity, R.string.copied, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        override fun message(number: String) = open(Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", number, null)))
+
+        override fun createContact(number: String) =
+            open(
+                Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI)
+                    .putExtra(ContactsContract.Intents.Insert.PHONE, number),
+            )
+
+        override fun addToContact(number: String) =
+            open(
+                Intent(Intent.ACTION_INSERT_OR_EDIT)
+                    .setType(ContactsContract.Contacts.CONTENT_ITEM_TYPE)
+                    .putExtra(ContactsContract.Intents.Insert.PHONE, number),
+            )
+
+        override fun viewContact(contact: ContactNumber) =
+            open(Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.getLookupUri(contact.contactId, contact.lookupKey)))
+
+        private fun open(intent: Intent) {
+            try {
+                startActivity(intent)
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(this@MainActivity, R.string.no_app, Toast.LENGTH_SHORT).show()
             }
         }
 
