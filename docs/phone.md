@@ -26,6 +26,7 @@ so trying Tessera Phone can't break calling.
 |------------|-----|
 | `CALL_PHONE` | Place calls directly from the app |
 | `READ_CALL_LOG` | Recents |
+| `WRITE_CALL_LOG` | Delete from call history (asked on first use if not the default phone app) |
 | `READ_CONTACTS` | Names, favourites and the contact list |
 | `POST_NOTIFICATIONS` | Incoming-call and ongoing-call notifications (when default) |
 | `WAKE_LOCK` | Turning the screen off near the ear during calls |
@@ -46,7 +47,17 @@ covers the incoming-call screen.
   - Tap to call back. Long-press for a sheet of options: View contact (a saved number) or Create
     new contact and Add to a contact (an unsaved one, through the contacts app's insert and
     insert-or-edit intents), Send message (`smsto:`), Copy number, and Edit number before call
-    (opens the keypad with it).
+    (opens the keypad with it), Call history, Block number (or Unblock), and Delete from call
+    history.
+  - **Call history:** every call with that number (matched with `areSamePhoneNumber`), newest
+    first, with type, date and time, and duration, under a header with the contact's avatar,
+    name and number and Call, Message and Contact (or Add contact) buttons. Back returns to
+    Recents.
+  - **Block:** only offered as the default phone app (`BlockedNumberContract`
+    `canCurrentUserBlockNumbers`). A dialog confirms it; blocking also stops texts, since the
+    list is the system's. The sheet offers Unblock for a blocked number.
+  - **Delete:** removes every call in the row's group. Needs `WRITE_CALL_LOG`, which the
+    default phone app holds; otherwise it's asked for on first use.
 - **Contacts:** laid out like the Contacts app. A search bar (settings button, or clear while
   typing) and every contact with a phone number under sticky letter headers, with their photo
   or coloured initials (the shared `Avatar` in `core:design`). Search matches the start of any
@@ -57,7 +68,9 @@ covers the incoming-call screen.
   - The number field formats as you type (`PhoneNumberUtils`) and backspace works.
   - Long-press 0 for +.
   - The call button is filled.
-  - Contacts whose number contains the digits typed are suggested above the keypad.
+  - Up to 3 contacts are suggested above the keypad: their number contains the digits typed, or
+    their name matches them on the letters (T9: 2-6-6 finds "Ann", at the start of any word,
+    accents folded).
 
 ## In-call screen (default phone app only)
 

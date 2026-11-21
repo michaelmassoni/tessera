@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.BlockedNumberContract
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.widget.Toast
@@ -46,6 +47,15 @@ class MainActivity : ComponentActivity() {
         )
 
     private val request = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { load() }
+
+    /** Calls waiting to be deleted while WRITE_CALL_LOG is asked for. */
+    private var pendingDelete: List<Long> = emptyList()
+    private val requestWriteLog =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+            if (ok) deleteCalls(pendingDelete)
+            pendingDelete = emptyList()
+        }
+
     private val requestRole = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { load() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,12 +117,47 @@ class MainActivity : ComponentActivity() {
                         emptyList()
                     }
                 }
-            val sections = withContext(Dispatchers.Default) { CallLogGrouping.sections(calls.await(), ZoneId.systemDefault()) }
-            state = PhoneState(true, sections, numbers.await(), isDefault, hasAll())
+            val canBlock =
+                isDefault && runCatching { BlockedNumberContract.canCurrentUserBlockNumbers(this@MainActivity) }.getOrDefault(false)
+            val blocked =
+                async(Dispatchers.IO) { if (canBlock) runCatching { repo.blockedNumbers() }.getOrDefault(emptyList()) else emptyList() }
+            val log = calls.await()
+            val sections = withContext(Dispatchers.Default) { CallLogGrouping.sections(log, ZoneId.systemDefault()) }
+            state = PhoneState(true, sections, numbers.await(), isDefault, hasAll(), log, blocked.await(), canBlock)
+        }
+    }
+
+    private fun deleteCalls(ids: List<Long>) {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) { runCatching { PhoneRepository(contentResolver).deleteCalls(ids) } }
+            load()
         }
     }
 
     private inner class Actions : PhoneActions {
+        override fun delete(ids: List<Long>) {
+            if (granted(Manifest.permission.WRITE_CALL_LOG)) {
+                deleteCalls(ids)
+            } else {
+                pendingDelete = ids
+                requestWriteLog.launch(Manifest.permission.WRITE_CALL_LOG)
+            }
+        }
+
+        override fun block(number: String) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { runCatching { PhoneRepository(contentResolver).block(number) } }
+                load()
+            }
+        }
+
+        override fun unblock(number: String) {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { runCatching { BlockedNumberContract.unblock(this@MainActivity, number) } }
+                load()
+            }
+        }
+
         override fun call(number: String) {
             val uri = Uri.fromParts("tel", number, null)
             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
