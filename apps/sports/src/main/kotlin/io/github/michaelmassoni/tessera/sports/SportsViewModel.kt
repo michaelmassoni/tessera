@@ -77,8 +77,15 @@ class SportsViewModel(
 
     private var polling: Job? = null
     private var detailJob: Job? = null
+    private var started = false
 
+    /**
+     * Loads once per ViewModel. The activity calls it on every create: one restored after the
+     * process was killed has saved state but a fresh ViewModel, which would otherwise never load.
+     */
     fun start() {
+        if (started) return
+        started = true
         viewModelScope.launch {
             val follows = withContext(io) { store.load() }
             _state.update { it.copy(loaded = true, follows = follows) }
