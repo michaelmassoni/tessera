@@ -93,7 +93,7 @@ fun ConfirmDeleteDialog(
         onDismissRequest = onDismiss,
         title = { Text(pluralStringResource(R.plurals.delete_title, count, count)) },
         text = { Text(stringResource(R.string.delete_permanent)) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_delete)) } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_move_to_trash)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

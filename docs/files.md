@@ -81,8 +81,14 @@ The app never uploads, indexes in the background, or scans storage when nobody i
   - Free space is checked before copying.
   - Progress shows the file count and bytes, and the operation can be cancelled. A cancelled or
     failed copy removes its partial file.
-- **Delete:** a confirmation dialog shows the number of items, because deletion is permanent and
-  there is no trash. Folders are deleted recursively.
+- **Delete moves to the trash:** a dialog ("Move 3 items to the trash?") confirms it, then a
+  snackbar offers Undo. Each item is renamed into a hidden `.Trash-tessera` folder at the root
+  of its own volume (instant, no extra space; folders go whole) with a `.nomedia` file so
+  galleries skip it, and recorded in `trash.json` in the app's private storage.
+- **Trash (home screen):** trashed items, newest first, with size and days left. Tap to select;
+  Restore puts items back where they were (with "name (1)" if that name has been reused), Delete
+  removes them for good, and Empty trash removes everything, each after a confirmation. Items
+  are deleted for good after 30 days, checked when the app starts and when Trash opens.
 - **Rename:** the base name is pre-selected, not the extension. Names containing `/` or a NUL
   character, empty names, `.` and `..` are rejected. Clashing with an existing name shows an error.
 - **New folder:** uses the same name checks as rename.
@@ -97,6 +103,7 @@ The app never uploads, indexes in the background, or scans storage when nobody i
 - `copy(sources, targetDir)` and `move(sources, targetDir)`, with progress callbacks and
   cancellation (they check a cancellation flag between buffers).
 - `delete(paths)`, recursive.
+- `Trash`: `move`, `restore`, `delete`, `empty` and `purge`, on real files (unit tested).
 - `uniqueName(dir, name)` produces "a.txt", then "a (1).txt", "a (2).txt", and so on. For a
   folder it produces "dir (1)". Compound extensions stay together: "x.tar.gz" becomes
   "x (1).tar.gz".
@@ -132,7 +139,6 @@ No network or media permissions are requested; all-files access already covers m
 
 ## Out of scope for v0.1
 
-- Trash or recycle bin.
 - Background (foreground-service) transfers that continue after leaving the app.
 - Archives (zip and others).
 - Network and cloud storage.

@@ -24,6 +24,7 @@ import io.github.michaelmassoni.tessera.files.data.StorageVolumes
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
+import io.github.michaelmassoni.tessera.files.engine.Trash
 import io.github.michaelmassoni.tessera.files.ui.FilesActions
 import io.github.michaelmassoni.tessera.files.ui.FilesScreen
 import io.github.michaelmassoni.tessera.files.ui.PermissionScreen
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
                     volumes = { StorageVolumes.list(applicationContext) },
                     io = Dispatchers.IO,
                     ops = FileOperations(freeSpace = AndroidFreeSpace(applicationContext)),
+                    trash = Trash(File(filesDir, "trash.json")),
                 )
             }
         }
@@ -108,6 +110,16 @@ private class Actions(
     override fun cancelOperation() = vm.cancelRunningOperation()
 
     override fun delete(files: Collection<File>) = vm.delete(files)
+
+    override fun openTrash() = vm.openTrash()
+
+    override fun toggleTrashSelection(id: String) = vm.toggleTrashSelection(id)
+
+    override fun selectAllTrash() = vm.selectAllTrash()
+
+    override fun restore(ids: Collection<String>) = vm.restore(ids)
+
+    override fun deleteForever(ids: Collection<String>?) = vm.deleteForever(ids)
 
     override fun rename(
         file: File,
