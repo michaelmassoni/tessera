@@ -290,7 +290,10 @@ class AgendaWidget : GlanceAppWidget() {
  * colour. The header's arrows move between months and today's date comes back; each placed widget
  * has its own settings (background, opacity, theme, calendars; see [MonthWidgetSettingsActivity]).
  */
-class MonthWidget : GlanceAppWidget() {
+class MonthWidget(
+    /** Settings to draw with instead of the widget's own: the settings screen's live preview. */
+    private val preview: MonthWidgetSettings? = null,
+) : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     // The picker draws the preview at this size (the default gives no size, so no room for pills).
@@ -325,11 +328,11 @@ class MonthWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
-        val first = load(context, MonthWidgetSettings.from(getAppWidgetState(context, PreferencesGlanceStateDefinition, id)))
+        val first = load(context, preview ?: MonthWidgetSettings.from(getAppWidgetState(context, PreferencesGlanceStateDefinition, id)))
         provideContent {
             // Arrow taps and refreshes change the state and recompose; the events reload when the
             // month, the calendars or the refresh stamp change.
-            val settings = MonthWidgetSettings.from(currentState<Preferences>())
+            val settings = preview ?: MonthWidgetSettings.from(currentState<Preferences>())
             val loaded by produceState(first, settings.offset, settings.stamp, settings.hidden) {
                 if (value.key != Triple(settings.offset, settings.stamp, settings.hidden)) {
                     value = withContext(Dispatchers.IO) { load(context, settings) }
