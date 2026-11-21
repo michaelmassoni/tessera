@@ -3,7 +3,6 @@ package io.github.michaelmassoni.tessera.calendar.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -49,13 +50,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
@@ -76,6 +78,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.YearMonth
+import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid as MonthWeeks
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** Everything the screen can ask for. */
@@ -283,33 +286,18 @@ private fun MonthScreen(
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= WideWidth
-        val swipe =
-            Modifier.pointerInput(state.month) {
-                var total = 0f
-                detectHorizontalDragGestures(onDragStart = { total = 0f }, onDragEnd = {
-                    when {
-                        total > 120 -> actions.showMonth(state.month.minusMonths(1))
-                        total < -120 -> actions.showMonth(state.month.plusMonths(1))
-                    }
-                }) { _, amount -> total += amount }
-            }
         val day = state.selected
         val dayEvents = listOf(day to state.byDay[day].orEmpty())
         if (wide) {
             // Room for the grid and the selected day's events side by side.
             Row(Modifier.fillMaxSize()) {
-                MonthGrid(
-                    state.weeks,
-                    state.month,
-                    state.today,
+                MonthPager(
+                    state,
                     day,
-                    state.byDay,
                     actions::select,
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .then(swipe)
-                        .padding(horizontal = 4.dp),
+                    Modifier.weight(1f).fillMaxHeight(),
+                    PaddingValues(horizontal = 4.dp),
+                    actions::showMonth,
                 )
                 VerticalDivider()
                 Column(Modifier.widthIn(max = 420.dp).weight(0.6f)) {
@@ -319,14 +307,13 @@ private fun MonthScreen(
             }
         } else {
             // The month takes the whole screen; a day's events open in a sheet.
-            MonthGrid(
-                state.weeks,
-                state.month,
-                state.today,
+            MonthPager(
+                state,
                 null,
-                state.byDay,
                 actions::openDay,
-                Modifier.fillMaxSize().then(swipe).padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                Modifier.fillMaxSize(),
+                PaddingValues(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                actions::showMonth,
             )
             if (state.dayOpen) DaySheet(day, state.today, dayEvents, actions)
         }
@@ -456,6 +443,63 @@ fun PermissionScreen(
                     Text(stringResource(if (denied) R.string.permission_settings else R.string.permission_grant))
                 }
             }
+        }
+    }
+}
+
+/** Months as pages, numbered from January 1900; enough for any calendar in use. */
+private val FIRST_PAGE_MONTH = YearMonth.of(1900, 1)
+private const val MONTH_PAGES = 12 * 300
+
+private fun pageOf(month: YearMonth) = (month.year - FIRST_PAGE_MONTH.year) * 12 + month.monthValue - 1
+
+private fun monthOf(page: Int): YearMonth = FIRST_PAGE_MONTH.plusMonths(page.toLong())
+
+/**
+ * The month grid in a pager: it follows the finger and settles on the next or previous month.
+ * Settling tells the view model; a month changed elsewhere (the arrows, Today, a widget) animates.
+ */
+@Composable
+private fun MonthPager(
+    state: CalendarState,
+    selected: LocalDate?,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+    onMonth: (YearMonth) -> Unit = {},
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val firstDay = remember(locale) { firstDayOfWeek(locale) }
+    val pager = rememberPagerState(initialPage = pageOf(state.month)) { MONTH_PAGES }
+    val shown by rememberUpdatedState(state.month)
+    val show by rememberUpdatedState(onMonth)
+    LaunchedEffect(pager) {
+        snapshotFlow { pager.settledPage }.collect { page ->
+            val month = monthOf(page)
+            if (month != shown) show(month)
+        }
+    }
+    LaunchedEffect(state.month) {
+        val page = pageOf(state.month)
+        if (pager.currentPage != page && !pager.isScrollInProgress) pager.animateScrollToPage(page)
+    }
+    Column(modifier) {
+        // The weekday names stay put; only the days slide.
+        val firstWeek = remember(firstDay) { MonthWeeks.weeks(state.month, firstDay).first() }
+        WeekdayHeader(firstWeek, Modifier.padding(contentPadding))
+        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, key = { it }) { page ->
+            val month = monthOf(page)
+            val weeks = remember(month, firstDay) { MonthWeeks.weeks(month, firstDay) }
+            MonthGrid(
+                weeks,
+                month,
+                state.today,
+                selected,
+                state.byDay,
+                onSelect,
+                Modifier.fillMaxSize().padding(contentPadding),
+                showWeekdays = false,
+            )
         }
     }
 }

@@ -108,8 +108,13 @@ class CalendarViewModel(
         loading =
             viewModelScope.launch {
                 val z = zone()
+                // The months either side too, so swiping shows them with their events straight away.
                 val (monthRange, scheduleRange) =
-                    DayLayout.range(weeks.first().first(), weeks.last().last(), z) to
+                    DayLayout.range(
+                        MonthGrid.weeks(s.month.minusMonths(1), firstDayOfWeek()).first().first(),
+                        MonthGrid.weeks(s.month.plusMonths(1), firstDayOfWeek()).last().last(),
+                        z,
+                    ) to
                         DayLayout.range(today, today.plusDays(scheduleDays), z)
                 val (monthInstances, scheduleInstances, calendars) =
                     withContext(io) {
