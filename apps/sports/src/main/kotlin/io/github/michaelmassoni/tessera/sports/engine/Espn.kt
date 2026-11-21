@@ -69,7 +69,12 @@ object Espn {
         league: League,
         t: JsonElement?,
     ): Team {
-        val logo = t["logo"].str() ?: t["logos"].arr.firstOrNull()["href"].str()
+        val logos = t["logos"].arr
+        val logo = t["logo"].str() ?: logos.firstOrNull()["href"].str()
+        val rels = { l: JsonElement? -> l["rel"].arr.mapNotNull { it.str() } }
+        val logoDark =
+            t["logoDark"].str()
+                ?: logos.firstOrNull { "dark" in rels(it) && "scoreboard" !in rels(it) }["href"].str()
         return Team(
             league = league.id,
             id = t["id"].str().orEmpty(),
@@ -77,6 +82,7 @@ object Espn {
             shortName = t["shortDisplayName"].str() ?: t["name"].str() ?: t["abbreviation"].str().orEmpty(),
             abbreviation = t["abbreviation"].str().orEmpty(),
             logo = logo,
+            logoDark = logoDark,
             color = t["color"].str(),
         )
     }

@@ -12,14 +12,19 @@
     <string name="league_nfl">NFL</string>
 
     <!-- Scores -->
-    <string name="tab_scores">Scores</string>
+    <string name="tab_yesterday">Yesterday</string>
+    <string name="later_today">Later today</string>
+    <string name="leagues">Leagues</string>
+    <string name="back">Back</string>
     <string name="section_live">Live</string>
     <string name="section_today">Today</string>
     <string name="section_upcoming">Upcoming</string>
     <string name="section_recent">Recent</string>
     <string name="final_score">Final</string>
     <string name="postponed">Postponed</string>
-    <string name="no_games">No games for your teams in the next week</string>
+    <string name="no_games_yesterday">No results for your teams in the last few days</string>
+    <string name="no_games_today">No games for your teams today</string>
+    <string name="no_games_upcoming">No games for your teams in the next week</string>
     <string name="no_league_games">No games this week</string>
     <string name="game_description">%1$s %2$s, %3$s %4$s, %5$s</string>
     <string name="game_upcoming_description">%1$s at %2$s, %3$s</string>
@@ -50,7 +55,7 @@
     <string name="follow_title">Your teams</string>
     <string name="follow_intro">Pick the leagues you follow, then your teams. With no team picked, a league shows all its games.</string>
     <string name="done">Done</string>
-    <string name="edit_teams">Edit teams</string>
+    <string name="my_teams">My teams</string>
     <string name="teams_failed">Couldn\'t load teams</string>
 
     <!-- Errors -->

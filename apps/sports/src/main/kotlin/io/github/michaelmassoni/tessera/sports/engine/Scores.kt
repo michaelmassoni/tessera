@@ -11,6 +11,15 @@ data class GameSection(
     val games: List<Game>,
 )
 
+/** The main screen's tabs, as in Apple Sports. */
+enum class ScoreTab { Yesterday, Today, Upcoming }
+
+/** A day's games within a tab. */
+data class DayGames(
+    val date: LocalDate,
+    val games: List<Game>,
+)
+
 object Scores {
     /** How far back the scores list looks for results. */
     const val RECENT_DAYS = 3L
@@ -48,6 +57,51 @@ object Scores {
             GameSection(Section.Upcoming, upcoming),
             GameSection(Section.Recent, recent),
         ).filter { it.games.isNotEmpty() }
+    }
+
+    /**
+     * The games for a tab, by day. Today: everything live (whatever day it started), then today's
+     * results, then what's still to come. Yesterday: finished games before today, latest day
+     * first (the window reaches back [RECENT_DAYS]). Upcoming: after today, soonest first.
+     */
+    fun tab(
+        games: List<Game>,
+        tab: ScoreTab,
+        now: Long,
+        zone: ZoneId,
+    ): List<DayGames> {
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+
+        fun date(g: Game): LocalDate = Instant.ofEpochMilli(g.start).atZone(zone).toLocalDate()
+        val unique = games.distinctBy { it.league to it.id }
+        val live = unique.filter { it.state == GameState.Live }
+        val rest = unique - live.toSet()
+        return when (tab) {
+            ScoreTab.Today -> {
+                val todays = rest.filter { date(it) == today }
+                val order =
+                    live.sortedBy { it.start } +
+                        todays.filter { it.state == GameState.Final }.sortedBy { it.start } +
+                        todays.filter { it.state != GameState.Final }.sortedBy { it.start }
+                listOf(DayGames(today, order)).filter { it.games.isNotEmpty() }
+            }
+
+            ScoreTab.Yesterday -> {
+                rest
+                    .filter { date(it).isBefore(today) }
+                    .groupBy(::date)
+                    .toSortedMap(reverseOrder())
+                    .map { (day, list) -> DayGames(day, list.sortedBy { it.start }) }
+            }
+
+            ScoreTab.Upcoming -> {
+                rest
+                    .filter { date(it).isAfter(today) }
+                    .groupBy(::date)
+                    .toSortedMap()
+                    .map { (day, list) -> DayGames(day, list.sortedBy { it.start }) }
+            }
+        }
     }
 
     /** Games worth showing: those involving followed teams, or every game in a league with none followed. */

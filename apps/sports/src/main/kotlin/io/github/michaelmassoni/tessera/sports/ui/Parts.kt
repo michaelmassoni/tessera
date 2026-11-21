@@ -2,15 +2,17 @@ package io.github.michaelmassoni.tessera.sports.ui
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,15 +22,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import coil3.compose.AsyncImage
 import io.github.michaelmassoni.tessera.sports.R
@@ -43,6 +49,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 fun Sport.icon(): Int =
     when (this) {
@@ -78,15 +85,20 @@ fun Header.label(): Int =
         Header.PointsDiff -> R.string.col_pd
     }
 
-/** The team's logo; without one, its abbreviation on its colour (the team's own colour is data). */
+/**
+ * The team's logo, in its dark-background version on a dark theme; without one, its abbreviation
+ * on its colour (the team's own colour is data).
+ */
 @Composable
 fun TeamLogo(
     team: Team,
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
-    if (team.logo != null) {
-        AsyncImage(model = team.logo, contentDescription = null, modifier = modifier.size(size))
+    val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val logo = if (dark) team.logoOnDark() else team.logo
+    if (logo != null) {
+        AsyncImage(model = logo, contentDescription = null, modifier = modifier.size(size))
     } else {
         val color =
             team.color?.let { runCatching { Color("#$it".toColorInt()) }.getOrNull() }
@@ -95,6 +107,17 @@ fun TeamLogo(
             Text(team.abbreviation.take(3), style = MaterialTheme.typography.labelSmall, color = Color.White)
         }
     }
+}
+
+/** The star beside a followed team. */
+@Composable
+fun FollowedStar(modifier: Modifier = Modifier) {
+    Icon(
+        painterResource(DesignR.drawable.ic_star_filled),
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = modifier.size(14.dp),
+    )
 }
 
 @Composable
@@ -109,25 +132,26 @@ fun timeFormat(): DateTimeFormatter {
     }
 }
 
+/** "Today", "Tomorrow", "Yesterday" or "Mon, 23 Nov". */
 @Composable
 fun dayLabel(
-    start: Long,
-    zone: ZoneId,
-    now: Long,
+    day: LocalDate,
+    today: LocalDate,
 ): String {
     val locale = LocalConfiguration.current.locales[0]
-    val day = Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
-    val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
     return when (day) {
         today -> stringResource(R.string.section_today)
         today.plusDays(1) -> stringResource(R.string.tomorrow)
+        today.minusDays(1) -> stringResource(R.string.tab_yesterday)
         else -> day.format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEdMMM"), locale))
     }
 }
 
 /**
- * A game as a card: away team left, home team right, and between them the score (live or final)
- * or the start time. Live games get a dot and the period and clock.
+ * A game as a card, laid out like Apple Sports: the league centred on top; the away team left and
+ * the home team right (logo, name under it, a star if followed), each with its score beside it, or
+ * before the game its record; between them the clock, "Final" or the start time ([showDay] adds the
+ * day, where the list isn't already grouped by day).
  */
 @Composable
 fun GameCard(
@@ -137,10 +161,11 @@ fun GameCard(
     onClick: () -> Unit,
     followed: Set<String>,
     modifier: Modifier = Modifier,
+    showDay: Boolean = true,
 ) {
     val time = timeFormat()
     val start = time.format(Instant.ofEpochMilli(game.start).atZone(zone))
-    val day = dayLabel(game.start, zone, now)
+    val day = dayLabel(Instant.ofEpochMilli(game.start).atZone(zone).toLocalDate(), today(now, zone))
     val status =
         when (game.state) {
             GameState.Scheduled -> "$day $start"
@@ -148,6 +173,7 @@ fun GameCard(
             GameState.Postponed -> stringResource(R.string.postponed)
             GameState.Live -> game.status
         }
+    val league = stringResource(game.league.label())
     val description =
         if (game.state == GameState.Scheduled || game.state == GameState.Postponed) {
             stringResource(R.string.game_upcoming_description, game.away.team.name, game.home.team.name, status)
@@ -163,50 +189,95 @@ fun GameCard(
         }
     Surface(
         onClick = onClick,
-        modifier = modifier.widthIn(max = 640.dp).fillMaxWidth().clearAndSetSemantics { contentDescription = description },
+        modifier = modifier.widthIn(max = 640.dp).fillMaxWidth().clearAndSetSemantics { contentDescription = "$league. $description" },
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 12.dp)) {
+            Text(
+                league,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(game.league.label()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                game.broadcast?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                }
-            }
-            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                SideColumn(game.away, game, followed, Modifier.weight(1f))
-                Middle(game, start, day, status, Modifier.weight(1.2f))
-                SideColumn(game.home, game, followed, Modifier.weight(1f))
+                TeamBlock(game.away, game, followed, starFirst = true)
+                Value(game.away, game, TextAlign.Start, Modifier.weight(1f))
+                Middle(game, start, if (showDay) day else null, status)
+                Value(game.home, game, TextAlign.End, Modifier.weight(1f))
+                TeamBlock(game.home, game, followed, starFirst = false)
             }
         }
     }
 }
 
+private fun Side.lost(game: Game) = game.state == GameState.Final && !winner
+
+/** Logo with the short name under it; the star sits on the card's outer edge. */
 @Composable
-private fun SideColumn(
+private fun TeamBlock(
     side: Side,
     game: Game,
     followed: Set<String>,
+    starFirst: Boolean,
+) {
+    val star = side.team.key in followed
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (starFirst) StarSlot(star)
+        Column(Modifier.width(68.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            TeamLogo(side.team, 40.dp)
+            Text(
+                side.team.shortName,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (side.lost(game)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (!starFirst) StarSlot(star)
+    }
+}
+
+@Composable
+private fun StarSlot(star: Boolean) {
+    Box(Modifier.width(14.dp), contentAlignment = Alignment.Center) { if (star) FollowedStar() }
+}
+
+/** The score beside the logo; before the game, the team's record. */
+@Composable
+private fun Value(
+    side: Side,
+    game: Game,
+    align: TextAlign,
     modifier: Modifier = Modifier,
 ) {
-    val lost = game.state == GameState.Final && !side.winner
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        TeamLogo(side.team, 44.dp)
+    val started = game.state == GameState.Live || game.state == GameState.Final
+    val padding = Modifier.padding(horizontal = 4.dp)
+    if (started) {
+        val dim = side.lost(game)
+        // Three-digit scores shrink to fit beside the logo rather than being cut off.
         Text(
-            side.team.shortName,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = if (side.team.key in followed) FontWeight.Bold else FontWeight.Medium,
-            color = if (lost) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            side.score.orEmpty(),
+            style = MaterialTheme.typography.headlineLarge,
+            autoSize = TextAutoSize.StepBased(minFontSize = 18.sp, maxFontSize = MaterialTheme.typography.headlineLarge.fontSize),
+            fontWeight = if (dim) FontWeight.Normal else FontWeight.SemiBold,
+            color = if (dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            textAlign = align,
             maxLines = 1,
-            textAlign = TextAlign.Center,
+            modifier = modifier.then(padding),
         )
-        side.record?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    } else {
+        Text(
+            side.record.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = align,
+            maxLines = 1,
+            modifier = modifier.then(padding),
+        )
     }
 }
 
@@ -214,66 +285,36 @@ private fun SideColumn(
 private fun Middle(
     game: Game,
     start: String,
-    day: String,
+    day: String?,
     status: String,
-    modifier: Modifier = Modifier,
 ) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.widthIn(min = 72.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         when (game.state) {
-            GameState.Scheduled, GameState.Postponed -> {
-                Text(start, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    if (game.state == GameState.Postponed) status else day,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            GameState.Scheduled -> {
+                Text(start, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                day?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                }
             }
 
-            GameState.Live, GameState.Final -> {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Score(game.away.score, dim = game.state == GameState.Final && !game.away.winner)
-                    Score(game.home.score, dim = game.state == GameState.Final && !game.home.winner)
-                }
+            GameState.Postponed, GameState.Final -> {
+                Text(status, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
+
+            GameState.Live -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (game.state == GameState.Live) {
-                        Box(
-                            Modifier
-                                .padding(end = 6.dp)
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.error),
-                        )
-                    }
-                    Text(
-                        status,
-                        style = MaterialTheme.typography.labelMedium,
-                        color =
-                            if (game.state ==
-                                GameState.Live
-                            ) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        maxLines = 1,
+                    Box(
+                        Modifier
+                            .padding(end = 6.dp)
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error),
                     )
+                    Text(status, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.error, maxLines = 1)
                 }
             }
         }
     }
-}
-
-@Composable
-private fun Score(
-    score: String?,
-    dim: Boolean,
-) {
-    Text(
-        score.orEmpty(),
-        style = MaterialTheme.typography.headlineMedium,
-        fontWeight = if (dim) FontWeight.Normal else FontWeight.SemiBold,
-        color = if (dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-    )
 }
 
 /** A rounded tonal section with an optional title. */
