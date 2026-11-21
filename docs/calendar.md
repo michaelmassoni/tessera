@@ -28,10 +28,17 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 
 ## Views
 
-- **Month:** a grid of the month. Each day shows its number and up to three event chips (or a
-  "+N" count). Today is highlighted.
-  - Tapping a day selects it and lists its events below the grid on phones (beside it on wide
-    windows).
+- **Month:** the month as rounded day cells, with each event as a pill filled with its
+  calendar's colour (black or white text, whichever reads). An event over several days is one
+  bar across them, cut at the week's edges; single days stack under it (`WeekLayout`, unit
+  tested). As many lanes show as the row has room for, and a day with more ends in "+N"; a row
+  too short for a pill (a phone in landscape) shows a dot per event instead. Today's cell is
+  tinted and its number circled.
+  - On phones the grid fills the screen, and tapping a day opens a sheet with its events and New
+    event. On wide windows the selected day is outlined and its events list beside the grid.
+  - Pills don't take touches: a tap anywhere on a day opens the day. TalkBack reads each day as
+    its date, event count and titles.
+  - A day tapped in the month or date widget opens on that day's sheet.
   - Swipe or use the arrows to change month; "Today" jumps back.
 - **Schedule:** a scrolling list of upcoming events grouped by day, starting today, loading more
   as you scroll.

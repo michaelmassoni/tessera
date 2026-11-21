@@ -22,6 +22,32 @@ private val today = LocalDate.of(2026, 11, 19)
 private val utc = ZoneOffset.UTC
 private val blue = 0xFF1A73A8.toInt()
 private val green = 0xFF2E7D32.toInt()
+private val yellow = 0xFFE6C619.toInt()
+private val purple = 0xFF8E3A8E.toInt()
+
+private fun allDay(
+    id: Long,
+    from: Int,
+    days: Int,
+    title: String,
+    color: Int,
+) = Instance(
+    id,
+    LocalDate
+        .of(2026, 11, from)
+        .atStartOfDay(utc)
+        .toInstant()
+        .toEpochMilli(),
+    LocalDate
+        .of(2026, 11, from + days)
+        .atStartOfDay(utc)
+        .toInstant()
+        .toEpochMilli(),
+    title,
+    true,
+    color,
+    2,
+)
 
 private fun at(
     day: Int,
@@ -42,6 +68,12 @@ private val instances =
         at(19, 15, title = "Design review"),
         at(19, 19, title = "Climbing", color = green),
         at(24, 10, title = "Flight to Melbourne"),
+        at(4, 10, title = "10am Shift", color = yellow),
+        at(11, 10, title = "10am Shift", color = yellow),
+        at(17, 10, title = "10am Shift", color = yellow),
+        at(19, 8, title = "10am Shift", color = yellow),
+        at(12, 19, title = "Robbie's birthday", color = purple),
+        allDay(20, 6, 5, "Trip to Cairns", purple),
         Instance(
             9,
             LocalDate
@@ -84,6 +116,10 @@ private object NoActions : CalendarActions {
     override fun showMonth(month: YearMonth) = Unit
 
     override fun select(day: LocalDate) = Unit
+
+    override fun openDay(day: LocalDate) = Unit
+
+    override fun closeDay() = Unit
 
     override fun today() = Unit
 
