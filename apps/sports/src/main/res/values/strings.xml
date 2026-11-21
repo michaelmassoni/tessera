@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sports</string>
+
+    <!-- Leagues -->
+    <string name="league_nba">NBA</string>
+    <string name="league_wnba">WNBA</string>
+    <string name="league_nbl">NBL</string>
+    <string name="league_afl">AFL</string>
+    <string name="league_nrl">NRL</string>
+    <string name="league_mlb">MLB</string>
+    <string name="league_nfl">NFL</string>
+
+    <!-- Scores -->
+    <string name="tab_scores">Scores</string>
+    <string name="section_live">Live</string>
+    <string name="section_today">Today</string>
+    <string name="section_upcoming">Upcoming</string>
+    <string name="section_recent">Recent</string>
+    <string name="final_score">Final</string>
+    <string name="postponed">Postponed</string>
+    <string name="no_games">No games for your teams in the next week</string>
+    <string name="no_league_games">No games this week</string>
+    <string name="game_description">%1$s %2$s, %3$s %4$s, %5$s</string>
+    <string name="game_upcoming_description">%1$s at %2$s, %3$s</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="credit">Scores from ESPN</string>
+
+    <!-- League tab -->
+    <string name="games">Games</string>
+    <string name="standings">Standings</string>
+    <string name="col_played">P</string>
+    <string name="col_won">W</string>
+    <string name="col_lost">L</string>
+    <string name="col_drawn">D</string>
+    <string name="col_tied">T</string>
+    <string name="col_pct">PCT</string>
+    <string name="col_gb">GB</string>
+    <string name="col_streak">STRK</string>
+    <string name="col_percentage">%</string>
+    <string name="col_points">PTS</string>
+    <string name="col_pd">PD</string>
+    <string name="team_column">Team</string>
+
+    <!-- Game -->
+    <string name="leaders">Leaders</string>
+    <string name="total">T</string>
+
+    <!-- Following -->
+    <string name="follow_title">Your teams</string>
+    <string name="follow_intro">Pick the leagues you follow, then your teams. With no team picked, a league shows all its games.</string>
+    <string name="done">Done</string>
+    <string name="edit_teams">Edit teams</string>
+    <string name="teams_failed">Couldn\'t load teams</string>
+
+    <!-- Errors -->
+    <string name="offline">Couldn\'t update scores</string>
+    <string name="retry">Retry</string>
+    <string name="load_failed">Couldn\'t load this. Check your connection.</string>
+
+    <string name="settings">Settings</string>
+
+    <!-- Live Updates -->
+    <string name="channel_live">Live games</string>
+    <string name="settings_live">Live Updates</string>
+    <string name="settings_live_summary">While your team plays, the score in a notification, updated about every minute</string>
+    <string name="live_title">%1$s %2$s – %3$s %4$s</string>
+</resources>

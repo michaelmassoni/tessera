@@ -87,6 +87,14 @@
       "name": "Tessera Weather",
       "preferredApkIndex": 0,
       "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Weather \",\"apkFilterRegEx\":\"^tessera-weather-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Weather\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.sports",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Sports",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Sports \",\"apkFilterRegEx\":\"^tessera-sports-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Sports\"}"
     }
   ]
 }
