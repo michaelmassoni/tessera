@@ -13,8 +13,21 @@ data class Team(
     val logo: String? = null,
     /** "c8102e", the team's colour from the source (data, not a theme colour). */
     val color: String? = null,
+    /** The logo made for dark backgrounds, when the source has one. */
+    val logoDark: String? = null,
 ) {
     val key: String get() = "$league:$id"
+
+    /**
+     * The logo for a dark background: the source's dark version, or for ESPN's team logos (which
+     * all have one) its address. Some logos are dark-on-transparent and vanish on dark surfaces.
+     */
+    fun logoOnDark(): String? =
+        logoDark ?: logo?.takeIf { DARK_PATH_FROM in it && "/i/teamlogos/" in it }?.replace(DARK_PATH_FROM, "/500-dark/") ?: logo
+
+    private companion object {
+        const val DARK_PATH_FROM = "/500/"
+    }
 }
 
 enum class GameState { Scheduled, Live, Final, Postponed }

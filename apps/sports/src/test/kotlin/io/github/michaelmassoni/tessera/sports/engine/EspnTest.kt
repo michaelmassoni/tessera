@@ -172,6 +172,40 @@ class EspnTest {
     }
 
     @Test
+    fun `games sort into the yesterday, today and upcoming tabs`() {
+        val games =
+            listOf(
+                game("yesterday late", -16, GameState.Final),
+                game("yesterday early", -20, GameState.Final),
+                game("two days ago", -40, GameState.Final),
+                game("live since last night", -13, GameState.Live),
+                game("tonight", 6),
+                game("this morning", -3, GameState.Final),
+                game("tomorrow", 24),
+                game("next week", 24 * 6),
+            )
+        val today = Scores.tab(games, ScoreTab.Today, now, zone)
+        assertEquals(listOf("live since last night", "this morning", "tonight"), today.single().games.map { it.id })
+        val yesterday = Scores.tab(games, ScoreTab.Yesterday, now, zone)
+        assertEquals(listOf(LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 19)), yesterday.map { it.date })
+        assertEquals(listOf("yesterday early", "yesterday late"), yesterday[0].games.map { it.id })
+        val upcoming = Scores.tab(games, ScoreTab.Upcoming, now, zone)
+        assertEquals(listOf(listOf("tomorrow"), listOf("next week")), upcoming.map { day -> day.games.map { it.id } })
+        assertTrue(Scores.tab(emptyList(), ScoreTab.Today, now, zone).isEmpty())
+    }
+
+    @Test
+    fun `dark logos come from the source, or from ESPN's dark logo path`() {
+        val nba = Espn.parseTeams(League.NBA, fixture("nba_teams.json")).first()
+        assertEquals("https://a.espncdn.com/i/teamlogos/nba/500-dark/atl.png", nba.logoOnDark())
+        // A team saved before dark logos were read: ESPN keeps them beside the light ones.
+        val saved = Team("nbl", "6", "New Zealand Breakers", "Breakers", "NZL", "https://a.espncdn.com/i/teamlogos/nbl/500/nzl.png")
+        assertEquals("https://a.espncdn.com/i/teamlogos/nbl/500-dark/nzl.png", saved.logoOnDark())
+        // Another source's logo is used as it is.
+        assertEquals("https://example.org/a.png", Team("x", "1", "A", "A", "A", "https://example.org/a.png").logoOnDark())
+    }
+
+    @Test
     fun `following a team narrows its league, and a league with none followed shows everything`() {
         val games = listOf(game("heat", 2, home = "14"), game("other", 3), game("afl", 4, league = League.AFL))
         val shown = Scores.followed(games, teams = setOf("nba:14"), leagues = setOf("nba", "afl"))
