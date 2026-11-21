@@ -28,6 +28,10 @@ needed.
   starting with a digit or symbol go under "#", and accented letters sort with their base
   letter.
 - **Favourites:** starred contacts appear first, under a "Favourites" heading.
+- **Reloading:** a burst of changes (a sync) reloads the list once, 500 ms after the last.
+  Decoded photos are kept in memory (8 MB) so rows scrolled back into view don't decode again;
+  the cache is cleared whenever contacts change, because a contact's photo URI stays the same when
+  the photo is replaced.
 - **Rows:** each row shows the photo (or a coloured initial avatar), the name, and nothing else,
   like the system app.
 - **Search:** matches name (any word, ignoring accents and case), phone number (digits only, so
