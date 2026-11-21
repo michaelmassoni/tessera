@@ -121,5 +121,6 @@ gitignored.
 2. Contacts, Notes
 3. Gallery, Calendar, Music
 4. Phone, Messages (need a real device for testing)
+5. Weather, Sports (added 2026-11-21 at the maintainer's request)
 
 Out of scope: Keyboard, Launcher and Camera (dropped 2026-11-19, see docs/decisions.md), Maps, cloud Photos and Gmail-style services (no offline equivalent).
