@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.contacts.ui
 
 import android.graphics.ImageDecoder
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -42,18 +43,21 @@ fun Avatar(
 ) {
     val context = LocalContext.current
     val px = with(LocalDensity.current) { size.roundToPx() }
-    val photo by produceState<ImageBitmap?>(null, photoUri, px) {
+    val cacheKey = photoUri?.let { "$it@$px" }
+    // Rows scrolled back into view take the decoded photo from memory instead of decoding it again.
+    val photo by produceState(cacheKey?.let(PhotoCache::get), photoUri, px) {
+        value = cacheKey?.let(PhotoCache::get)
+        if (value != null || photoUri == null || cacheKey == null) return@produceState
         value =
-            photoUri?.let { uri ->
-                withContext(Dispatchers.IO) {
-                    try {
-                        ImageDecoder
-                            .decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri.toUri())) { decoder, _, _ ->
-                                decoder.setTargetSize(px, px)
-                            }.asImageBitmap()
-                    } catch (_: IOException) {
-                        null
-                    }
+            withContext(Dispatchers.IO) {
+                try {
+                    ImageDecoder
+                        .decodeBitmap(ImageDecoder.createSource(context.contentResolver, photoUri.toUri())) { decoder, _, _ ->
+                            decoder.setTargetSize(px, px)
+                        }.asImageBitmap()
+                        .also { PhotoCache.put(cacheKey, it) }
+                } catch (_: IOException) {
+                    null
                 }
             }
     }
@@ -79,3 +83,14 @@ fun Avatar(
         }
     }
 }
+
+/** Decoded contact photos by URI and size, up to about 8 MB. */
+private object PhotoCache : LruCache<String, ImageBitmap>(8 * 1024 * 1024) {
+    override fun sizeOf(
+        key: String,
+        value: ImageBitmap,
+    ) = value.width * value.height * 4
+}
+
+/** Contacts changed: a contact's photo URI stays the same when the photo is replaced. */
+fun clearAvatarCache() = PhotoCache.evictAll()

@@ -49,6 +49,7 @@ import io.github.michaelmassoni.tessera.contacts.ui.DetailActions
 import io.github.michaelmassoni.tessera.contacts.ui.EditActions
 import io.github.michaelmassoni.tessera.contacts.ui.ListActions
 import io.github.michaelmassoni.tessera.contacts.ui.PermissionScreen
+import io.github.michaelmassoni.tessera.contacts.ui.clearAvatarCache
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -81,7 +82,10 @@ class MainActivity : ComponentActivity() {
     private val observer =
         object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
-                viewModel.refresh()
+                // A photo may have changed behind the same URI.
+                clearAvatarCache()
+                // A sync changes contacts one at a time; reload once it settles.
+                viewModel.refresh(after = 500)
             }
         }
 

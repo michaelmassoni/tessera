@@ -13,6 +13,7 @@ import io.github.michaelmassoni.tessera.contacts.engine.VCardContact
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -112,10 +113,12 @@ class ContactsViewModel(
 
     private var loading: Job? = null
 
-    fun refresh() {
+    /** Reloads the list; [after] waits first, so a burst of changes (each cancels the last) loads once. */
+    fun refresh(after: Long = 0) {
         loading?.cancel()
         loading =
             viewModelScope.launch {
+                if (after > 0) delay(after)
                 val (contacts, accts) = withContext(io) { repository.loadAll() to repository.accounts() }
                 all.value = contacts
                 accounts.value = accts
