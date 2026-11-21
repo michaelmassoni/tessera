@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,6 +39,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -48,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -151,8 +154,19 @@ fun SportsApp(
         }
     }
     when (val detail = state.detail) {
-        null -> Unit
-        else -> GameSheet(detail, state, actions, now, zone)
+        null -> {}
+
+        // The sheet opens once its details are in, at its final height: a bottom sheet doesn't
+        // follow its content growing, so opening on a spinner made it jump when they arrived.
+        // Until then (usually under a second) a loading indicator shows over the list.
+        Load.Loading -> {
+            BackHandler(onBack = actions::closeDetail)
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
+        }
+
+        else -> {
+            GameSheet(detail, state.opened, state, actions, now, zone)
+        }
     }
 }
 
@@ -612,26 +626,29 @@ private fun FollowScreen(
 @Composable
 private fun GameSheet(
     load: Load<GameDetail>,
+    opened: Game?,
     state: SportsState,
     actions: SportsActions,
     now: Long,
     zone: ZoneId,
 ) {
-    ModalBottomSheet(onDismissRequest = actions::closeDetail) {
-        when (load) {
-            Load.Loading -> {
-                Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { LoadingIndicator() }
-            }
+    // Always fully open: no half-open stop for the sheet to settle to.
+    val sheet = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+    ModalBottomSheet(onDismissRequest = actions::closeDetail, sheetState = sheet) {
+        Column(
+            Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ((load as? Load.Ready)?.value?.game ?: opened)?.let { GameCard(it, now, zone, onClick = {}, followed = state.follows.teamKeys) }
+            when (load) {
+                Load.Loading, Load.Failed -> {
+                    // Loading never gets here (the sheet waits for the details).
+                    Message(stringResource(R.string.load_failed))
+                }
 
-            Load.Failed -> {
-                Message(stringResource(R.string.load_failed))
-            }
-
-            is Load.Ready -> {
-                val detail = load.value
-                val game = detail.game
-                Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    GameCard(game, now, zone, onClick = {}, followed = state.follows.teamKeys)
+                is Load.Ready -> {
+                    val detail = load.value
+                    val game = detail.game
                     val periods = detail.lines.maxOfOrNull { it.periods.size } ?: 0
                     if (periods > 0) {
                         SectionCard(null) {
