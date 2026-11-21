@@ -54,7 +54,15 @@ covers the incoming-call screen.
 - **Shows:** caller name and photo (contacts lookup) or the number, the call state (calling,
   ringing, on hold, ended) and a timer.
 - **Incoming:** Answer and Decline buttons. The notification uses `CallStyle` with a
-  full-screen intent, so it rings over the lock screen.
+  full-screen intent: over the lock screen (or with the screen off) it wakes the phone into the
+  in-call screen; while the phone is in use it's a heads-up with Decline and Answer.
+- **Ringing is Telecom's:** the service doesn't declare `IN_CALL_SERVICE_RINGING`, so the system
+  plays the ringtone (per-contact ringtones too) and vibrates exactly as the phone's settings say:
+  ring and vibrate modes, "Vibrate for calls", Do Not Disturb, and the volume key to silence.
+  Declaring it (before 0.2.3) made Telecom skip both, and Phone played neither. The call
+  notifications use silent channels (`incoming_calls`, `ongoing_calls`) so nothing dings over
+  the ringtone. The caller is the notification's person with a `tel:` URI, so Do Not Disturb lets
+  starred contacts' full-screen call through.
 - **Active:**
   - Mute (`InCallService.setMuted`).
   - Audio: with only the earpiece and speaker, a Speaker toggle. With a wired headset or
