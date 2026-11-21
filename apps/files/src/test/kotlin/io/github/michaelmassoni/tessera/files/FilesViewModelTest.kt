@@ -136,6 +136,7 @@ class FilesViewModelTest {
         vm.open(root)
         vm.openSearch()
         vm.search("REPORT")
+        dispatcher.scheduler.advanceUntilIdle() // past the typing pause
         val search = vm.state.value.search!!
         assertFalse(search.running)
         assertEquals(listOf("report-a.txt"), search.results.map { it.name })

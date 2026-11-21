@@ -89,7 +89,7 @@ The app never uploads, indexes in the background, or scans storage when nobody i
 - **Details:** name, path, type, size (a folder's size and item count are calculated in the
   background), and the date modified.
 - **Search:** searches the current folder and its subfolders by name, case- and
-  accent-insensitively. Results stream in as they're found. The search stops at 1,000 results
+  accent-insensitively. It starts 250 ms after typing pauses, not on every key. Results stream in as they're found. The search stops at 1,000 results
   and skips `Android/data` and `Android/obb`.
 
 ## Engine (`FileOperations`, pure Kotlin on `java.io`/`java.nio.file`, unit tested)
