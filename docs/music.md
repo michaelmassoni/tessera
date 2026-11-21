@@ -43,7 +43,9 @@ a Media3 `MediaSessionService`.
   - Previous, play/pause and next; shuffle and repeat (off, all, one).
   - A queue sheet where you can jump to any track.
 - **Artwork:** the player uses artwork embedded in the file (Media3 reads it); the library uses
-  album thumbnails.
+  album thumbnails. Embedded art is decoded at the size shown (it is often thousands of pixels
+  across), and album thumbnails are kept in memory (16 MB), since lists show the same album many
+  times.
 - **Audio focus:** pauses for calls and ducks for navigation prompts (Media3 handles audio
   focus). Unplugging headphones pauses ("becoming noisy").
 - **Resuming:** the queue and position aren't restored after the process dies in v0.1.

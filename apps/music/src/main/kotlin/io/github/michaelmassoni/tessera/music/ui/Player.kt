@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.music.ui
 
-import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.util.LruCache
 import android.util.Size
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -64,6 +65,7 @@ import io.github.michaelmassoni.tessera.music.engine.formatDuration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.nio.ByteBuffer
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** Player commands. */
@@ -96,19 +98,35 @@ fun AlbumArt(
 ) {
     val context = LocalContext.current
     val px = with(LocalDensity.current) { size.roundToPx() }
-    val image by produceState<ImageBitmap?>(null, albumId, artwork, px) {
+    // Lists show the same album many times and scroll rows back in: thumbnails come from memory
+    // after the first decode.
+    val key = if (artwork == null && albumId > 0) "$albumId@$px" else null
+    val image by produceState(key?.let(ArtCache::get), albumId, artwork, px) {
+        value = key?.let(ArtCache::get)
+        if (value != null) return@produceState
         value =
             withContext(Dispatchers.IO) {
-                artwork?.let { bytes -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
-                    ?: if (albumId > 0) {
-                        try {
-                            context.contentResolver.loadThumbnail(MusicRepository.albumUri(albumId), Size(px, px), null).asImageBitmap()
-                        } catch (_: IOException) {
-                            null
-                        }
-                    } else {
+                if (artwork != null) {
+                    // Embedded art is often thousands of pixels across: decode it at the size shown.
+                    runCatching {
+                        ImageDecoder
+                            .decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(artwork))) { decoder, info, _ ->
+                                val scale = px.toFloat() / minOf(info.size.width, info.size.height)
+                                if (scale < 1f) decoder.setTargetSize((info.size.width * scale).toInt(), (info.size.height * scale).toInt())
+                            }.asImageBitmap()
+                    }.getOrNull()
+                } else if (albumId > 0) {
+                    try {
+                        context.contentResolver
+                            .loadThumbnail(MusicRepository.albumUri(albumId), Size(px, px), null)
+                            .asImageBitmap()
+                            .also { bitmap -> key?.let { ArtCache.put(it, bitmap) } }
+                    } catch (_: IOException) {
                         null
                     }
+                } else {
+                    null
+                }
             }
     }
     Box(
@@ -321,4 +339,12 @@ private fun SeekBar(
             Text("-" + formatDuration(state.durationMs - shown), style = MaterialTheme.typography.labelMedium)
         }
     }
+}
+
+/** Album thumbnails by album and size, up to about 16 MB. */
+private object ArtCache : LruCache<String, ImageBitmap>(16 * 1024 * 1024) {
+    override fun sizeOf(
+        key: String,
+        value: ImageBitmap,
+    ) = value.width * value.height * 4
 }
