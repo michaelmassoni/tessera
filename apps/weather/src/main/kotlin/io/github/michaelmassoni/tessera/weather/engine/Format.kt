@@ -112,6 +112,20 @@ object Timeline {
         return hours.drop(start).take(count)
     }
 
+    /**
+     * [primary]'s hours, with [extra]'s outside the span they cover (before the first and after
+     * the last): BOM forecasts three days hourly from now, Open-Meteo all day for ten.
+     */
+    fun merge(
+        primary: List<Hour>,
+        extra: List<Hour>,
+    ): List<Hour> {
+        if (primary.isEmpty()) return extra
+        val first = primary.first().time
+        val last = primary.last().time
+        return (extra.filter { it.time < first } + primary + extra.filter { it.time > last }).sortedBy { it.time }
+    }
+
     /** The hour we're in, for the details that only come hourly (UV, visibility, dew point). */
     fun currentHour(
         hours: List<Hour>,

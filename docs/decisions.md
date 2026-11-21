@@ -33,6 +33,11 @@ and its notes said Open-Meteo includes BOM's ACCESS-G model: that was wrong. Che
 Australian forecasts come from global models. BOM's app API is undocumented and Australia-only,
 hence the Open-Meteo fallback.
 
+**Amended 2026-11-21 (Weather 0.3):** for the day details, an Australian place also fetches
+Open-Meteo, whose hours fill only what BOM's three-day hourly forecast doesn't cover (BOM's own
+hours always win; the screen credits Open-Meteo for them). The maintainer asked for every day to
+open an hour-by-hour view, which BOM alone can only give for three days.
+
 **Status:** Accepted (maintainer, 2026-11-21).
 
 ## 2026-11-19: Messages is a full default SMS app (Accepted)

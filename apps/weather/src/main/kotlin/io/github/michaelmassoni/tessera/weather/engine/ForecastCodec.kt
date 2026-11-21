@@ -25,17 +25,20 @@ object ForecastCodec {
             ),
         )
 
+    /** [openMeteo], when fetched, fills the hours BOM's hourly forecast doesn't reach. */
     fun bom(
         location: String,
         daily: String,
         hourly: String,
         observations: String,
+        openMeteo: String? = null,
     ): String =
         json.encodeToString(
             Envelope.serializer(),
             Envelope(
                 ForecastSource.Bom,
-                mapOf("location" to location, "daily" to daily, "hourly" to hourly, "observations" to observations),
+                mapOf("location" to location, "daily" to daily, "hourly" to hourly, "observations" to observations) +
+                    listOfNotNull(openMeteo?.let { "openmeteo" to it }),
             ),
         )
 
@@ -44,8 +47,16 @@ object ForecastCodec {
             runCatching { json.decodeFromString(Envelope.serializer(), text) }.getOrNull() ?: return OpenMeteo.parseForecast(text)
         val b = envelope.bodies
         return when (envelope.source) {
-            ForecastSource.OpenMeteo -> OpenMeteo.parseForecast(b.getValue("forecast"))
-            ForecastSource.Bom -> Bom.parse(b.getValue("location"), b.getValue("daily"), b.getValue("hourly"), b.getValue("observations"))
+            ForecastSource.OpenMeteo -> {
+                OpenMeteo.parseForecast(b.getValue("forecast"))
+            }
+
+            ForecastSource.Bom -> {
+                val bom = Bom.parse(b.getValue("location"), b.getValue("daily"), b.getValue("hourly"), b.getValue("observations"))
+                val extra = b["openmeteo"]?.let { runCatching { OpenMeteo.parseForecast(it).hours }.getOrNull() }.orEmpty()
+                val hours = Timeline.merge(bom.hours, extra)
+                bom.copy(hours = hours, hoursFromOpenMeteo = hours.size > bom.hours.size)
+            }
         }
     }
 }

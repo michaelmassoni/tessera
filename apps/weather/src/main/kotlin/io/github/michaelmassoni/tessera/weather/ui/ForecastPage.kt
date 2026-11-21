@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.weather.ui
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -41,9 +42,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +59,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Day
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
 import io.github.michaelmassoni.tessera.weather.engine.ForecastSource
 import io.github.michaelmassoni.tessera.weather.engine.Hour
+import io.github.michaelmassoni.tessera.weather.engine.Metric
 import io.github.michaelmassoni.tessera.weather.engine.Ranges
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.engine.Units
@@ -63,6 +67,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Uv
 import io.github.michaelmassoni.tessera.weather.engine.Wind
 import io.github.michaelmassoni.tessera.weather.engine.WindUnit
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -78,6 +83,8 @@ fun ForecastPage(
     now: Long,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Opens a day's details on a measure (from a day, an hour or a tile). */
+    onDetail: (LocalDate, Metric) -> Unit = { _, _ -> },
 ) {
     val forecast = page.forecast
     if (forecast == null) {
@@ -102,9 +109,9 @@ fun ForecastPage(
         ) {
             item(key = "hero") { Hero(forecast, placeName, units) }
             forecast.summary?.let { summary -> item(key = "summary") { Summary(summary) } }
-            item(key = "hours") { Hours(Timeline.nextHours(forecast.hours, now), forecast.zone, units) }
-            item(key = "days") { Days(forecast, units) }
-            item(key = "details") { Details(forecast, units, now) }
+            item(key = "hours") { Hours(Timeline.nextHours(forecast.hours, now), forecast.zone, units, onDetail) }
+            item(key = "days") { Days(forecast, units, onDetail) }
+            item(key = "details") { Details(forecast, units, now, onDetail) }
             item(key = "footer") { Footer(page.fetchedAt, now, forecast) }
         }
     }
@@ -190,7 +197,7 @@ private fun Card(
 }
 
 @Composable
-private fun hourFormat(): DateTimeFormatter {
+internal fun hourFormat(): DateTimeFormatter {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
     return remember(locale) {
@@ -218,6 +225,7 @@ private fun Hours(
     hours: List<Hour>,
     zone: ZoneId,
     units: Units,
+    onDetail: (LocalDate, Metric) -> Unit,
 ) {
     val format = hourFormat()
     // Only make room for rain chances when some hour has one worth showing.
@@ -247,10 +255,14 @@ private fun Hours(
                         .widthIn(min = 56.dp)
                         .clip(MaterialTheme.shapes.large)
                         .background(if (first) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer)
+                        .clickable { onDetail(Instant.ofEpochMilli(hour.time).atZone(zone).toLocalDate(), Metric.Temperature) }
                         .padding(horizontal = 8.dp, vertical = 10.dp)
-                        .clearAndSetSemantics { contentDescription = description },
+                        .clearAndSetSemantics {
+                            contentDescription = description
+                            role = Role.Button
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     val onColor = if (first) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                     Text(label, style = MaterialTheme.typography.labelMedium, color = onColor, maxLines = 1)
@@ -260,18 +272,21 @@ private fun Hours(
                         tint = onColor,
                         modifier = Modifier.size(28.dp),
                     )
+                    // The chance of rain sits under the icon, so hours without one don't leave a gap
+                    // below the temperature.
+                    if (anyRain) {
+                        Text(
+                            if (rain != null) stringResource(R.string.percent, rain) else "",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 12.sp),
+                            color = if (first) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.height(12.dp),
+                        )
+                    }
                     Text(
                         temperature,
                         style = MaterialTheme.typography.titleMedium,
                         color = if (first) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                     )
-                    if (anyRain) {
-                        Text(
-                            if (rain != null) stringResource(R.string.percent, rain) else "",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
                 }
             }
         }
@@ -282,6 +297,7 @@ private fun Hours(
 private fun Days(
     forecast: Forecast,
     units: Units,
+    onDetail: (LocalDate, Metric) -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val bars = remember(forecast) { Ranges.bars(forecast.days) }
@@ -294,6 +310,7 @@ private fun Days(
                 bar = bars[i],
                 now = nowAt.takeIf { i == 0 },
                 units = units,
+                onClick = { onDetail(day.date, Metric.Temperature) },
             )
         }
     }
@@ -306,6 +323,7 @@ private fun DayRow(
     bar: io.github.michaelmassoni.tessera.weather.engine.RangeBar,
     now: Float?,
     units: Units,
+    onClick: () -> Unit,
 ) {
     val condition = stringResource(day.condition.label())
     val low = temp(day.low, units)
@@ -321,8 +339,12 @@ private fun DayRow(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
+            .clickable(onClick = onClick)
             .padding(horizontal = 20.dp)
-            .clearAndSetSemantics { contentDescription = description },
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(64.dp), maxLines = 1)
@@ -387,6 +409,8 @@ private fun RangeBarView(
 }
 
 private data class Tile(
+    /** What the tile opens in the day details. */
+    val metric: Metric,
     val icon: Int,
     val label: String,
     val value: String,
@@ -398,6 +422,7 @@ private fun Details(
     forecast: Forecast,
     units: Units,
     now: Long,
+    onDetail: (LocalDate, Metric) -> Unit,
 ) {
     val current = forecast.current
     val hour = Timeline.currentHour(forecast.hours, now)
@@ -418,6 +443,7 @@ private fun Details(
             hour?.uv?.let { uv ->
                 add(
                     Tile(
+                        Metric.Uv,
                         R.drawable.ic_sunny,
                         stringResource(R.string.detail_uv),
                         uv.roundToInt().toString(),
@@ -427,6 +453,7 @@ private fun Details(
             }
             add(
                 Tile(
+                    Metric.Wind,
                     R.drawable.ic_air,
                     stringResource(R.string.detail_wind),
                     stringResource(R.string.wind_value, Convert.wind(current.windSpeed, units.wind), windUnit),
@@ -440,6 +467,7 @@ private fun Details(
             )
             add(
                 Tile(
+                    Metric.Humidity,
                     R.drawable.ic_humidity_percentage,
                     stringResource(R.string.detail_humidity),
                     stringResource(R.string.percent, current.humidity),
@@ -448,6 +476,7 @@ private fun Details(
             )
             add(
                 Tile(
+                    Metric.FeelsLike,
                     R.drawable.ic_thermostat,
                     stringResource(R.string.detail_feels_like),
                     temp(current.feelsLike, units),
@@ -458,6 +487,7 @@ private fun Details(
                 val value = Convert.precipitation(mm, units.precipitation)
                 add(
                     Tile(
+                        Metric.Precipitation,
                         R.drawable.ic_water_drop,
                         stringResource(R.string.detail_precipitation),
                         stringResource(R.string.precipitation_value, formatNumber(value), stringResource(units.precipitation.short())),
@@ -468,6 +498,7 @@ private fun Details(
             if (current.pressure > 0) {
                 add(
                     Tile(
+                        Metric.Pressure,
                         R.drawable.ic_compress,
                         stringResource(R.string.detail_pressure),
                         stringResource(R.string.pressure_value, current.pressure.roundToInt()),
@@ -477,6 +508,7 @@ private fun Details(
             hour?.visibility?.let { metres ->
                 add(
                     Tile(
+                        Metric.Visibility,
                         R.drawable.ic_visibility,
                         stringResource(R.string.detail_visibility),
                         stringResource(
@@ -493,6 +525,7 @@ private fun Details(
                 if (now < today.sunset) {
                     add(
                         Tile(
+                            Metric.Temperature,
                             R.drawable.ic_wb_twilight,
                             stringResource(R.string.detail_sunset),
                             at(today.sunset),
@@ -502,6 +535,7 @@ private fun Details(
                 } else {
                     add(
                         Tile(
+                            Metric.Temperature,
                             R.drawable.ic_wb_twilight,
                             stringResource(R.string.detail_sunrise),
                             at(tomorrow?.sunrise ?: today.sunrise),
@@ -514,7 +548,13 @@ private fun Details(
     Column(Modifier.widthIn(max = ContentWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         tiles.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { TileView(it, Modifier.weight(1f)) }
+                row.forEach { tile ->
+                    TileView(
+                        tile,
+                        onClick = { onDetail(today?.date ?: LocalDate.now(forecast.zone), tile.metric) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -533,10 +573,12 @@ private fun formatNumber(value: Double): String =
 @Composable
 private fun TileView(
     tile: Tile,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier.heightIn(min = 128.dp).semantics(mergeDescendants = true) {},
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 128.dp).semantics(mergeDescendants = true) {},
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
