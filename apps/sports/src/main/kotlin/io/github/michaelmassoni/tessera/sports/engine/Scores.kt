@@ -28,7 +28,7 @@ object Scores {
     const val UPCOMING_DAYS = 7L
 
     /** How often live games refresh while visible, and while a Live Update is showing. */
-    const val LIVE_REFRESH_MS = 30_000L
+    const val LIVE_REFRESH_MS = 15_000L
 
     /** How often the rest refreshes while the app is open. */
     const val IDLE_REFRESH_MS = 5 * 60_000L

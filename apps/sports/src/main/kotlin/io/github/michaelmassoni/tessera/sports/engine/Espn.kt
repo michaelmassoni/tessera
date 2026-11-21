@@ -25,6 +25,9 @@ object Espn {
     private val json = Json { ignoreUnknownKeys = true }
     private val day = DateTimeFormatter.BASIC_ISO_DATE
 
+    /** ESPN's current day for [league] (its own idea of "today"): what's live now. */
+    fun currentScoreboardUrl(league: League) = "$SITE/${league.path}/scoreboard"
+
     /** One day's games (ESPN's day, which is US time for US leagues; it no longer takes ranges). */
     fun scoreboardUrl(
         league: League,
