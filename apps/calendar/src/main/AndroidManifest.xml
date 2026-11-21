@@ -139,6 +139,15 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/calendar_widget_date_info" />
         </receiver>
+        <!-- The month widget's settings: opened when it's added, and from its long-press menu. -->
+        <activity
+            android:name=".widget.MonthWidgetSettingsActivity"
+            android:excludeFromRecents="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <receiver
             android:name=".widget.CalendarWidgetTick"
             android:exported="false" />
