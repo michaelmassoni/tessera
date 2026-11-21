@@ -112,7 +112,14 @@ Three home screen widgets, built with Jetpack Glance. They use the launcher's wi
 - **Month** (4×4, resizable): looks like the app's month view: rounded day cells (today's
   tinted) with events as pills in their calendar's colour, multi-day events as one bar, laid out
   by the same `WeekLayout`. As many lanes as the size allows, then "+N". Tapping a day opens the
-  app on that day's sheet.
+  app on that day's sheet. The header has ‹ and › to move between months, today's date to come
+  back to this month, and + (all 40dp; the year shows for other years).
+
+  **Settings (0.5)**, shown when the widget is added and from its long-press menu (Settings): a
+  live preview of the widget, then Background (Solid, Tinted, Transparent), Opacity (0–100% in
+  steps of 10, of the background only), Theme (Follow app, Light, Dark) and Calendars (all visible
+  calendars, each can be left out). Each placed widget keeps its own settings and month in its
+  Glance state. Backing out of a new widget's settings cancels adding it.
 - **Date** (1×1, resizable): the weekday and date; from 140dp wide, the next event too.
 
 Without calendar access a widget says "Open Calendar to allow access to your calendars".

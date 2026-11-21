@@ -3,6 +3,8 @@ package io.github.michaelmassoni.tessera.calendar.widget
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
@@ -10,6 +12,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.Preferences
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -17,15 +20,19 @@ import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -40,6 +47,7 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
@@ -54,6 +62,8 @@ import io.github.michaelmassoni.tessera.calendar.engine.WeekPlan
 import io.github.michaelmassoni.tessera.calendar.engine.WidgetLanes
 import io.github.michaelmassoni.tessera.calendar.engine.WidgetPlan
 import io.github.michaelmassoni.tessera.calendar.ui.firstDayOfWeek
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.Locale
@@ -66,13 +76,15 @@ private fun WidgetSurface(
     open: Intent,
     modifier: GlanceModifier = GlanceModifier,
     padding: Dp = 12.dp,
+    /** The month widget passes its own (its settings choose it); others use the launcher's. */
+    background: ColorProvider? = null,
     content: @Composable () -> Unit,
 ) {
     Box(
         modifier
             .fillMaxSize()
             .cornerRadius(28.dp)
-            .background(GlanceTheme.colors.widgetBackground)
+            .background(background ?: GlanceTheme.colors.widgetBackground)
             .padding(padding)
             .clickable(actionStartActivity(open)),
     ) { content() }
@@ -274,8 +286,9 @@ class AgendaWidget : GlanceAppWidget() {
 }
 
 /**
- * This month as a grid, today highlighted. Tall cells list up to two events with a colour dot;
- * short ones show dots only. Tapping a day opens it in the app.
+ * A month as a grid, like the app's: rounded day cells and events as pills in their calendar's
+ * colour. The header's arrows move between months and today's date comes back; each placed widget
+ * has its own settings (background, opacity, theme, calendars; see [MonthWidgetSettingsActivity]).
  */
 class MonthWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
@@ -283,15 +296,47 @@ class MonthWidget : GlanceAppWidget() {
     // The picker draws the preview at this size (the default gives no size, so no room for pills).
     override val previewSizeMode = SizeMode.Responsive(setOf(DpSize(320.dp, 560.dp)))
 
+    /** A month's events, and what they were loaded for (to know when to load again). */
+    private data class Loaded(
+        val key: Triple<Int, Long, Set<Long>>,
+        val month: YearMonth,
+        val weeks: List<List<LocalDate>>,
+        val data: WidgetData,
+        val byDay: Map<LocalDate, List<Instance>>,
+    )
+
+    private fun load(
+        context: Context,
+        settings: MonthWidgetSettings,
+    ): Loaded {
+        val month = YearMonth.now().plusMonths(settings.offset.toLong())
+        val weeks = MonthGrid.weeks(month, firstDayOfWeek(Locale.getDefault()))
+        val data = CalendarWidgets.load(context, weeks.first().first(), weeks.last().last(), settings.hidden)
+        return Loaded(
+            Triple(settings.offset, settings.stamp, settings.hidden),
+            month,
+            weeks,
+            data,
+            DayLayout.byDay(data.instances, data.zone),
+        )
+    }
+
     override suspend fun provideGlance(
         context: Context,
         id: GlanceId,
     ) {
-        val month = YearMonth.now()
-        val weeks = MonthGrid.weeks(month, firstDayOfWeek(Locale.getDefault()))
-        val data = CalendarWidgets.load(context, weeks.first().first(), weeks.last().last())
-        val byDay = DayLayout.byDay(data.instances, data.zone)
-        provideContent { GlanceTheme { Content(context, month, weeks, data, byDay) } }
+        val first = load(context, MonthWidgetSettings.from(getAppWidgetState(context, PreferencesGlanceStateDefinition, id)))
+        provideContent {
+            // Arrow taps and refreshes change the state and recompose; the events reload when the
+            // month, the calendars or the refresh stamp change.
+            val settings = MonthWidgetSettings.from(currentState<Preferences>())
+            val loaded by produceState(first, settings.offset, settings.stamp, settings.hidden) {
+                if (value.key != Triple(settings.offset, settings.stamp, settings.hidden)) {
+                    value = withContext(Dispatchers.IO) { load(context, settings) }
+                }
+            }
+            Themed(context, settings) { background -> Content(context, loaded, settings, interactive = true, background = background) }
+        }
     }
 
     override suspend fun providePreview(
@@ -301,17 +346,37 @@ class MonthWidget : GlanceAppWidget() {
         val data = WidgetPreview.data(context)
         val month = YearMonth.from(data.today)
         val weeks = MonthGrid.weeks(month, firstDayOfWeek(Locale.getDefault()))
-        provideContent { GlanceTheme { Content(context, month, weeks, data, DayLayout.byDay(data.instances, data.zone)) } }
+        val loaded = Loaded(Triple(0, 0, emptySet()), month, weeks, data, DayLayout.byDay(data.instances, data.zone))
+        provideContent {
+            Themed(
+                context,
+                MonthWidgetSettings(),
+            ) { background -> Content(context, loaded, MonthWidgetSettings(), interactive = false, background = background) }
+        }
+    }
+
+    @Composable
+    private fun Themed(
+        context: Context,
+        settings: MonthWidgetSettings,
+        content: @Composable (ColorProvider) -> Unit,
+    ) {
+        val colors = settings.colors(context)
+        GlanceTheme(colors = colors.scheme) { content(colors.background) }
     }
 
     @Composable
     private fun Content(
         context: Context,
-        month: YearMonth,
-        weeks: List<List<LocalDate>>,
-        data: WidgetData,
-        byDay: Map<LocalDate, List<Instance>>,
+        loaded: Loaded,
+        settings: MonthWidgetSettings,
+        interactive: Boolean,
+        background: ColorProvider? = null,
     ) {
+        val month = loaded.month
+        val weeks = loaded.weeks
+        val data = loaded.data
+        val byDay = loaded.byDay
         val size = LocalSize.current
         val padding = 8.dp
         // Glance has no weighted spans, so bars get exact widths from the cell width.
@@ -319,20 +384,36 @@ class MonthWidget : GlanceAppWidget() {
         val rowHeight = (size.height - padding * 2 - HeaderHeight - WeekdayHeight) / weeks.size
         val room = ((rowHeight - NumberHeight - 4.dp) / LaneHeight).toInt().coerceAtLeast(0)
         // As many lanes as there's room for, and as Glance's 500-view limit allows (a busy month
-        // with many lanes goes over it). The rest of the widget takes about 20 views plus 16 per week.
-        val (lanes, plans) = WidgetLanes.fit(weeks, byDay, room, budget = VIEW_LIMIT - 30 - weeks.size * 16)
-        WidgetSurface(CalendarWidgets.openApp(context), padding = padding) {
+        // with many lanes goes over it). The rest of the widget takes about 40 views plus 16 per week.
+        val (lanes, plans) = WidgetLanes.fit(weeks, byDay, room, budget = VIEW_LIMIT - 40 - weeks.size * 16)
+        val today = data.today
+        val title = CalendarWidgets.pattern(if (month.year == today.year) "MMMM" else "MMMMy").format(month)
+        WidgetSurface(CalendarWidgets.openApp(context), padding = padding, background = background) {
             Column(GlanceModifier.fillMaxSize()) {
                 Row(
                     GlanceModifier.fillMaxWidth().height(HeaderHeight).padding(start = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        CalendarWidgets.pattern("MMMMy").format(month),
+                        title,
                         style = style(GlanceTheme.colors.onSurface, 18.sp, FontWeight.Medium),
+                        maxLines = 1,
                         modifier = GlanceModifier.defaultWeight(),
                     )
-                    AddButton(context, 32.dp)
+                    if (interactive) {
+                        HeaderButton(context.getString(R.string.previous_month), -1) { Arrow(DesignR.drawable.ic_chevron_left) }
+                        Spacer(GlanceModifier.width(4.dp))
+                        HeaderButton(context.getString(R.string.today), 0) {
+                            Text(
+                                today.dayOfMonth.toString(),
+                                style = style(GlanceTheme.colors.onSecondaryContainer, 14.sp, FontWeight.Medium, TextAlign.Center),
+                            )
+                        }
+                        Spacer(GlanceModifier.width(4.dp))
+                        HeaderButton(context.getString(R.string.next_month), 1) { Arrow(DesignR.drawable.ic_chevron_right) }
+                        Spacer(GlanceModifier.width(4.dp))
+                    }
+                    AddButton(context, 40.dp)
                 }
                 Row(GlanceModifier.fillMaxWidth().height(WeekdayHeight), verticalAlignment = Alignment.CenterVertically) {
                     weeks.first().forEach { day ->
@@ -348,11 +429,39 @@ class MonthWidget : GlanceAppWidget() {
                     Message(context.getString(R.string.widget_needs_access))
                 } else {
                     weeks.forEachIndexed { i, week ->
-                        WeekRow(context, week, month, data.today, plans[i], cellWidth, lanes, GlanceModifier.fillMaxWidth().defaultWeight())
+                        WeekRow(context, week, month, today, plans[i], cellWidth, lanes, GlanceModifier.fillMaxWidth().defaultWeight())
                     }
                 }
             }
         }
+    }
+
+    /** A 40 dp tonal button in the header that moves the month ([delta] 0 goes back to this month). */
+    @Composable
+    private fun HeaderButton(
+        label: String,
+        delta: Int,
+        content: @Composable () -> Unit,
+    ) {
+        Box(
+            GlanceModifier
+                .size(40.dp)
+                .cornerRadius(20.dp)
+                .background(GlanceTheme.colors.secondaryContainer)
+                .clickable(actionRunCallback<MonthNavigation>(actionParametersOf(MonthNavigation.Delta to delta)))
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) { content() }
+    }
+
+    @Composable
+    private fun Arrow(icon: Int) {
+        Image(
+            ImageProvider(icon),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSecondaryContainer),
+            modifier = GlanceModifier.size(22.dp),
+        )
     }
 
     /** Day cells underneath, and the week's events as pills on top (laid out as in the app). */
@@ -386,22 +495,25 @@ class MonthWidget : GlanceAppWidget() {
                                     is WidgetLanes.Segment.Pill -> {
                                         val event = segment.bar.instance
                                         // The box holds the margins, so neighbouring pills need no gap view.
+                                        // Glance draws text at the top of its view, so the pill wraps its
+                                        // text and the box centres it in the lane.
                                         Box(
                                             GlanceModifier
                                                 .width(cellWidth * segment.bar.span)
                                                 .fillMaxHeight()
-                                                .padding(start = PillMargin, end = PillMargin, bottom = 2.dp),
+                                                .padding(horizontal = PillMargin),
+                                            contentAlignment = Alignment.CenterStart,
                                         ) {
                                             Text(
                                                 event.title,
-                                                style = style(pillTextColor(event), 10.sp),
+                                                style = style(pillTextColor(event), 11.sp),
                                                 maxLines = 1,
                                                 modifier =
                                                     GlanceModifier
-                                                        .fillMaxSize()
-                                                        .cornerRadius(3.dp)
+                                                        .fillMaxWidth()
+                                                        .cornerRadius(4.dp)
                                                         .background(eventColor(event))
-                                                        .padding(horizontal = 3.dp),
+                                                        .padding(horizontal = 4.dp, vertical = 1.dp),
                                             )
                                         }
                                     }
@@ -409,7 +521,7 @@ class MonthWidget : GlanceAppWidget() {
                                     is WidgetLanes.Segment.More -> {
                                         Text(
                                             context.getString(R.string.more_events, segment.count),
-                                            style = style(GlanceTheme.colors.onSurfaceVariant, 10.sp, align = TextAlign.Center),
+                                            style = style(GlanceTheme.colors.onSurfaceVariant, 11.sp, align = TextAlign.Center),
                                             maxLines = 1,
                                             modifier = GlanceModifier.width(cellWidth),
                                         )
@@ -481,10 +593,10 @@ class MonthWidget : GlanceAppWidget() {
     }
 
     private companion object {
-        val HeaderHeight = 40.dp
+        val HeaderHeight = 48.dp
         val WeekdayHeight = 18.dp
         val NumberHeight = 20.dp
-        val LaneHeight = 14.dp
+        val LaneHeight = 18.dp
         val PillMargin = 1.5.dp
 
         /** Glance's limit on views in one widget, with a little room for its own. */
