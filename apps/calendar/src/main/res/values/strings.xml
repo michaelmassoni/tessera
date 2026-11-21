@@ -54,15 +54,15 @@
     <string name="discard">Discard</string>
     <string name="keep_editing">Keep editing</string>
 
-    <string name="field_title">Title</string>
+    <string name="hint_title">Add title</string>
+    <string name="hint_location">Add location</string>
+    <string name="hint_description">Add description</string>
     <string name="field_all_day">All day</string>
     <string name="field_starts">Starts</string>
     <string name="field_ends">Ends</string>
     <string name="field_calendar">Calendar</string>
     <string name="field_repeat">Repeat</string>
     <string name="field_reminders">Reminders</string>
-    <string name="field_location">Location</string>
-    <string name="field_description">Description</string>
     <string name="add_reminder">Add reminder</string>
     <string name="remove_reminder">Remove reminder</string>
     <string name="ok">OK</string>

@@ -4,18 +4,24 @@ import android.content.res.Resources
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,17 +32,17 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
@@ -57,7 +63,11 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.calendar.Detail
 import io.github.michaelmassoni.tessera.calendar.EditorState
@@ -190,7 +200,11 @@ fun calendarName(
         calendar.name.ifBlank { calendar.accountName }
     }
 
-/** The event editor. */
+/**
+ * The event editor: a large title, then rounded sections (when, calendar, reminders, details) of
+ * rows with icons, in the style of current Android apps. No outlined boxes: fields are borderless
+ * and rows open pickers or menus.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventEditor(
@@ -222,117 +236,229 @@ fun EventEditor(
         Box(Modifier.fillMaxSize().padding(padding).imePadding(), contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
-                    .widthIn(
-                        max = 640.dp,
-                    ).fillMaxWidth()
+                    .widthIn(max = 640.dp)
+                    .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedTextField(
+                PlainField(
                     value = draft.title,
                     onValueChange = { onChange(draft.copy(title = it)) },
-                    label = { Text(stringResource(R.string.field_title)) },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
+                    hint = stringResource(R.string.hint_title),
+                    textStyle = MaterialTheme.typography.headlineMedium,
+                    capitalize = true,
+                    singleLine = true,
+                    modifier = Modifier.padding(start = 40.dp),
                 )
                 if (!state.isNew && draft.rrule != null) {
                     Text(
                         stringResource(R.string.edit_series_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 56.dp, end = 16.dp),
                     )
                 }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .toggleable(value = draft.allDay, role = Role.Switch, onValueChange = { onChange(toggleAllDay(draft, it, zone)) })
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(stringResource(R.string.field_all_day), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Switch(checked = draft.allDay, onCheckedChange = null)
+
+                Section {
+                    EditorRow(
+                        icon = DesignR.drawable.ic_schedule,
+                        modifier =
+                            Modifier.toggleable(
+                                value = draft.allDay,
+                                role = Role.Switch,
+                                onValueChange = { onChange(toggleAllDay(draft, it, zone)) },
+                            ),
+                    ) {
+                        Text(
+                            stringResource(R.string.field_all_day),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(checked = draft.allDay, onCheckedChange = null)
+                    }
+                    DateTimeRow(stringResource(R.string.field_starts), draft.start, draft.allDay, zone) { newStart ->
+                        val length = draft.end - draft.start
+                        onChange(draft.copy(start = newStart, end = newStart + length))
+                    }
+                    DateTimeRow(
+                        stringResource(R.string.field_ends),
+                        if (draft.allDay) draft.end - DAY else draft.end,
+                        draft.allDay,
+                        zone,
+                    ) { newEnd ->
+                        val end = if (draft.allDay) newEnd + DAY else newEnd
+                        onChange(draft.copy(end = maxOf(end, draft.start + if (draft.allDay) DAY else 0)))
+                    }
+                    val repeat = Repeat.of(draft.rrule)
+                    val repeatLabels =
+                        listOf(
+                            R.string.repeat_none,
+                            R.string.repeat_daily,
+                            R.string.repeat_weekly,
+                            R.string.repeat_monthly,
+                            R.string.repeat_yearly,
+                        ).map { stringResource(it) }
+                    MenuRow(
+                        icon = DesignR.drawable.ic_repeat,
+                        label = stringResource(R.string.field_repeat),
+                        value = repeat?.let { repeatLabels[it.ordinal] } ?: describe(draft.rrule.orEmpty(), recurrenceWords(resources)),
+                        options = repeatLabels,
+                        onSelect = { onChange(draft.copy(rrule = Repeat.entries[it].rrule)) },
+                    )
                 }
-                DateTimeRow(stringResource(R.string.field_starts), draft.start, draft.allDay, zone) { newStart ->
-                    val length = draft.end - draft.start
-                    onChange(draft.copy(start = newStart, end = newStart + length))
+
+                val calendar = state.calendars.firstOrNull { it.id == draft.calendarId }
+                Section {
+                    MenuRow(
+                        icon = null,
+                        leading = {
+                            Box(
+                                Modifier
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(calendar?.let { Color(it.color).copy(alpha = 1f) } ?: MaterialTheme.colorScheme.primary),
+                            )
+                        },
+                        label = stringResource(R.string.field_calendar),
+                        value = calendar?.let { calendarName(it, resources) }.orEmpty(),
+                        options = state.calendars.map { calendarName(it, resources) },
+                        onSelect = { onChange(draft.copy(calendarId = state.calendars[it].id)) },
+                    )
                 }
-                DateTimeRow(
-                    stringResource(R.string.field_ends),
-                    if (draft.allDay) draft.end - DAY else draft.end,
-                    draft.allDay,
-                    zone,
-                ) { newEnd ->
-                    val end = if (draft.allDay) newEnd + DAY else newEnd
-                    onChange(draft.copy(end = maxOf(end, draft.start + if (draft.allDay) DAY else 0)))
-                }
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                Picker(
-                    label = stringResource(R.string.field_calendar),
-                    value =
-                        state.calendars
-                            .firstOrNull { it.id == draft.calendarId }
-                            ?.let { calendarName(it, resources) }
-                            .orEmpty(),
-                    options = state.calendars.map { calendarName(it, resources) },
-                    onSelect = { onChange(draft.copy(calendarId = state.calendars[it].id)) },
-                )
-                val repeat = Repeat.of(draft.rrule)
-                val repeatLabels =
-                    listOf(
-                        R.string.repeat_none,
-                        R.string.repeat_daily,
-                        R.string.repeat_weekly,
-                        R.string.repeat_monthly,
-                        R.string.repeat_yearly,
-                    ).map { stringResource(it) }
-                Picker(
-                    label = stringResource(R.string.field_repeat),
-                    value = repeat?.let { repeatLabels[it.ordinal] } ?: describe(draft.rrule.orEmpty(), recurrenceWords(resources)),
-                    options = repeatLabels,
-                    onSelect = { onChange(draft.copy(rrule = Repeat.entries[it].rrule)) },
-                )
-                Text(
-                    stringResource(R.string.field_reminders),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                draft.reminders.forEach { minutes ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(painterResource(DesignR.drawable.ic_notifications), contentDescription = null)
-                        Text(reminderLabel(minutes, resources), modifier = Modifier.weight(1f).padding(start = 16.dp))
-                        IconButton(onClick = { onChange(draft.copy(reminders = draft.reminders - minutes)) }) {
-                            Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.remove_reminder))
+
+                Section {
+                    draft.reminders.forEachIndexed { i, minutes ->
+                        EditorRow(icon = if (i == 0) DesignR.drawable.ic_notifications else null) {
+                            Text(
+                                reminderLabel(minutes, resources),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { onChange(draft.copy(reminders = draft.reminders - minutes)) }) {
+                                Icon(
+                                    painterResource(DesignR.drawable.ic_close),
+                                    contentDescription = stringResource(R.string.remove_reminder),
+                                )
+                            }
                         }
                     }
+                    val available = ReminderChoices.filter { it !in draft.reminders }
+                    if (available.isNotEmpty()) {
+                        MenuRow(
+                            icon = if (draft.reminders.isEmpty()) DesignR.drawable.ic_notifications else null,
+                            label = stringResource(R.string.field_reminders),
+                            value = stringResource(R.string.add_reminder),
+                            muted = true,
+                            options = available.map { reminderLabel(it, resources) },
+                            onSelect = { onChange(draft.copy(reminders = (draft.reminders + available[it]).sorted())) },
+                        )
+                    }
                 }
-                val available = ReminderChoices.filter { it !in draft.reminders }
-                if (available.isNotEmpty()) {
-                    Picker(
-                        label = null,
-                        value = stringResource(R.string.add_reminder),
-                        options = available.map { reminderLabel(it, resources) },
-                        onSelect = { onChange(draft.copy(reminders = (draft.reminders + available[it]).sorted())) },
-                    )
+
+                Section {
+                    EditorRow(icon = DesignR.drawable.ic_location_on, iconWidth = 24.dp) {
+                        PlainField(
+                            value = draft.location,
+                            onValueChange = { onChange(draft.copy(location = it)) },
+                            hint = stringResource(R.string.hint_location),
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    EditorRow(icon = DesignR.drawable.ic_notes, alignTop = true, iconWidth = 24.dp) {
+                        PlainField(
+                            value = draft.description,
+                            onValueChange = { onChange(draft.copy(description = it)) },
+                            hint = stringResource(R.string.hint_description),
+                            capitalize = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                OutlinedTextField(
-                    value = draft.location,
-                    onValueChange = { onChange(draft.copy(location = it)) },
-                    label = { Text(stringResource(R.string.field_location)) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = draft.description,
-                    onValueChange = { onChange(draft.copy(description = it)) },
-                    label = { Text(stringResource(R.string.field_description)) },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         }
     }
+}
+
+/** A group of rows on a tonal, well-rounded surface. */
+@Composable
+private fun Section(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(vertical = 4.dp),
+        content = content,
+    )
+}
+
+/** A row in a section: an icon column (blank when [icon] is null, so rows line up), then content. */
+@Composable
+private fun EditorRow(
+    icon: Int?,
+    modifier: Modifier = Modifier,
+    alignTop: Boolean = false,
+    leading: (@Composable () -> Unit)? = null,
+    /** 40dp lines text up; a text field pads its own text by 16dp, so its row uses 24dp. */
+    iconWidth: Dp = 40.dp,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = if (alignTop) Alignment.Top else Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.width(iconWidth).then(if (alignTop) Modifier.padding(top = 16.dp) else Modifier),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            when {
+                leading != null -> leading()
+                icon != null -> Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        content()
+    }
+}
+
+/** A text field without a box or underline; [hint] shows (and is read by TalkBack) when it's empty. */
+@Composable
+private fun PlainField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    hint: String,
+    modifier: Modifier = Modifier,
+    textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
+    capitalize: Boolean = false,
+    singleLine: Boolean = false,
+) {
+    val clear = Color.Transparent
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(hint, style = textStyle) },
+        textStyle = textStyle,
+        singleLine = singleLine,
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = if (capitalize) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
+            ),
+        colors =
+            TextFieldDefaults.colors(
+                focusedContainerColor = clear,
+                unfocusedContainerColor = clear,
+                disabledContainerColor = clear,
+                focusedIndicatorColor = clear,
+                unfocusedIndicatorColor = clear,
+                disabledIndicatorColor = clear,
+            ),
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 private const val DAY = 86_400_000L
@@ -369,7 +495,7 @@ private fun toggleAllDay(
     }
 }
 
-/** A label with a date button and (for timed events) a time button. */
+/** A date (and, for timed events, a time) on one row; each opens its picker. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateTimeRow(
@@ -380,25 +506,40 @@ private fun DateTimeRow(
     onChange: (Long) -> Unit,
 ) {
     val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
     val z: ZoneId = if (allDay) ZoneOffset.UTC else zone
     val dateTime = Instant.ofEpochMilli(millis).atZone(z)
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        TextButton(onClick = { pickDate = true }) {
-            val locale = LocalConfiguration.current.locales[0]
-            Text(
-                dateTime.toLocalDate().format(
-                    java.time.format.DateTimeFormatter
-                        .ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEMMMdyyyy"), locale),
-                ),
-            )
-        }
+    val date =
+        dateTime.toLocalDate().format(
+            java.time.format.DateTimeFormatter
+                .ofPattern(DateFormat.getBestDateTimePattern(locale, "EEEMMMdyyyy"), locale),
+        )
+    val time = DateUtils.formatDateTime(context, millis, DateUtils.FORMAT_SHOW_TIME)
+    EditorRow(icon = null) {
+        Text(
+            date,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClickLabel = label) { pickDate = true }
+                    .semantics { contentDescription = "$label, $date" }
+                    .padding(vertical = 14.dp),
+        )
         if (!allDay) {
-            TextButton(onClick = { pickTime = true }) {
-                Text(DateUtils.formatDateTime(context, millis, DateUtils.FORMAT_SHOW_TIME))
-            }
+            Text(
+                time,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier =
+                    Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(onClickLabel = label) { pickTime = true }
+                        .semantics { contentDescription = "$label, $time" }
+                        .padding(horizontal = 8.dp, vertical = 14.dp),
+            )
         }
     }
     if (pickDate) {
@@ -447,29 +588,40 @@ private fun DateTimeRow(
     }
 }
 
-/** A label and a value that opens a menu of [options]. */
+/** A row showing [value] that opens a menu of [options]. [label] is for TalkBack. */
 @Composable
-private fun Picker(
+private fun MenuRow(
+    icon: Int?,
     label: String?,
     value: String,
     options: List<String>,
     onSelect: (Int) -> Unit,
+    muted: Boolean = false,
+    leading: (@Composable () -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (label != null) Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Box {
-            TextButton(onClick = { open = true }) {
-                Text(value)
-                Icon(painterResource(DesignR.drawable.ic_expand_more), contentDescription = null)
-            }
-            DropdownMenu(open, onDismissRequest = { open = false }) {
-                options.forEachIndexed { i, option ->
-                    DropdownMenuItem(text = { Text(option) }, onClick = {
-                        open = false
-                        onSelect(i)
-                    })
-                }
+    Box {
+        EditorRow(
+            icon = icon,
+            leading = leading,
+            modifier =
+                Modifier
+                    .clickable(onClickLabel = label) { open = true }
+                    .semantics { if (label != null) contentDescription = "$label, $value" },
+        ) {
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (muted) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            options.forEachIndexed { i, option ->
+                DropdownMenuItem(text = { Text(option) }, onClick = {
+                    open = false
+                    onSelect(i)
+                })
             }
         }
     }

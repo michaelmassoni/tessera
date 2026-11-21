@@ -73,21 +73,10 @@ fun MonthGrid(
     byDay: Map<LocalDate, List<Instance>>,
     onSelect: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    showWeekdays: Boolean = true,
 ) {
-    val locale = LocalConfiguration.current.locales[0]
     Column(modifier) {
-        Row(Modifier.fillMaxWidth()) {
-            weeks.firstOrNull()?.forEach { day ->
-                Text(
-                    day.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f).padding(vertical = 6.dp).clearAndSetSemantics { },
-                )
-            }
-        }
+        if (showWeekdays) weeks.firstOrNull()?.let { WeekdayHeader(it) }
         weeks.forEach { week ->
             WeekRow(week, month, today, selected, byDay, onSelect, Modifier.fillMaxWidth().weight(1f))
         }
@@ -418,3 +407,24 @@ fun firstDayOfWeek(locale: java.util.Locale): DayOfWeek =
             .firstDayOfWeek
             .let { if (it == java.util.Calendar.SUNDAY) 7 else it - 1 },
     )
+
+/** The weekday names over the grid ("Mon", "Tue"…), in the order of [week]. */
+@Composable
+fun WeekdayHeader(
+    week: List<LocalDate>,
+    modifier: Modifier = Modifier,
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    Row(modifier.fillMaxWidth()) {
+        week.forEach { day ->
+            Text(
+                day.dayOfWeek.getDisplayName(TextStyle.SHORT, locale),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.weight(1f).padding(vertical = 6.dp).clearAndSetSemantics { },
+            )
+        }
+    }
+}
