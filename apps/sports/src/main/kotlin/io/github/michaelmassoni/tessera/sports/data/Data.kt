@@ -40,6 +40,9 @@ interface ScoreSource {
     suspend fun standings(league: League): List<StandingsGroup>
 
     suspend fun detail(game: Game): GameDetail?
+
+    /** What's on now in [league]: one small request, for refreshing live games. */
+    suspend fun current(league: League): List<Game> = day(league, LocalDate.now())
 }
 
 class EspnSource : ScoreSource {
@@ -61,6 +64,9 @@ class EspnSource : ScoreSource {
         league: League,
         date: LocalDate,
     ) = withContext(Dispatchers.Default) { Espn.parseScoreboard(league, get(Espn.scoreboardUrl(league, date))) }
+
+    override suspend fun current(league: League) =
+        withContext(Dispatchers.Default) { Espn.parseScoreboard(league, get(Espn.currentScoreboardUrl(league))) }
 
     override suspend fun schedule(team: Team) =
         withContext(Dispatchers.Default) { Espn.parseSchedule(League.byId(team.league)!!, get(Espn.scheduleUrl(team))) }

@@ -68,6 +68,17 @@
     <!-- Live Updates -->
     <string name="channel_live">Live games</string>
     <string name="settings_live">Live Updates</string>
-    <string name="settings_live_summary">While your team plays, the score in a notification, updated about every minute</string>
-    <string name="live_title">%1$s %2$s – %3$s %4$s</string>
+    <string name="settings_live_summary">While your team plays, the score in a notification, updated about every 15 seconds</string>
+    <!-- Live Update: each team beside its own score, away first: "Rockets 115 · Nuggets 117" -->
+    <string name="live_title">%1$s %2$s · %3$s %4$s</string>
+    <!-- "4th 3:20 · Nuggets by 2" -->
+    <string name="live_text">%1$s · %2$s</string>
+    <string name="live_leads">%1$s by %2$d</string>
+    <string name="live_tied">Tied</string>
+    <string name="live_won">%1$s win</string>
+    <string name="live_drawn">Draw</string>
+    <!-- The status bar chip: your team and its margin, "DEN +2" -->
+    <string name="live_chip_ahead">%1$s +%2$d</string>
+    <string name="live_chip_behind">%1$s −%2$d</string>
+    <string name="live_chip_level">%1$s =</string>
 </resources>
