@@ -66,7 +66,7 @@ section).
 | Week and day views | **P1** | Only month and schedule views exist. |
 | Edit or delete one instance of a repeating event | **P1** | Today a change applies to the whole series, which surprises people. |
 | Search events | P2 | |
-| Widget (agenda or month) | P2 | |
+| ~~Widget (agenda or month)~~ | Done in Calendar 0.2 | Agenda, month and date widgets, with picker previews. |
 | Time zone picker, event colours | P3 | |
 | Export ICS, attendees | P3 | |
 
@@ -140,7 +140,7 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Home screen widgets | **P1** | No app has one. The ones people expect: Clock (time and next alarm), Calendar (agenda), Notes (a note, and quick add), Music (now playing). Jetpack Glance is open source and Compose-based. |
+| Home screen widgets | **P1** | Calendar has agenda, month and date widgets (0.2); no other app has one yet. The ones people expect: Clock (time and next alarm), Calendar (agenda), Notes (a note, and quick add), Music (now playing). Jetpack Glance is open source and Compose-based. |
 | Launcher shortcuts (long-press the icon) | P2 | Only Messages and Notes have them. Clock: New alarm, Timer, Stopwatch. Calendar: New event. Contacts: New contact. Phone: favourites. |
 | Quick Settings tiles | P3 | Clock: start the stopwatch or a timer. Notes: new note. Calculator: open it. |
 
