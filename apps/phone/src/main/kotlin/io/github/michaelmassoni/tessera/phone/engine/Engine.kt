@@ -58,6 +58,8 @@ data class CallEntry(
 data class CallGroup(
     val latest: CallEntry,
     val count: Int,
+    /** Every call in the group, newest first. */
+    val ids: List<Long> = listOf(latest.id),
 )
 
 object CallLogGrouping {
@@ -79,7 +81,7 @@ object CallLogGrouping {
                     if (last != null && digits(last.latest.number) == digits(call.number) &&
                         (last.latest.type == CallType.Missed) == (call.type == CallType.Missed)
                     ) {
-                        groups[groups.lastIndex] = last.copy(count = last.count + 1)
+                        groups[groups.lastIndex] = last.copy(count = last.count + 1, ids = last.ids + call.id)
                     } else {
                         groups += CallGroup(call, 1)
                     }

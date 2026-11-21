@@ -1,7 +1,9 @@
 package io.github.michaelmassoni.tessera.phone.data
 
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.net.Uri
+import android.provider.BlockedNumberContract
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Phone
@@ -101,6 +103,40 @@ class PhoneRepository(
                 }
             }
         return list
+    }
+
+    /** Blocked numbers (only readable by the default phone or SMS app). */
+    fun blockedNumbers(): List<String> {
+        val list = mutableListOf<String>()
+        resolver
+            .query(
+                BlockedNumberContract.BlockedNumbers.CONTENT_URI,
+                arrayOf(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER),
+                null,
+                null,
+                null,
+            )?.use { c -> while (c.moveToNext()) c.getString(0)?.let(list::add) }
+        return list
+    }
+
+    fun block(number: String) {
+        resolver.insert(
+            BlockedNumberContract.BlockedNumbers.CONTENT_URI,
+            ContentValues().apply { put(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER, number) },
+        )
+    }
+
+    /** Removes calls from the call log (needs WRITE_CALL_LOG). */
+    fun deleteCalls(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        resolver.delete(
+            CallLog.Calls.CONTENT_URI,
+            "${CallLog.Calls._ID} IN (${ids.joinToString(",") { "?" }})",
+            ids
+                .map {
+                    it.toString()
+                }.toTypedArray(),
+        )
     }
 
     /** The contact name for [number], if any (used for incoming calls). */

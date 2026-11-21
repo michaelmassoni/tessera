@@ -24,6 +24,12 @@ private object NoPhoneActions : PhoneActions {
 
     override fun viewContact(contact: ContactNumber) = Unit
 
+    override fun delete(ids: List<Long>) = Unit
+
+    override fun block(number: String) = Unit
+
+    override fun unblock(number: String) = Unit
+
     override fun makeDefault() = Unit
 
     override fun grant() = Unit
@@ -75,7 +81,16 @@ private fun RecentsPreview() {
 private fun RecentOptionsPreview() {
     TesseraTheme(dynamicColor = false) {
         Surface {
-            RecentOptions(recents[0].second[1].latest, contact = null, actions = NoPhoneActions, onEdit = {}, done = {})
+            RecentOptions(
+                recents[0].second[1],
+                contact = null,
+                actions = NoPhoneActions,
+                blocked = false,
+                onEdit = {},
+                onHistory = {},
+                onBlock = {},
+                done = {},
+            )
         }
     }
 }
@@ -95,5 +110,15 @@ private val numbers =
 private fun ContactsPreview() {
     TesseraTheme(dynamicColor = false) {
         PhoneApp(PhoneState(loaded = true, numbers = numbers, isDefault = true), NoPhoneActions, initialTab = 2)
+    }
+}
+
+// A contact's call history: header, quick actions and every call, in both themes.
+@TesseraPreviews
+@Composable
+private fun CallHistoryPreview() {
+    TesseraTheme(dynamicColor = false) {
+        val calls = recents.flatMap { (_, groups) -> groups.map { it.latest } }
+        CallHistory("+61412345678", PhoneState(loaded = true, calls = calls, numbers = numbers), NoPhoneActions, onBack = {})
     }
 }
