@@ -59,3 +59,76 @@ fun describe(
         else -> words.custom
     }
 }
+
+/** Which events a change to one occurrence of a repeating event applies to. */
+enum class Scope { This, Following, All }
+
+/**
+ * Splitting a repeating event at one occurrence, for "this and following events": the old series
+ * ends just before it and a new series starts with it.
+ */
+object SeriesSplit {
+    private val UTC_STAMP =
+        java.time.format.DateTimeFormatter
+            .ofPattern("yyyyMMdd'T'HHmmss'Z'")
+            .withZone(java.time.ZoneOffset.UTC)
+    private val DATE = java.time.format.DateTimeFormatter.BASIC_ISO_DATE
+
+    /**
+     * The old series' rule, ending before the occurrence at [instanceBegin] (epoch ms): UNTIL is the
+     * second before it (the day before, for all-day events), and COUNT is dropped.
+     */
+    fun endBefore(
+        rrule: String,
+        instanceBegin: Long,
+        allDay: Boolean,
+    ): String {
+        val parts = LinkedHashMap(parse(rrule))
+        parts.remove("COUNT")
+        parts["UNTIL"] =
+            if (allDay) {
+                java.time.Instant
+                    .ofEpochMilli(instanceBegin)
+                    .atZone(java.time.ZoneOffset.UTC)
+                    .toLocalDate()
+                    .minusDays(1)
+                    .format(DATE)
+            } else {
+                UTC_STAMP.format(java.time.Instant.ofEpochMilli(instanceBegin - 1000))
+            }
+        return format(parts)
+    }
+
+    /**
+     * The new series' rule. A COUNT carries on with what's left after the [before] occurrences that
+     * stay in the old series; an UNTIL stays as it was.
+     */
+    fun continueFrom(
+        rrule: String,
+        before: Int,
+    ): String {
+        val parts = LinkedHashMap(parse(rrule))
+        parts["COUNT"]?.toIntOrNull()?.let { count -> parts["COUNT"] = (count - before).coerceAtLeast(1).toString() }
+        return format(parts)
+    }
+
+    /**
+     * [exdate] with the occurrence at [instanceBegin] added, as a UTC stamp ("20261125T030000Z"),
+     * which is how the provider stores EXDATE and matches it against occurrences.
+     */
+    fun exclude(
+        exdate: String?,
+        instanceBegin: Long,
+    ): String {
+        val stamp = UTC_STAMP.format(java.time.Instant.ofEpochMilli(instanceBegin))
+        return (
+            exdate
+                .orEmpty()
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() } + stamp
+        ).distinct().joinToString(",")
+    }
+
+    private fun format(parts: Map<String, String>) = parts.entries.joinToString(";") { "${it.key}=${it.value}" }
+}

@@ -46,9 +46,21 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
   - Months are pages: the grid follows a swipe and settles on the next or previous month, and
     the arrows and "Today" animate the same way. The weekday names stay put. Events for the
     months either side are loaded too, so a page arrives with its pills.
+- **Week and day:** a time grid (an hour is 56dp) with the hours down the side, the days (7, or
+  1) across the top with today circled, and a strip above the grid for all-day events and timed
+  events that cover the whole day (two per day in the week, then "+N"). Timed events are blocks
+  in their calendar's colour from start to end (at least 20 minutes tall, so short ones stay
+  tappable), clipped at midnight. Overlapping events share the width side by side, as many
+  columns as the busiest moment of their cluster needs (`Timeline`, unit tested). A line marks
+  the current time on today. The grid opens an hour before now.
+  - Weeks and days are pages like months: swipe, or the arrows, for the next or previous one;
+    Today jumps back. The week starts on the locale's first day.
+  - Tapping an event opens it; tapping an empty slot starts a new event at that half hour.
+    Tapping a day's heading in the week opens that day.
 - **Schedule:** a scrolling list of upcoming events grouped by day, starting today, loading more
   as you scroll.
-- **Picking a view:** chosen with a segmented button in the top bar; the choice is remembered.
+- **Picking a view:** an icon in the top bar shows the current view and opens Month, Week, Day
+  and Schedule. The choice is remembered.
 
 ## Events
 
@@ -60,8 +72,20 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
   Laid out as current Android apps do: a large borderless title ("Add title"), then rounded
   tonal sections of rows with icons (when and repeat; calendar, with its colour; reminders;
   location and description as borderless fields). Rows open pickers or menus; no outlined boxes.
-- **Repeating events:** editing or deleting one changes the whole series in v0.1. The dialog
-  says so.
+- **Repeating events:** Edit and Delete first ask "This event", "This and following events" or
+  "All events".
+  - **This event:** the series leaves that occurrence out (an `EXDATE`) and, when editing, a
+    one-off event with the changes takes its place. The editor opens at the occurrence's own
+    time and hides Repeat.
+  - **This and following:** the series ends the second before the occurrence (`UNTIL`; a
+    `COUNT` is dropped) and, when editing, a new series starts there with the changes, keeping
+    what's left of a `COUNT` (`SeriesSplit`, unit tested). From the first occurrence it's the
+    whole series.
+  - **All events:** the series itself.
+  - Exception rows (`CONTENT_EXCEPTION_URI`) aren't used: on a local calendar the provider then
+    stops showing the series' other occurrences (seen on API 37). For the same reason every
+    save of a repeating event writes its start, duration, rule, time zone and exclusions
+    together; the provider doesn't re-expand it otherwise.
 - **Creating:** the FAB creates an event on the selected day, starting at the next whole hour.
   `ACTION_INSERT` from other apps (`Events.CONTENT_URI`, with `CalendarContract` extras)
   pre-fills the editor.
@@ -146,7 +170,6 @@ published once per app version.
 
 ## Out of scope for v0.1
 
-- Week and day timeline views.
 - Editing a single instance of a repeating event.
 - Attendees and invitations.
 - Event colours.

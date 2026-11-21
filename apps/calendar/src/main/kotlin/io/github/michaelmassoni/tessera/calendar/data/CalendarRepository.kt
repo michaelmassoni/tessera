@@ -12,6 +12,8 @@ import android.provider.CalendarContract.Reminders
 import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
+import io.github.michaelmassoni.tessera.calendar.engine.Scope
+import io.github.michaelmassoni.tessera.calendar.engine.SeriesSplit
 
 /** Reads and writes the system calendar database. Blocking: call off the main thread. */
 class CalendarRepository(
@@ -166,6 +168,7 @@ class CalendarRepository(
                         Events.EVENT_LOCATION,
                         Events.DESCRIPTION,
                         Events.RRULE,
+                        Events.EXDATE,
                     ),
                     null,
                     null,
@@ -185,6 +188,7 @@ class CalendarRepository(
                         location = c.getString(7).orEmpty(),
                         description = c.getString(8).orEmpty(),
                         rrule = c.getString(9),
+                        exdate = c.getString(10),
                     )
                 } ?: return null
         val reminders = mutableListOf<Int>()
@@ -208,12 +212,16 @@ class CalendarRepository(
                 put(Events.RRULE, draft.rrule)
                 put(Events.HAS_ALARM, if (draft.reminders.isEmpty()) 0 else 1)
                 // Repeating events store a duration instead of an end time.
+                // The provider only re-expands a repeating event when its times, rule and exclusions
+                // are updated together, so they always are.
                 if (draft.rrule != null) {
+                    put(Events.EXDATE, draft.exdate)
                     putNull(Events.DTEND)
                     put(Events.DURATION, rfcDuration(draft.end - draft.start, draft.allDay))
                 } else {
                     put(Events.DTEND, draft.end)
                     putNull(Events.DURATION)
+                    putNull(Events.EXDATE)
                 }
             }
         val id =
@@ -235,6 +243,52 @@ class CalendarRepository(
             )
         }
         return id
+    }
+
+    /**
+     * Leaves the occurrence at [instanceBegin] out of [series] (an EXDATE). Used to delete one
+     * occurrence, and, with a separate event in its place, to change one. Exception rows
+     * (CONTENT_EXCEPTION_URI) aren't used: on a local calendar the provider then stops showing the
+     * series' other occurrences.
+     */
+    fun excludeOccurrence(
+        series: EventDraft,
+        instanceBegin: Long,
+    ) {
+        save(series.copy(exdate = SeriesSplit.exclude(series.exdate, instanceBegin)))
+    }
+
+    /** How many occurrences of [seriesId] begin before [instanceBegin]. */
+    fun occurrencesBefore(
+        seriesId: Long,
+        seriesStart: Long,
+        instanceBegin: Long,
+    ): Int {
+        if (instanceBegin <= seriesStart) return 0
+        val uri =
+            Instances.CONTENT_URI
+                .buildUpon()
+                .also {
+                    ContentUris.appendId(it, seriesStart)
+                    ContentUris.appendId(it, instanceBegin - 1)
+                }.build()
+        return resolver
+            .query(
+                uri,
+                arrayOf(Instances.BEGIN),
+                "${Instances.EVENT_ID} = ? AND ${Instances.BEGIN} < ?",
+                arrayOf(seriesId.toString(), instanceBegin.toString()),
+                null,
+            )?.use { it.count } ?: 0
+    }
+
+    /** Ends [series] before the occurrence at [instanceBegin] (for "this and following"). */
+    fun endSeriesBefore(
+        series: EventDraft,
+        instanceBegin: Long,
+    ) {
+        val rrule = series.rrule ?: return
+        save(series.copy(rrule = SeriesSplit.endBefore(rrule, instanceBegin, series.allDay)))
     }
 
     fun delete(id: Long) {

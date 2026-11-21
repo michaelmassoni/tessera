@@ -8,6 +8,8 @@ import io.github.michaelmassoni.tessera.calendar.engine.DayLayout
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
+import io.github.michaelmassoni.tessera.calendar.engine.Scope
+import io.github.michaelmassoni.tessera.calendar.engine.SeriesSplit
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -25,7 +27,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 
-enum class ViewMode { Month, Schedule }
+enum class ViewMode { Month, Week, Day, Schedule }
 
 data class CalendarState(
     val loaded: Boolean = false,
@@ -53,8 +55,13 @@ data class EditorState(
     val original: EventDraft,
     val draft: EventDraft,
     val calendars: List<CalendarInfo>,
+    /** For one occurrence of a repeating event: which events the change applies to. */
+    val scope: Scope = Scope.All,
+    /** The repeating event and the occurrence being edited, when [scope] isn't [Scope.All]. */
+    val series: EventDraft? = null,
+    val instanceBegin: Long = 0,
 ) {
-    val isNew: Boolean get() = draft.id == null
+    val isNew: Boolean get() = draft.id == null && scope != Scope.This
     val changed: Boolean get() = draft != original
 }
 
@@ -234,11 +241,27 @@ class CalendarViewModel(
         _detail.value = null
     }
 
-    fun delete() {
+    /**
+     * Deletes the open event. For a repeating event, [scope] says whether that's just this
+     * occurrence, this and the ones after it, or the whole series.
+     */
+    fun delete(scope: Scope = Scope.All) {
         val d = _detail.value ?: return
         _detail.value = null
         viewModelScope.launch {
-            val ok = withContext(io) { runCatching { repository.delete(d.event.id ?: return@runCatching) }.isSuccess }
+            val ok =
+                withContext(io) {
+                    runCatching {
+                        val id = d.event.id ?: return@runCatching
+                        val begin = d.instance.begin
+                        when {
+                            d.event.rrule == null || scope == Scope.All -> repository.delete(id)
+                            scope == Scope.This -> repository.excludeOccurrence(d.event, begin)
+                            begin <= d.event.start -> repository.delete(id)
+                            else -> repository.endSeriesBefore(d.event, begin)
+                        }
+                    }.isSuccess
+                }
             eventChannel.trySend(if (ok) CalendarEvent.Deleted else CalendarEvent.Failed)
             refresh()
         }
@@ -286,10 +309,31 @@ class CalendarViewModel(
         _editor.value = EditorState(draft, draft, writable)
     }
 
-    fun edit() {
+    /**
+     * Edits the open event. For a repeating event, [scope] picks this occurrence (edited at its own
+     * time, without repeat), this and the following ones (starting at this occurrence), or all.
+     */
+    fun edit(scope: Scope = Scope.All) {
         val d = _detail.value ?: return
         _detail.value = null
-        _editor.value = EditorState(d.event, d.event, _state.value.calendars.filter { it.writable })
+        val writable = _state.value.calendars.filter { it.writable }
+        val series = d.event
+        val atInstance = series.copy(start = d.instance.begin, end = d.instance.begin + (series.end - series.start))
+        _editor.value =
+            when {
+                series.rrule == null || scope == Scope.All -> {
+                    EditorState(series, series, writable)
+                }
+
+                scope == Scope.This -> {
+                    val one = atInstance.copy(rrule = null)
+                    EditorState(one, one, writable, Scope.This, series, d.instance.begin)
+                }
+
+                else -> {
+                    EditorState(atInstance, atInstance, writable, Scope.Following, series, d.instance.begin)
+                }
+            }
     }
 
     fun update(draft: EventDraft) = _editor.update { it?.copy(draft = draft) }
@@ -302,9 +346,38 @@ class CalendarViewModel(
         val e = _editor.value ?: return
         _editor.value = null
         viewModelScope.launch {
-            val ok = withContext(io) { runCatching { repository.save(e.draft) }.isSuccess }
+            val ok = withContext(io) { runCatching { saveScoped(e) }.isSuccess }
             eventChannel.trySend(if (ok) CalendarEvent.Saved else CalendarEvent.Failed)
             refresh()
+        }
+    }
+
+    /** Saves the editor's draft for its scope. Runs on [io]. */
+    private fun saveScoped(e: EditorState) {
+        val series = e.series
+        val seriesId = series?.id
+        when {
+            series == null || seriesId == null || e.scope == Scope.All -> {
+                repository.save(e.draft)
+            }
+
+            // The series leaves this occurrence out and a one-off event takes its place.
+            e.scope == Scope.This -> {
+                repository.excludeOccurrence(series, e.instanceBegin)
+                repository.save(e.draft.copy(id = null, rrule = null, exdate = null))
+            }
+
+            // "This and following" from the first occurrence is the whole series, moved.
+            e.instanceBegin <= series.start -> {
+                repository.save(e.draft.copy(id = seriesId))
+            }
+
+            else -> {
+                val before = repository.occurrencesBefore(seriesId, series.start, e.instanceBegin)
+                repository.endSeriesBefore(series, e.instanceBegin)
+                val rule = e.draft.rrule?.let { if (it == series.rrule) SeriesSplit.continueFrom(it, before) else it }
+                repository.save(e.draft.copy(id = null, rrule = rule, exdate = null))
+            }
         }
     }
 

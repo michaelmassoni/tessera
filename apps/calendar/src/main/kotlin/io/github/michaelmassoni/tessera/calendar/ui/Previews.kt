@@ -9,11 +9,13 @@ import io.github.michaelmassoni.tessera.calendar.engine.DayLayout
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
+import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import kotlinx.coroutines.flow.emptyFlow
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneOffset
 
@@ -64,6 +66,7 @@ private val instances =
         at(3, 9, title = "Dentist"),
         at(10, 18, title = "Book club", color = green),
         at(19, 9, 30, "Standup"),
+        at(19, 14, 90, "Planning", color = purple),
         at(19, 12, title = "Lunch with Sam", color = green),
         at(19, 15, title = "Design review"),
         at(19, 19, title = "Climbing", color = green),
@@ -129,9 +132,11 @@ private object NoActions : CalendarActions {
 
     override fun create() = Unit
 
-    override fun edit() = Unit
+    override fun createAt(start: Long) = Unit
 
-    override fun delete() = Unit
+    override fun edit(scope: Scope) = Unit
+
+    override fun delete(scope: Scope) = Unit
 
     override fun map(location: String) = Unit
 
@@ -187,5 +192,22 @@ private fun EditorPreview() {
         )
     TesseraTheme(dynamicColor = false) {
         CalendarApp(state, null, EditorState(draft, draft, state.calendars), emptyFlow(), NoActions)
+    }
+}
+
+// The week and day views, with overlapping events and the current-time line, in both themes.
+@TesseraPreviews
+@Composable
+private fun WeekPreview() {
+    TesseraTheme(dynamicColor = false) {
+        CalendarApp(state.copy(mode = ViewMode.Week), null, null, emptyFlow(), NoActions, zone = utc, clock = { LocalTime.of(13, 30) })
+    }
+}
+
+@TesseraPreviews
+@Composable
+private fun DayPreview() {
+    TesseraTheme(dynamicColor = false) {
+        CalendarApp(state.copy(mode = ViewMode.Day), null, null, emptyFlow(), NoActions, zone = utc, clock = { LocalTime.of(8, 30) })
     }
 }
