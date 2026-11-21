@@ -55,6 +55,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 
+/** MediaStore changes arrive one file at a time; reload once they settle. */
+private const val CHANGE_DELAY_MS = 500L
+
 class MainActivity : ComponentActivity() {
     private val repository by lazy { MediaRepository(contentResolver) }
     private val viewModel: GalleryViewModel by viewModels {
@@ -72,7 +75,7 @@ class MainActivity : ComponentActivity() {
 
     private val observer =
         object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) = viewModel.refresh()
+            override fun onChange(selfChange: Boolean) = viewModel.refresh(after = CHANGE_DELAY_MS)
         }
 
     private val requestPermissions =
@@ -104,7 +107,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         access = access()
         handleIntent(intent)
-        contentResolver.registerContentObserver(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), true, observer)
         val grid = Grid()
         val viewer = ViewerImpl()
         val editor = EditorImpl()
@@ -167,9 +169,16 @@ class MainActivity : ComponentActivity() {
         if (access != Access.None) viewModel.refresh()
     }
 
-    override fun onDestroy() {
+    // Watched only while visible: any app writing a file would otherwise reload the whole library in
+    // the background, and onResume reloads anyway.
+    override fun onStart() {
+        super.onStart()
+        contentResolver.registerContentObserver(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL), true, observer)
+    }
+
+    override fun onStop() {
         contentResolver.unregisterContentObserver(observer)
-        super.onDestroy()
+        super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {
