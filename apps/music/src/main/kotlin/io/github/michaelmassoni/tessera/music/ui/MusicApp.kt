@@ -53,10 +53,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.music.PlaybackState
+import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Playlist
+import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -66,7 +69,10 @@ data class LibraryState(
     val songs: List<Song> = emptyList(),
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
-)
+    val playlists: List<Playlist> = emptyList(),
+) {
+    val byId: Map<Long, Song> by lazy { songs.associateBy { it.id } }
+}
 
 /** Library-level actions. */
 interface LibraryActions {
@@ -76,6 +82,28 @@ interface LibraryActions {
     )
 
     fun shuffle(songs: List<Song>)
+
+    fun createPlaylist(
+        name: String,
+        songIds: List<Long>,
+    )
+
+    fun renamePlaylist(
+        id: Long,
+        name: String,
+    )
+
+    fun deletePlaylist(id: Long)
+
+    fun addToPlaylist(
+        id: Long,
+        songIds: List<Long>,
+    )
+
+    fun removeFromPlaylist(
+        id: Long,
+        index: Int,
+    )
 
     fun openSettings()
 }
@@ -87,6 +115,7 @@ private enum class Tab(
     Songs(R.string.tab_songs, DesignR.drawable.ic_music_note),
     Albums(R.string.tab_albums, DesignR.drawable.ic_album),
     Artists(R.string.tab_artists, DesignR.drawable.ic_artist),
+    Playlists(R.string.tab_playlists, DesignR.drawable.ic_queue_music),
 }
 
 private sealed interface Page {
@@ -97,12 +126,17 @@ private sealed interface Page {
     data class ArtistPage(
         val id: Long,
     ) : Page
+
+    data class PlaylistPage(
+        val id: Long,
+    ) : Page
 }
 
 @Composable
 fun MusicApp(
     library: LibraryState,
     playback: PlaybackState,
+    progress: () -> Progress,
     libraryActions: LibraryActions,
     playerActions: PlayerActions,
     modifier: Modifier = Modifier,
@@ -114,7 +148,7 @@ fun MusicApp(
     BackHandler(!playerOpen && page != null) { page = null }
 
     if (playerOpen && playback.hasMedia) {
-        FullPlayer(playback, playerActions, onClose = { playerOpen = false }, modifier = modifier)
+        FullPlayer(playback, progress, playerActions, onClose = { playerOpen = false }, modifier = modifier)
         return
     }
     NavigationSuiteScaffold(
@@ -149,6 +183,15 @@ fun MusicApp(
                         }
                     }
 
+                    is Page.PlaylistPage -> {
+                        library.playlists.firstOrNull { it.id == p.id }?.let { playlist ->
+                            PlaylistScreen(playlist, Playlists.songs(playlist, library.byId), library.playlists, libraryActions) {
+                                page =
+                                    null
+                            }
+                        }
+                    }
+
                     null -> {
                         LibraryScreen(
                             Tab.entries[tab],
@@ -156,11 +199,12 @@ fun MusicApp(
                             libraryActions,
                             { page = Page.AlbumPage(it) },
                             { page = Page.ArtistPage(it) },
+                            { page = Page.PlaylistPage(it) },
                         )
                     }
                 }
             }
-            if (playback.hasMedia) MiniPlayer(playback, playerActions, onOpen = { playerOpen = true })
+            if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = { playerOpen = true })
         }
     }
 }
@@ -173,8 +217,12 @@ private fun LibraryScreen(
     actions: LibraryActions,
     onAlbum: (Long) -> Unit,
     onArtist: (Long) -> Unit,
+    onPlaylist: (Long) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var options by remember { mutableStateOf<Song?>(null) }
+    options?.let { song -> SongOptions(song, library.playlists, actions, onDismiss = { options = null }) }
+    val onLongClick: (Int, Song) -> Unit = { _, song -> options = song }
     Scaffold(
         topBar = {
             val text = rememberTextFieldState()
@@ -213,11 +261,16 @@ private fun LibraryScreen(
                         remember(library.songs, query) { Library.search(library.songs, query) },
                         actions,
                         showShuffle = false,
+                        onLongClick = onLongClick,
                     )
                 }
 
                 tab == Tab.Songs -> {
-                    SongList(library.songs, actions, showShuffle = true)
+                    SongList(library.songs, actions, showShuffle = true, onLongClick = onLongClick)
+                }
+
+                tab == Tab.Playlists -> {
+                    PlaylistList(library.playlists, actions, onPlaylist)
                 }
 
                 tab == Tab.Albums -> {
@@ -233,12 +286,13 @@ private fun LibraryScreen(
 }
 
 @Composable
-private fun SongList(
+internal fun SongList(
     songs: List<Song>,
     actions: LibraryActions,
     showShuffle: Boolean,
     header: (LazyListScope.() -> Unit)? = null,
     showArt: Boolean = true,
+    onLongClick: ((Int, Song) -> Unit)? = null,
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
         header?.invoke(this)
@@ -255,6 +309,8 @@ private fun SongList(
             val description = "${song.title}, $artist, ${formatDuration(song.durationMillis)}"
             ListItem(
                 onClick = { actions.play(songs, i) },
+                onLongClick = onLongClick?.let { { it(i, song) } },
+                onLongClickLabel = onLongClick?.let { stringResource(R.string.song_options) },
                 leadingContent = if (showArt) ({ AlbumArt(song.albumId) }) else null,
                 supportingContent = { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 trailingContent = { Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium) },
@@ -403,7 +459,7 @@ private fun ArtistScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BackBar(
+internal fun BackBar(
     title: String,
     onBack: () -> Unit,
 ) {
@@ -418,7 +474,7 @@ private fun BackBar(
 }
 
 @Composable
-private fun Empty(text: String) {
+internal fun Empty(text: String) {
     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Icon(

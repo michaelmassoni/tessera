@@ -9,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -24,6 +25,14 @@ data class QueueItem(
     val artist: String,
 )
 
+/** Where the current track is. Separate from [PlaybackState] so the twice-a-second tick only redraws progress. */
+data class Progress(
+    val positionMs: Long = 0,
+    val durationMs: Long = 0,
+) {
+    val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+}
+
 /** What the UI shows about playback. */
 data class PlaybackState(
     val hasMedia: Boolean = false,
@@ -33,8 +42,6 @@ data class PlaybackState(
     val albumId: Long = 0,
     val artwork: ByteArray? = null,
     val isPlaying: Boolean = false,
-    val positionMs: Long = 0,
-    val durationMs: Long = 0,
     val shuffle: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queue: List<QueueItem> = emptyList(),
@@ -43,11 +50,10 @@ data class PlaybackState(
     override fun equals(other: Any?): Boolean =
         other is PlaybackState && hasMedia == other.hasMedia && title == other.title && artist == other.artist && album == other.album &&
             albumId == other.albumId && artwork.contentEquals(other.artwork) && isPlaying == other.isPlaying &&
-            positionMs == other.positionMs &&
-            durationMs == other.durationMs && shuffle == other.shuffle && repeatMode == other.repeatMode && queue == other.queue &&
+            shuffle == other.shuffle && repeatMode == other.repeatMode && queue == other.queue &&
             index == other.index
 
-    override fun hashCode(): Int = listOf(title, artist, isPlaying, positionMs, index).hashCode()
+    override fun hashCode(): Int = listOf(title, artist, isPlaying, index).hashCode()
 }
 
 /**
@@ -59,6 +65,8 @@ class PlayerConnection(
 ) {
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
+    private val _progress = MutableStateFlow(Progress())
+    val progress: StateFlow<Progress> = _progress.asStateFlow()
 
     private var controller: MediaController? = null
     private var ticker: Job? = null
@@ -148,16 +156,15 @@ class PlayerConnection(
                     player.currentMediaItem
                         ?.mediaMetadata
                         ?.extras
-                        ?.getLong(EXTRA_ALBUM_ID) ?: 0,
+                        ?.getLong(PlaybackService.EXTRA_ALBUM_ID) ?: 0,
                 artwork = meta.artworkData,
                 isPlaying = player.isPlaying,
-                positionMs = player.currentPosition,
-                durationMs = player.duration.coerceAtLeast(0),
                 shuffle = player.shuffleModeEnabled,
                 repeatMode = player.repeatMode,
                 queue = queue,
                 index = player.currentMediaItemIndex,
             )
+        _progress.value = Progress(player.currentPosition, player.duration.coerceAtLeast(0))
         // Position changes continuously while playing; poll it twice a second for the progress UI.
         ticker?.cancel()
         if (player.isPlaying) {
@@ -165,32 +172,12 @@ class PlayerConnection(
                 scope.launch {
                     while (isActive) {
                         delay(500)
-                        _state.value = _state.value.copy(positionMs = player.currentPosition, durationMs = player.duration.coerceAtLeast(0))
+                        _progress.value = Progress(player.currentPosition, player.duration.coerceAtLeast(0))
                     }
                 }
         }
     }
 
     private fun mediaItem(song: Song): MediaItem =
-        MediaItem
-            .Builder()
-            .setMediaId(song.id.toString())
-            .setRequestMetadata(
-                MediaItem.RequestMetadata
-                    .Builder()
-                    .setMediaUri(song.uri.toUri())
-                    .build(),
-            ).setMediaMetadata(
-                MediaMetadata
-                    .Builder()
-                    .setTitle(song.title)
-                    .setArtist(song.artist)
-                    .setAlbumTitle(song.album)
-                    .setExtras(android.os.Bundle().apply { putLong(EXTRA_ALBUM_ID, song.albumId) })
-                    .build(),
-            ).build()
-
-    private companion object {
-        const val EXTRA_ALBUM_ID = "album_id"
-    }
+        PlaybackService.mediaItem(SavedItem(song.id.toString(), song.uri, song.title, song.artist, song.album, song.albumId))
 }
