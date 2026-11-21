@@ -50,7 +50,8 @@ import io.github.michaelmassoni.tessera.calendar.engine.AgendaRow
 import io.github.michaelmassoni.tessera.calendar.engine.DayLayout
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
-import io.github.michaelmassoni.tessera.calendar.engine.WeekLayout
+import io.github.michaelmassoni.tessera.calendar.engine.WeekPlan
+import io.github.michaelmassoni.tessera.calendar.engine.WidgetLanes
 import io.github.michaelmassoni.tessera.calendar.engine.WidgetPlan
 import io.github.michaelmassoni.tessera.calendar.ui.firstDayOfWeek
 import java.time.LocalDate
@@ -316,7 +317,10 @@ class MonthWidget : GlanceAppWidget() {
         // Glance has no weighted spans, so bars get exact widths from the cell width.
         val cellWidth = (size.width - padding * 2) / 7
         val rowHeight = (size.height - padding * 2 - HeaderHeight - WeekdayHeight) / weeks.size
-        val lanes = ((rowHeight - NumberHeight - 4.dp) / LaneHeight).toInt().coerceAtLeast(0)
+        val room = ((rowHeight - NumberHeight - 4.dp) / LaneHeight).toInt().coerceAtLeast(0)
+        // As many lanes as there's room for, and as Glance's 500-view limit allows (a busy month
+        // with many lanes goes over it). The rest of the widget takes about 20 views plus 16 per week.
+        val (lanes, plans) = WidgetLanes.fit(weeks, byDay, room, budget = VIEW_LIMIT - 30 - weeks.size * 16)
         WidgetSurface(CalendarWidgets.openApp(context), padding = padding) {
             Column(GlanceModifier.fillMaxSize()) {
                 Row(
@@ -343,8 +347,8 @@ class MonthWidget : GlanceAppWidget() {
                 if (!data.allowed) {
                     Message(context.getString(R.string.widget_needs_access))
                 } else {
-                    weeks.forEach { week ->
-                        WeekRow(context, week, month, data.today, byDay, cellWidth, lanes, GlanceModifier.fillMaxWidth().defaultWeight())
+                    weeks.forEachIndexed { i, week ->
+                        WeekRow(context, week, month, data.today, plans[i], cellWidth, lanes, GlanceModifier.fillMaxWidth().defaultWeight())
                     }
                 }
             }
@@ -358,42 +362,58 @@ class MonthWidget : GlanceAppWidget() {
         week: List<LocalDate>,
         month: YearMonth,
         today: LocalDate,
-        byDay: Map<LocalDate, List<Instance>>,
+        plan: WeekPlan,
         cellWidth: Dp,
         lanes: Int,
         modifier: GlanceModifier = GlanceModifier,
     ) {
-        val plan = WeekLayout.plan(week, byDay, lanes)
         Box(modifier) {
             Row(GlanceModifier.fillMaxSize()) {
                 week.forEach { day -> DayCell(context, day, YearMonth.from(day) == month, day == today) }
             }
-            // The pills don't take taps, so a tap reaches the day underneath.
-            Column(GlanceModifier.fillMaxWidth().padding(top = NumberHeight + 2.dp)) {
-                repeat(lanes) { lane ->
-                    Row(GlanceModifier.fillMaxWidth().height(LaneHeight)) {
-                        var col = 0
-                        while (col < week.size) {
-                            val bar = plan.bars.firstOrNull { it.lane == lane && it.start == col }
-                            when {
-                                bar != null -> {
-                                    Pill(bar.instance, cellWidth * bar.span)
-                                    col += bar.span
-                                }
+            // The pills don't take taps, so a tap reaches the day underneath. Every view counts
+            // against Glance's limit (see WidgetLanes), so a pill is a single Text.
+            if (lanes > 0) {
+                Column(GlanceModifier.fillMaxWidth().padding(top = NumberHeight + 2.dp)) {
+                    repeat(lanes) { lane ->
+                        Row(GlanceModifier.fillMaxWidth().height(LaneHeight)) {
+                            WidgetLanes.segments(plan, lane, last = lane == lanes - 1).forEach { segment ->
+                                when (segment) {
+                                    is WidgetLanes.Segment.Gap -> {
+                                        Spacer(GlanceModifier.width(cellWidth * segment.cells))
+                                    }
 
-                                lane == lanes - 1 && plan.more[col] > 0 -> {
-                                    Text(
-                                        context.getString(R.string.more_events, plan.more[col]),
-                                        style = style(GlanceTheme.colors.onSurfaceVariant, 10.sp, align = TextAlign.Center),
-                                        maxLines = 1,
-                                        modifier = GlanceModifier.width(cellWidth),
-                                    )
-                                    col++
-                                }
+                                    is WidgetLanes.Segment.Pill -> {
+                                        val event = segment.bar.instance
+                                        // The box holds the margins, so neighbouring pills need no gap view.
+                                        Box(
+                                            GlanceModifier
+                                                .width(cellWidth * segment.bar.span)
+                                                .fillMaxHeight()
+                                                .padding(start = PillMargin, end = PillMargin, bottom = 2.dp),
+                                        ) {
+                                            Text(
+                                                event.title,
+                                                style = style(pillTextColor(event), 10.sp),
+                                                maxLines = 1,
+                                                modifier =
+                                                    GlanceModifier
+                                                        .fillMaxSize()
+                                                        .cornerRadius(3.dp)
+                                                        .background(eventColor(event))
+                                                        .padding(horizontal = 3.dp),
+                                            )
+                                        }
+                                    }
 
-                                else -> {
-                                    Spacer(GlanceModifier.width(cellWidth))
-                                    col++
+                                    is WidgetLanes.Segment.More -> {
+                                        Text(
+                                            context.getString(R.string.more_events, segment.count),
+                                            style = style(GlanceTheme.colors.onSurfaceVariant, 10.sp, align = TextAlign.Center),
+                                            maxLines = 1,
+                                            modifier = GlanceModifier.width(cellWidth),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -403,25 +423,7 @@ class MonthWidget : GlanceAppWidget() {
         }
     }
 
-    @Composable
-    private fun Pill(
-        event: Instance,
-        width: Dp,
-    ) {
-        Box(GlanceModifier.width(width).fillMaxHeight().padding(horizontal = 2.dp, vertical = 1.dp)) {
-            Box(
-                GlanceModifier
-                    .fillMaxSize()
-                    .cornerRadius(3.dp)
-                    .background(eventColor(event))
-                    .padding(horizontal = 3.dp),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Text(event.title, style = style(pillTextColor(event), 10.sp), maxLines = 1)
-            }
-        }
-    }
-
+    /** Two views per day (a padded, clickable box and its number on the cell colour); today adds a circle. */
     @Composable
     private fun androidx.glance.layout.RowScope.DayCell(
         context: Context,
@@ -436,43 +438,44 @@ class MonthWidget : GlanceAppWidget() {
                 .padding(1.5.dp)
                 .clickable(actionStartActivity(CalendarWidgets.openDay(context, day))),
         ) {
-            Column(
-                GlanceModifier
-                    .fillMaxSize()
-                    .cornerRadius(8.dp)
-                    .background(
-                        when {
-                            isToday -> GlanceTheme.colors.secondaryContainer
-
-                            // Other months' days only dim their number, as in the app.
-                            else -> GlanceTheme.colors.surfaceVariant
-                        },
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            val number = day.dayOfMonth.toString()
+            if (isToday) {
                 Box(
                     GlanceModifier
-                        .padding(top = 2.dp)
-                        .size(NumberHeight - 2.dp)
-                        .cornerRadius((NumberHeight - 2.dp) / 2)
-                        .background(if (isToday) GlanceTheme.colors.primary else ColorProvider(Color.Transparent)),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxSize()
+                        .cornerRadius(8.dp)
+                        .background(GlanceTheme.colors.secondaryContainer)
+                        .padding(top = 1.dp),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
                     Text(
-                        day.dayOfMonth.toString(),
-                        style =
-                            style(
-                                when {
-                                    isToday -> GlanceTheme.colors.onPrimary
-                                    inMonth -> GlanceTheme.colors.onSurface
-                                    else -> GlanceTheme.colors.outline
-                                },
-                                11.sp,
-                                if (isToday) FontWeight.Bold else FontWeight.Normal,
-                                TextAlign.Center,
-                            ),
+                        number,
+                        style = style(GlanceTheme.colors.onPrimary, 11.sp, FontWeight.Bold, TextAlign.Center),
+                        modifier =
+                            GlanceModifier
+                                .size(NumberHeight - 2.dp)
+                                .cornerRadius((NumberHeight - 2.dp) / 2)
+                                .background(GlanceTheme.colors.primary)
+                                .padding(top = 1.dp),
                     )
                 }
+            } else {
+                // Other months' days only dim their number, as in the app.
+                Text(
+                    number,
+                    style =
+                        style(
+                            if (inMonth) GlanceTheme.colors.onSurface else GlanceTheme.colors.outline,
+                            11.sp,
+                            align = TextAlign.Center,
+                        ),
+                    modifier =
+                        GlanceModifier
+                            .fillMaxSize()
+                            .cornerRadius(8.dp)
+                            .background(GlanceTheme.colors.surfaceVariant)
+                            .padding(top = 3.dp),
+                )
             }
         }
     }
@@ -482,6 +485,10 @@ class MonthWidget : GlanceAppWidget() {
         val WeekdayHeight = 18.dp
         val NumberHeight = 20.dp
         val LaneHeight = 14.dp
+        val PillMargin = 1.5.dp
+
+        /** Glance's limit on views in one widget, with a little room for its own. */
+        const val VIEW_LIMIT = 480
     }
 }
 
