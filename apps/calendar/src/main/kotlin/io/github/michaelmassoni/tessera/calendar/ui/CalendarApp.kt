@@ -75,6 +75,7 @@ import io.github.michaelmassoni.tessera.calendar.ViewMode
 import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
+import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.YearMonth
@@ -102,9 +103,12 @@ interface CalendarActions {
 
     fun create()
 
-    fun edit()
+    /** A new event starting at [start] (epoch ms), from tapping the week or day grid. */
+    fun createAt(start: Long)
 
-    fun delete()
+    fun edit(scope: Scope)
+
+    fun delete(scope: Scope)
 
     fun map(location: String)
 
@@ -137,6 +141,9 @@ fun CalendarApp(
     events: Flow<CalendarEvent>,
     actions: CalendarActions,
     modifier: Modifier = Modifier,
+    // The week and day views' zone and clock; previews fix them so screenshots don't change.
+    zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+    clock: () -> java.time.LocalTime = java.time.LocalTime::now,
 ) {
     val snackbar = remember { SnackbarHostState() }
     var discard by rememberSaveable { mutableStateOf(false) }
@@ -174,6 +181,14 @@ fun CalendarApp(
                 when (state.mode) {
                     ViewMode.Month -> {
                         MonthScreen(state, actions)
+                    }
+
+                    ViewMode.Week -> {
+                        TimelinePager(state, days = 7, actions, zone = zone, clock = clock)
+                    }
+
+                    ViewMode.Day -> {
+                        TimelinePager(state, days = 1, actions, zone = zone, clock = clock)
                     }
 
                     ViewMode.Schedule -> {
@@ -224,36 +239,51 @@ private fun CalendarTopBar(
                         .toDp()
                 } < 600.dp
             Text(
-                if (state.mode == ViewMode.Month) monthTitle(state.month, locale, short) else stringResource(R.string.view_schedule),
+                when (state.mode) {
+                    ViewMode.Month -> monthTitle(state.month, locale, short)
+                    ViewMode.Week -> monthTitle(YearMonth.from(state.selected), locale, short)
+                    ViewMode.Day -> dayTitle(state.selected, locale)
+                    ViewMode.Schedule -> stringResource(R.string.view_schedule)
+                },
                 maxLines = 1,
             )
         },
         actions = {
-            if (state.mode == ViewMode.Month) {
-                IconButton(onClick = { actions.showMonth(state.month.minusMonths(1)) }) {
-                    Icon(painterResource(DesignR.drawable.ic_chevron_left), contentDescription = stringResource(R.string.previous_month))
+            when (state.mode) {
+                ViewMode.Month -> {
+                    IconButton(onClick = { actions.showMonth(state.month.minusMonths(1)) }) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_chevron_left),
+                            contentDescription = stringResource(R.string.previous_month),
+                        )
+                    }
+                    IconButton(onClick = { actions.showMonth(state.month.plusMonths(1)) }) {
+                        Icon(painterResource(DesignR.drawable.ic_chevron_right), contentDescription = stringResource(R.string.next_month))
+                    }
                 }
-                IconButton(onClick = { actions.showMonth(state.month.plusMonths(1)) }) {
-                    Icon(painterResource(DesignR.drawable.ic_chevron_right), contentDescription = stringResource(R.string.next_month))
+
+                ViewMode.Week, ViewMode.Day -> {
+                    val step = if (state.mode == ViewMode.Week) 7L else 1L
+                    IconButton(onClick = { actions.select(state.selected.minusDays(step)) }) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_chevron_left),
+                            contentDescription = stringResource(if (step == 7L) R.string.previous_week else R.string.previous_day),
+                        )
+                    }
+                    IconButton(onClick = { actions.select(state.selected.plusDays(step)) }) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_chevron_right),
+                            contentDescription = stringResource(if (step == 7L) R.string.next_week else R.string.next_day),
+                        )
+                    }
                 }
+
+                ViewMode.Schedule -> {}
             }
             IconButton(onClick = actions::today) {
                 Icon(painterResource(DesignR.drawable.ic_today), contentDescription = stringResource(R.string.today))
             }
-            IconButton(onClick = { actions.setMode(if (state.mode == ViewMode.Month) ViewMode.Schedule else ViewMode.Month) }) {
-                Icon(
-                    painterResource(
-                        if (state.mode ==
-                            ViewMode.Month
-                        ) {
-                            DesignR.drawable.ic_view_agenda
-                        } else {
-                            DesignR.drawable.ic_calendar_month
-                        },
-                    ),
-                    contentDescription = stringResource(if (state.mode == ViewMode.Month) R.string.view_schedule else R.string.view_month),
-                )
-            }
+            ViewPicker(state.mode, actions::setMode)
             Box {
                 IconButton(onClick = { menu = true }) {
                     Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
@@ -500,6 +530,62 @@ private fun MonthPager(
                 Modifier.fillMaxSize().padding(contentPadding),
                 showWeekdays = false,
             )
+        }
+    }
+}
+
+/** "Wed, 25 Nov" for the day view's title. */
+private fun dayTitle(
+    day: LocalDate,
+    locale: java.util.Locale,
+): String =
+    day.format(
+        java.time.format.DateTimeFormatter
+            .ofPattern(
+                android.text.format.DateFormat
+                    .getBestDateTimePattern(locale, "EEEdMMM"),
+                locale,
+            ),
+    )
+
+/** The view switcher: an icon for the current view that opens Month, Week, Day and Schedule. */
+@Composable
+private fun ViewPicker(
+    mode: ViewMode,
+    onPick: (ViewMode) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    val views =
+        listOf(
+            Triple(ViewMode.Month, R.string.view_month, DesignR.drawable.ic_calendar_month),
+            Triple(ViewMode.Week, R.string.view_week, DesignR.drawable.ic_view_week),
+            Triple(ViewMode.Day, R.string.view_day, DesignR.drawable.ic_view_day),
+            Triple(ViewMode.Schedule, R.string.view_schedule, DesignR.drawable.ic_view_agenda),
+        )
+    val current = views.first { it.first == mode }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(painterResource(current.third), contentDescription = stringResource(R.string.change_view, stringResource(current.second)))
+        }
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            views.forEach { (view, label, icon) ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(label)) },
+                    leadingIcon = { Icon(painterResource(icon), contentDescription = null) },
+                    trailingIcon =
+                        if (view ==
+                            mode
+                        ) {
+                            ({ Icon(painterResource(DesignR.drawable.ic_check), contentDescription = null) })
+                        } else {
+                            null
+                        },
+                    onClick = {
+                        open = false
+                        onPick(view)
+                    },
+                )
+            }
         }
     }
 }

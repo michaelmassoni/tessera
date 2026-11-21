@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -32,6 +33,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Ics
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
+import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarActions
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarApp
 import io.github.michaelmassoni.tessera.calendar.ui.PermissionScreen
@@ -48,6 +50,8 @@ import java.time.YearMonth
 import java.time.ZoneId
 
 class MainActivity : ComponentActivity() {
+    private val viewPrefs by lazy { getSharedPreferences("view", MODE_PRIVATE) }
+
     private val viewModel: CalendarViewModel by viewModels {
         viewModelFactory {
             initializer {
@@ -171,6 +175,8 @@ class MainActivity : ComponentActivity() {
 
     private fun onGranted() {
         observe()
+        // The view picked last time.
+        viewPrefs.getString(KEY_VIEW, null)?.let { name -> ViewMode.entries.firstOrNull { it.name == name } }?.let(viewModel::setMode)
         viewModel.start()
         pendingIntent?.let(::handleIntent)
         pendingIntent = null
@@ -254,7 +260,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private inner class Actions : CalendarActions {
-        override fun setMode(mode: ViewMode) = viewModel.setMode(mode)
+        override fun setMode(mode: ViewMode) {
+            viewModel.setMode(mode)
+            viewPrefs.edit { putString(KEY_VIEW, mode.name) }
+        }
 
         override fun showMonth(month: YearMonth) = viewModel.showMonth(month)
 
@@ -272,9 +281,22 @@ class MainActivity : ComponentActivity() {
 
         override fun create() = viewModel.create()
 
-        override fun edit() = viewModel.edit()
+        override fun createAt(start: Long) =
+            viewModel.create(
+                EventDraft(
+                    start = start,
+                    end = start + 3_600_000L,
+                    timeZone =
+                        java.time.ZoneId
+                            .systemDefault()
+                            .id,
+                    reminders = listOf(10),
+                ),
+            )
 
-        override fun delete() = viewModel.delete()
+        override fun edit(scope: Scope) = viewModel.edit(scope)
+
+        override fun delete(scope: Scope) = viewModel.delete(scope)
 
         override fun map(location: String) {
             try {
@@ -303,6 +325,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val KEY_VIEW = "mode"
+
         /** Opens the app on this day (`LocalDate.toEpochDay`), from a widget. */
         const val EXTRA_DAY = "io.github.michaelmassoni.tessera.calendar.DAY"
 

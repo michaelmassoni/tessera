@@ -39,6 +39,8 @@ data class EventDraft(
     val location: String = "",
     val description: String = "",
     val rrule: String? = null,
+    /** Occurrences left out of a repeating event (EXDATE: comma-separated UTC stamps). */
+    val exdate: String? = null,
     /** Minutes before the start. */
     val reminders: List<Int> = emptyList(),
 )
