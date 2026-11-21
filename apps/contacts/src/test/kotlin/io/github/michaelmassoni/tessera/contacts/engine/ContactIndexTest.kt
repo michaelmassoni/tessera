@@ -52,13 +52,4 @@ class ContactIndexTest {
         assertEquals(listOf("Émile Zola"), ContactIndex.search(people, "example.org", Locale.ENGLISH).map { it.name })
         assertEquals(emptyList<ContactSummary>(), ContactIndex.search(people, "  ", Locale.ENGLISH))
     }
-
-    @Test fun `initials and colour slots`() {
-        assertEquals("AL", Initials.of("ada Lovelace"))
-        assertEquals("ÉZ", Initials.of("Émile  de Zola"))
-        assertEquals("B", Initials.of("Bob"))
-        assertEquals("#", Initials.of("123"))
-        assertEquals(Initials.slot("abc", 5), Initials.slot("abc", 5))
-        (0..100).forEach { assertEquals(true, Initials.slot("key$it", 5) in 0..4) }
-    }
 }

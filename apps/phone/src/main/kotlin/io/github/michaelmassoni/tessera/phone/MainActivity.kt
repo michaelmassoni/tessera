@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
         override fun createContact(number: String) =
             open(
                 Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI)
-                    .putExtra(ContactsContract.Intents.Insert.PHONE, number),
+                    .apply { if (number.isNotBlank()) putExtra(ContactsContract.Intents.Insert.PHONE, number) },
             )
 
         override fun addToContact(number: String) =

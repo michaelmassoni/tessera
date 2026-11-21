@@ -47,8 +47,12 @@ covers the incoming-call screen.
     new contact and Add to a contact (an unsaved one, through the contacts app's insert and
     insert-or-edit intents), Send message (`smsto:`), Copy number, and Edit number before call
     (opens the keypad with it).
-- **Contacts:** every contact with a phone number, with search. Tap to call, or choose a
-  number if there are several.
+- **Contacts:** laid out like the Contacts app. A search bar (settings button, or clear while
+  typing) and every contact with a phone number under sticky letter headers, with their photo
+  or coloured initials (the shared `Avatar` in `core:design`). Search matches the start of any
+  word of the name, or digits in a number. Tap to call, or choose a number if there are
+  several; long-press opens the contact. A Create contact button opens the contacts app's
+  editor.
 - **Keypad:**
   - The number field formats as you type (`PhoneNumberUtils`) and backspace works.
   - Long-press 0 for +.

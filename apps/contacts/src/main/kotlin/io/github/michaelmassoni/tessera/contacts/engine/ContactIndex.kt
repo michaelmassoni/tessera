@@ -79,22 +79,3 @@ object ContactIndex {
             }.sortedWith { a, b -> collator.compare(a.name, b.name) }
     }
 }
-
-/** Avatar initials and a stable colour slot. */
-object Initials {
-    /** Up to two initials: first and last word ("Ada Lovelace" → "AL"); "#" if there are no letters. */
-    fun of(name: String): String {
-        val words = name.trim().split(Regex("\\s+")).filter { w -> w.firstOrNull()?.isLetter() == true }
-        return when {
-            words.isEmpty() -> "#"
-            words.size == 1 -> words[0].first().uppercase()
-            else -> (words.first().first().toString() + words.last().first()).uppercase()
-        }
-    }
-
-    /** 0 until [slots]: the same contact always gets the same colour. */
-    fun slot(
-        key: String,
-        slots: Int,
-    ): Int = Math.floorMod(key.hashCode(), slots)
-}

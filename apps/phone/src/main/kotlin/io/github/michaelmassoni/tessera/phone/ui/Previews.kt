@@ -79,3 +79,21 @@ private fun RecentOptionsPreview() {
         }
     }
 }
+
+private val numbers =
+    listOf(
+        ContactNumber(1, "ada", "Ada Lovelace", "+61 412 345 678", "2|", starred = true, photoUri = null),
+        ContactNumber(2, "bob", "Bob Brown", "02 9999 0000", "1|", starred = false, photoUri = null),
+        ContactNumber(2, "bob", "Bob Brown", "0400 111 222", "2|", starred = false, photoUri = null),
+        ContactNumber(3, "grace", "Grace Hopper", "+61 400 111 222", "3|", starred = false, photoUri = null),
+        ContactNumber(4, "emile", "Émile Zola", "0455 000 111", "2|", starred = false, photoUri = null),
+    )
+
+// The Contacts tab: search bar, letter headers and the create button, in both themes.
+@TesseraPreviews
+@Composable
+private fun ContactsPreview() {
+    TesseraTheme(dynamicColor = false) {
+        PhoneApp(PhoneState(loaded = true, numbers = numbers, isDefault = true), NoPhoneActions, initialTab = 2)
+    }
+}
