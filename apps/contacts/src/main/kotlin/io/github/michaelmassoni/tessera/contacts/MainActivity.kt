@@ -49,7 +49,7 @@ import io.github.michaelmassoni.tessera.contacts.ui.DetailActions
 import io.github.michaelmassoni.tessera.contacts.ui.EditActions
 import io.github.michaelmassoni.tessera.contacts.ui.ListActions
 import io.github.michaelmassoni.tessera.contacts.ui.PermissionScreen
-import io.github.michaelmassoni.tessera.contacts.ui.clearAvatarCache
+import io.github.michaelmassoni.tessera.core.design.clearAvatarCache
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

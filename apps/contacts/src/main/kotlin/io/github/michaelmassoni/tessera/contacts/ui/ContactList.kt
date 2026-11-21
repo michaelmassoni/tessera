@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.contacts.R
 import io.github.michaelmassoni.tessera.contacts.engine.ContactSummary
 import io.github.michaelmassoni.tessera.contacts.engine.Section
+import io.github.michaelmassoni.tessera.core.design.Avatar
 
 /** Sections with sticky headers, or flat search results. */
 @OptIn(ExperimentalFoundationApi::class)

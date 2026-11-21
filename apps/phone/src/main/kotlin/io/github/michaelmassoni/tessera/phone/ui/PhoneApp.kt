@@ -1,11 +1,13 @@
 package io.github.michaelmassoni.tessera.phone.ui
 
+import android.content.res.Resources
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.telephony.PhoneNumberUtils
 import android.text.format.DateUtils
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -26,8 +29,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,8 +42,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,6 +52,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,15 +67,20 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.Avatar
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.data.ContactNumber
 import io.github.michaelmassoni.tessera.phone.engine.CallEntry
 import io.github.michaelmassoni.tessera.phone.engine.CallGroup
 import io.github.michaelmassoni.tessera.phone.engine.CallType
+import io.github.michaelmassoni.tessera.phone.engine.ContactSections
 import io.github.michaelmassoni.tessera.phone.engine.Dialpad
 import io.github.michaelmassoni.tessera.phone.engine.DurationUnit
 import io.github.michaelmassoni.tessera.phone.engine.NumberMatch
@@ -153,16 +167,31 @@ private fun PhoneTab(
     initialNumber: String,
     onEdit: (String) -> Unit,
 ) {
+    val search = rememberTextFieldState()
+    BackHandler(enabled = tab == Tab.Contacts && search.text.isNotEmpty()) { search.clearText() }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(tab.label)) },
-                actions = {
-                    IconButton(onClick = actions::openSettings) {
-                        Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
-                    }
-                },
-            )
+            if (tab == Tab.Contacts) {
+                ContactSearch(search, actions)
+            } else {
+                TopAppBar(
+                    title = { Text(stringResource(tab.label)) },
+                    actions = {
+                        IconButton(onClick = actions::openSettings) {
+                            Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                        }
+                    },
+                )
+            }
+        },
+        floatingActionButton = {
+            if (tab == Tab.Contacts && state.hasPermissions) {
+                ExtendedFloatingActionButton(
+                    onClick = { actions.createContact("") },
+                    icon = { Icon(painterResource(DesignR.drawable.ic_person_add), contentDescription = null) },
+                    text = { Text(stringResource(R.string.new_contact)) },
+                )
+            }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -174,7 +203,7 @@ private fun PhoneTab(
             when (tab) {
                 Tab.Favourites -> Favourites(state, actions)
                 Tab.Recents -> Recents(state, actions, onEdit)
-                Tab.Contacts -> Contacts(state, actions)
+                Tab.Contacts -> Contacts(state, actions, search.text.toString())
                 Tab.Keypad -> Keypad(state, actions, initialNumber)
             }
         }
@@ -215,7 +244,7 @@ private fun Favourites(
                 Modifier.fillMaxWidth().padding(4.dp).clickable { actions.call(c.number) },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Initial(c.name, 72)
+                Avatar(c.name, c.lookupKey, c.photoUri, size = 72.dp)
                 Text(
                     c.name,
                     style = MaterialTheme.typography.labelLarge,
@@ -224,27 +253,6 @@ private fun Favourites(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-        }
-    }
-}
-
-/** A name's first letter, or a person icon when there's no name (a number on its own). */
-@Composable
-private fun Initial(
-    name: String?,
-    size: Int,
-) {
-    Box(Modifier.size(size.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
-        val letter = name?.firstOrNull { it.isLetterOrDigit() }?.takeIf { it.isLetter() }
-        if (letter != null) {
-            Text(letter.uppercase(), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-        } else {
-            Icon(
-                painterResource(DesignR.drawable.ic_person),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size((size * 0.55f).dp),
-            )
         }
     }
 }
@@ -301,7 +309,7 @@ private fun Recents(
                         ?: call.number.ifBlank { stringResource(R.string.unknown_number) }
                 val missed = call.type == CallType.Missed || call.type == CallType.Rejected
                 ListItem(
-                    leadingContent = { Initial(call.name, 40) },
+                    leadingContent = { Avatar(call.name, call.number, null) },
                     supportingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -394,7 +402,7 @@ internal fun RecentOptions(
     val name = contact?.name ?: call.name
     Column(Modifier.padding(bottom = 16.dp)) {
         ListItem(
-            leadingContent = { Initial(name, 40) },
+            leadingContent = { Avatar(name, contact?.lookupKey ?: call.number, contact?.photoUri) },
             supportingContent = if (name != null) ({ Text(number) }) else null,
         ) {
             Text(name ?: number, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -431,12 +439,52 @@ private fun callTypeLabel(type: CallType) =
         else -> R.string.type_incoming
     }
 
+/** The Contacts tab's search bar, as in the Contacts app: clear while typing, settings otherwise. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ContactSearch(
+    text: TextFieldState,
+    actions: PhoneActions,
+) {
+    val searchState = rememberSearchBarState()
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SearchBar(
+            state = searchState,
+            modifier = Modifier.weight(1f),
+            inputField = {
+                SearchBarDefaults.InputField(
+                    textFieldState = text,
+                    searchBarState = searchState,
+                    onSearch = {},
+                    placeholder = { Text(stringResource(R.string.search_contacts)) },
+                    leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
+                    trailingIcon = {
+                        if (text.text.isNotEmpty()) {
+                            IconButton(onClick = { text.clearText() }) {
+                                Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
+                            }
+                        } else {
+                            IconButton(onClick = actions::openSettings) {
+                                Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                            }
+                        }
+                    },
+                )
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Contacts(
     state: PhoneState,
     actions: PhoneActions,
+    query: String,
 ) {
-    var query by rememberSaveable { mutableStateOf("") }
     var choosing by remember { mutableStateOf<List<ContactNumber>?>(null) }
     val resources = LocalResources.current
     val byContact =
@@ -446,30 +494,61 @@ private fun Contacts(
                 .values
                 .toList()
         }
-    val shown =
+    val sections =
         remember(byContact, query) {
-            if (query.isBlank()) {
-                byContact
-            } else {
-                byContact.filter { nums ->
-                    nums.first().name.contains(query, ignoreCase = true) ||
-                        nums.any { NumberMatch.matches(query, it.number) }
-                }
-            }
+            val shown = byContact.filter { nums -> ContactSections.matches(query, nums.first().name, nums.map { it.number }) }
+            if (query.isBlank()) ContactSections.sections(shown, { it.first().name }) else listOf("" to shown)
         }
-    Column {
-        OutlinedTextField(query, {
-            query = it
-        }, placeholder = {
-            Text(stringResource(R.string.search_contacts))
-        }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
-        LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(shown, key = { it.first().contactId }) { nums ->
-                ListItem(
-                    onClick = { if (nums.size == 1) actions.call(nums[0].number) else choosing = nums },
-                    leadingContent = { Initial(nums.first().name, 40) },
-                    supportingContent = { Text(nums.first().number, maxLines = 1) },
-                ) { Text(nums.first().name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    when {
+        !state.loaded -> {}
+
+        query.isNotBlank() && sections.all { it.second.isEmpty() } -> {
+            Empty(stringResource(R.string.empty_search))
+        }
+
+        byContact.isEmpty() -> {
+            Empty(stringResource(R.string.empty_contacts))
+        }
+
+        else -> {
+            LazyColumn(contentPadding = PaddingValues(bottom = 96.dp)) {
+                sections.forEach { (letter, contacts) ->
+                    if (letter.isNotEmpty()) {
+                        stickyHeader(key = "s$letter", contentType = "header") {
+                            Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+                                Text(
+                                    letter,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 24.dp, top = 12.dp, bottom = 4.dp).semantics { heading() },
+                                )
+                            }
+                        }
+                    }
+                    items(contacts, key = { it.first().contactId }, contentType = { "contact" }) { nums ->
+                        val first = nums.first()
+                        ListItem(
+                            onClick = { if (nums.size == 1) actions.call(first.number) else choosing = nums },
+                            onLongClick = { actions.viewContact(first) },
+                            onLongClickLabel = stringResource(R.string.view_contact),
+                            leadingContent = { Avatar(first.name, first.lookupKey, first.photoUri) },
+                            supportingContent = {
+                                Text(
+                                    if (nums.size ==
+                                        1
+                                    ) {
+                                        numberLine(resources, first)
+                                    } else {
+                                        pluralStringResource(R.plurals.numbers, nums.size, nums.size)
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                        ) { Text(first.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                }
             }
         }
     }
@@ -480,17 +559,25 @@ private fun Contacts(
             text = {
                 Column {
                     nums.forEach { n ->
-                        val (type, label) = n.label.split("|", limit = 2).let { (it[0].toIntOrNull() ?: 0) to it.getOrNull(1) }
                         TextButton(onClick = {
                             choosing = null
                             actions.call(n.number)
-                        }) { Text("${Phone.getTypeLabel(resources, type, label)}: ${n.number}") }
+                        }) { Text(numberLine(resources, n)) }
                     }
                 }
             },
             confirmButton = { TextButton(onClick = { choosing = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
+}
+
+/** "Mobile · 0412 345 678". */
+private fun numberLine(
+    resources: Resources,
+    n: ContactNumber,
+): String {
+    val (type, label) = n.label.split("|", limit = 2).let { (it[0].toIntOrNull() ?: 0) to it.getOrNull(1) }
+    return "${Phone.getTypeLabel(resources, type, label)} · ${n.number}"
 }
 
 @Composable
