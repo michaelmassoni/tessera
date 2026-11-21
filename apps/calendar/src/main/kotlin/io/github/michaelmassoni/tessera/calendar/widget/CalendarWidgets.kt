@@ -3,7 +3,9 @@ package io.github.michaelmassoni.tessera.calendar.widget
 import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
@@ -19,7 +21,6 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.state.updateAppWidgetState
-import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -84,15 +85,29 @@ internal object CalendarWidgets {
      * Returns whether there were any.
      */
     suspend fun refresh(context: Context): Boolean {
-        val manager = GlanceAppWidgetManager(context)
+        val month = ids<MonthWidgetReceiver>(context)
         // A month widget that's running only reloads its events when its state changes.
         val stamp = System.currentTimeMillis()
-        manager.getGlanceIds(MonthWidget::class.java).forEach { id ->
-            updateAppWidgetState(context, id) { it[MonthWidgetSettings.STAMP] = stamp }
-        }
-        val placed = listOf(AgendaWidget(), MonthWidget(), DateWidget()).filter { manager.getGlanceIds(it.javaClass).isNotEmpty() }
-        placed.forEach { it.updateAll(context) }
-        return placed.isNotEmpty()
+        month.forEach { id -> updateAppWidgetState(context, id) { it[MonthWidgetSettings.STAMP] = stamp } }
+        // Each widget by its own receiver's ids, not Glance's getGlanceIds/updateAll: those find ids
+        // by a class name Glance saved on the device, which a release with merged widget classes
+        // (0.5.0) left wrong, and updating an id with the wrong widget redraws it as that widget.
+        val placed =
+            listOf(
+                AgendaWidget() to ids<AgendaWidgetReceiver>(context),
+                MonthWidget() to month,
+                DateWidget() to ids<DateWidgetReceiver>(context),
+            )
+        placed.forEach { (widget, ids) -> ids.forEach { widget.update(context, it) } }
+        return placed.any { it.second.isNotEmpty() }
+    }
+
+    private inline fun <reified R : CalendarWidgetReceiver> ids(context: Context): List<GlanceId> {
+        val manager = GlanceAppWidgetManager(context)
+        return AppWidgetManager
+            .getInstance(context)
+            .getAppWidgetIds(ComponentName(context, R::class.java))
+            .map(manager::getGlanceIdBy)
     }
 
     fun refreshSoon(context: Context) {

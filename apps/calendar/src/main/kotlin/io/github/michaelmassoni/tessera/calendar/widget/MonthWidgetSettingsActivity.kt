@@ -60,7 +60,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.compose
@@ -121,7 +120,7 @@ class MonthWidgetSettingsActivity : ComponentActivity() {
                 WidgetSettingsScreen(
                     initial = initial,
                     calendars = calendars,
-                    preview = { settings -> preview(id, settings) },
+                    preview = ::preview,
                     onClose = ::finish,
                     onSave = ::save,
                 )
@@ -129,13 +128,10 @@ class MonthWidgetSettingsActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun preview(
-        id: GlanceId,
-        settings: MonthWidgetSettings,
-    ): RemoteViews? {
-        val state = mutablePreferencesOf().also { settings.copy(offset = 0).write(it) }
-        return runCatching { MonthWidget().compose(this, id, size = PreviewSize, state = state) }.getOrNull()
-    }
+    // Drawn under a throwaway id (Glance's default), never the placed widget's: Glance runs one
+    // composition per id, and this one mustn't touch the real widget.
+    private suspend fun preview(settings: MonthWidgetSettings): RemoteViews? =
+        runCatching { MonthWidget(preview = settings.copy(offset = 0)).compose(this, size = PreviewSize) }.getOrNull()
 
     private fun save(settings: MonthWidgetSettings) {
         val id = glanceId ?: return
