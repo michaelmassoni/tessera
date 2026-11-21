@@ -8,6 +8,8 @@ import io.github.michaelmassoni.tessera.gallery.engine.Albums
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,11 +50,19 @@ class GalleryViewModel(
     val state: StateFlow<GalleryState> = _state.asStateFlow()
     private var loading: Job? = null
 
-    fun refresh() {
+    /**
+     * Reloads the library. [after] waits first, so a burst of MediaStore changes (a camera burst, a
+     * download, a scan) loads once: each call cancels the one before.
+     */
+    fun refresh(after: Long = 0) {
         loading?.cancel()
         loading =
             viewModelScope.launch {
-                val (items, trash) = withContext(io) { repository.loadAll() to repository.loadTrash() }
+                if (after > 0) delay(after)
+                // The library and the trash are two MediaStore queries; run them together.
+                val trashJob = async(io) { repository.loadTrash() }
+                val items = withContext(io) { repository.loadAll() }
+                val trash = trashJob.await()
                 _state.update { s ->
                     val ids = (items + trash).map { it.id }.toSet()
                     s.copy(
