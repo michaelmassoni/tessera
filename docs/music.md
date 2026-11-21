@@ -48,7 +48,32 @@ a Media3 `MediaSessionService`.
   times.
 - **Audio focus:** pauses for calls and ducks for navigation prompts (Media3 handles audio
   focus). Unplugging headphones pauses ("becoming noisy").
-- **Resuming:** the queue and position aren't restored after the process dies in v0.1.
+- **Resuming:** `PlaybackService` saves the queue (URI, title, artist, album per track), current
+  track, position, shuffle and repeat to `queue.json` whenever they change, every 10 seconds
+  while playing, and when the app is swiped away. When the service starts again it puts the queue
+  back, paused. Media3's `onPlaybackResumption` serves the same file, so Android's media controls
+  and Bluetooth "play" resume it too (`MediaButtonReceiver` is declared for that).
+- **Progress** is its own flow, ticking twice a second while playing. Only the progress line and
+  the seek slider read it, so the rest of the player doesn't recompose with each tick.
+
+## Playlists
+
+- Kept by the app in `playlists.json` (by MediaStore song id), not in MediaStore, whose
+  playlists are deprecated and unreliable on Android 12+. Songs that leave the library are
+  skipped when shown and stay in the file in case they come back.
+- **Playlists tab:** New playlist, then every playlist with its song count.
+- **Adding:** long-press a song (Songs tab or search) for a sheet with Add to playlist, which
+  lists the playlists and New playlist. A song already in a playlist isn't added twice.
+- **A playlist:** song count, Play and Shuffle, the songs (long-press to remove one), and Rename
+  and Delete playlist in the overflow. Deleting asks first and leaves the songs in the library.
+
+## Widget
+
+- **Now playing (Glance, 4×1, home and lock screen):** album art, title and artist, with
+  previous, play/pause and next. The buttons send media button events to Media3's
+  `MediaButtonReceiver`, so they work, and resume the saved queue, even when the service isn't
+  running. `PlaybackService` writes what's playing to shared preferences and redraws the widget
+  as it changes. Tapping elsewhere opens the app.
 
 ## Engine (pure Kotlin, unit tested)
 
@@ -74,12 +99,9 @@ a Media3 `MediaSessionService`.
 
 ## Out of scope for v0.1
 
-- Playlists (reading or editing).
 - Lyrics.
 - Equalizer.
 - Gapless tuning.
-- Restoring the queue after the process dies.
 - Folders view.
 - Tag editing.
 - Android Auto.
-- Widgets.

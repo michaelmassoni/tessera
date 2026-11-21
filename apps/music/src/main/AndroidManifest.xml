@@ -34,6 +34,28 @@
             </intent-filter>
         </service>
 
+        <!-- Media buttons (headset, Bluetooth, the widget) reach the service through Media3 even when it's stopped. -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Now playing widget (Glance), redrawn by PlaybackService as playback changes. -->
+        <receiver
+            android:name=".widget.NowPlayingWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/now_playing_widget_info" />
+        </receiver>
+
         <!--
             Launcher entries, one per built-in icon style. Exactly one is enabled at a time;
             core:settings (AppIcons) switches them when the user picks an icon in Settings.

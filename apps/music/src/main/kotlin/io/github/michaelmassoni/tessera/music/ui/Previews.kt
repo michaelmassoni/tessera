@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.music.PlaybackState
+import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.QueueItem
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Song
 
 private val songs =
@@ -26,11 +28,11 @@ private val playing =
         artist = "The Night Shift",
         album = "Overtime",
         isPlaying = true,
-        positionMs = 95_000,
-        durationMs = 305_000,
         queue = songs.map { QueueItem(it.title, it.artist) },
         index = 2,
     )
+
+private val progress = Progress(95_000, 305_000)
 
 private object NoLibrary : LibraryActions {
     override fun play(
@@ -39,6 +41,28 @@ private object NoLibrary : LibraryActions {
     ) = Unit
 
     override fun shuffle(songs: List<Song>) = Unit
+
+    override fun createPlaylist(
+        name: String,
+        songIds: List<Long>,
+    ) = Unit
+
+    override fun renamePlaylist(
+        id: Long,
+        name: String,
+    ) = Unit
+
+    override fun deletePlaylist(id: Long) = Unit
+
+    override fun addToPlaylist(
+        id: Long,
+        songIds: List<Long>,
+    ) = Unit
+
+    override fun removeFromPlaylist(
+        id: Long,
+        index: Int,
+    ) = Unit
 
     override fun openSettings() = Unit
 }
@@ -62,11 +86,29 @@ private object NoPlayer : PlayerActions {
 @TesseraPreviews
 @Composable
 private fun LibraryPreview() {
-    TesseraTheme(dynamicColor = false) { MusicApp(library, playing, NoLibrary, NoPlayer) }
+    TesseraTheme(dynamicColor = false) { MusicApp(library, playing, { progress }, NoLibrary, NoPlayer) }
 }
 
 @TesseraPreviews
 @Composable
 private fun FullPlayerPreview() {
-    TesseraTheme(dynamicColor = false) { FullPlayer(playing, NoPlayer, onClose = {}) }
+    TesseraTheme(dynamicColor = false) { FullPlayer(playing, { progress }, NoPlayer, onClose = {}) }
+}
+
+// A playlist's page: count, Play and Shuffle, and its songs, in both themes.
+@TesseraPreviews
+@Composable
+private fun PlaylistPreview() {
+    val playlist = Playlist(1, "Road trip", listOf(4, 1, 5))
+    TesseraTheme(dynamicColor = false) {
+        PlaylistScreen(
+            playlist,
+            playlist.songIds.mapNotNull { id ->
+                songs.firstOrNull { it.id == id }
+            },
+            listOf(playlist),
+            NoLibrary,
+            onBack = {},
+        )
+    }
 }
