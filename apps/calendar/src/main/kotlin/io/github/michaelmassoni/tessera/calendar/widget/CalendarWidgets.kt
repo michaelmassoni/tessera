@@ -12,9 +12,13 @@ import android.provider.CalendarContract
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import androidx.core.net.toUri
+import androidx.glance.GlanceId
+import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -61,11 +65,16 @@ internal object CalendarWidgets {
         context: Context,
         first: LocalDate,
         last: LocalDate,
+        /** Calendars a widget leaves out. */
+        hidden: Set<Long> = emptySet(),
     ): WidgetData {
         if (!allowed(context)) return WidgetData(allowed = false)
         val zone = ZoneId.systemDefault()
         val (begin, end) = DayLayout.range(first, last, zone)
-        val instances = runCatching { CalendarRepository(context.contentResolver).instances(begin, end) }.getOrDefault(emptyList())
+        val instances =
+            runCatching { CalendarRepository(context.contentResolver).instances(begin, end) }
+                .getOrDefault(emptyList())
+                .filter { it.calendarId !in hidden }
         watch(context)
         return WidgetData(allowed = true, instances = instances, zone = zone).also { arm(context, it) }
     }
@@ -76,6 +85,11 @@ internal object CalendarWidgets {
      */
     suspend fun refresh(context: Context): Boolean {
         val manager = GlanceAppWidgetManager(context)
+        // A month widget that's running only reloads its events when its state changes.
+        val stamp = System.currentTimeMillis()
+        manager.getGlanceIds(MonthWidget::class.java).forEach { id ->
+            updateAppWidgetState(context, id) { it[MonthWidgetSettings.STAMP] = stamp }
+        }
         val placed = listOf(AgendaWidget(), MonthWidget(), DateWidget()).filter { manager.getGlanceIds(it.javaClass).isNotEmpty() }
         placed.forEach { it.updateAll(context) }
         return placed.isNotEmpty()
@@ -247,5 +261,24 @@ class CalendarChangeWorker(
             CalendarWidgets.watch(applicationContext, ExistingWorkPolicy.APPEND_OR_REPLACE)
         }
         return Result.success()
+    }
+}
+
+/** The month widget's arrows and today button: move the month ([Delta] 0 is back to this month). */
+class MonthNavigation : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val delta = parameters[Delta] ?: 0
+        updateAppWidgetState(context, glanceId) { prefs ->
+            prefs[MonthWidgetSettings.OFFSET] = if (delta == 0) 0 else (prefs[MonthWidgetSettings.OFFSET] ?: 0) + delta
+        }
+        MonthWidget().update(context, glanceId)
+    }
+
+    companion object {
+        val Delta = ActionParameters.Key<Int>("delta")
     }
 }
