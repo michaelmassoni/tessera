@@ -51,4 +51,12 @@
     <string name="hide_keypad">Hide keypad</string>
     <string name="channel_incoming_calls">Incoming calls</string>
     <string name="channel_ongoing_calls">Ongoing calls</string>
+    <string name="new_contact">Create contact</string>
+    <string name="clear_search">Clear search</string>
+    <string name="empty_search">No matching contacts</string>
+    <string name="empty_contacts">No contacts with phone numbers</string>
+    <plurals name="numbers">
+        <item quantity="one">%d number</item>
+        <item quantity="other">%d numbers</item>
+    </plurals>
 </resources>

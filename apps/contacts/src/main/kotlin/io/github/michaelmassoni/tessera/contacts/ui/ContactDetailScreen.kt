@@ -49,6 +49,7 @@ import io.github.michaelmassoni.tessera.contacts.R
 import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
+import io.github.michaelmassoni.tessera.core.design.Avatar
 import java.time.LocalDate
 import java.time.MonthDay
 import java.time.format.DateTimeFormatter
