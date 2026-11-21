@@ -67,6 +67,16 @@ grid (two or more columns).
   day, computed from the scheduled time rather than "now", so a late dismissal can't skip a day.
 - **Snooze:** sets `snoozedUntil = now + snooze`. That instant replaces the next trigger until it
   passes, or until the user dismisses or edits the alarm.
+- **Skip next:** a repeating alarm's card has "Skip next alarm". It stores that occurrence's
+  instant in `skipped`, and the next trigger moves to the occurrence after it. The card shows
+  "Skipping Mon, 24 Nov" with Undo. Editing the time or days, turning the alarm off, or the alarm
+  ringing clears it. Skipping a one-off alarm turns it off.
+- **Upcoming notification:** 2 hours before an alarm (straight away if it's sooner), a quiet
+  "Upcoming alarm" notification (channel "Upcoming alarms", low importance) shows the day, time
+  and label, with Dismiss now. Dismiss now skips a repeating alarm once, turns a one-off alarm
+  off, and dismisses a snoozed one ("Snoozed alarm"). It's scheduled with an inexact
+  `setAndAllowWhileIdle` beside the alarm, is cancelled whenever the alarm is rescheduled or
+  deleted, and times out when the alarm rings.
 
 ## How alarms are delivered (reliability)
 
@@ -141,6 +151,15 @@ grid (two or more columns).
 - **Updates:** times tick every minute, aligned to the minute boundary, and only while the tab
   is visible.
 
+## Widget
+
+- **Clock (3×2, resizable, home and lock screen):** the time (large, primary colour), the date,
+  and the next alarm from `AlarmManager.getNextAlarmClock()`, which includes other apps' alarms
+  as on Pixel. Tapping the time opens World clock; tapping the alarm opens Alarms.
+- A RemoteViews layout with `TextClock`, so the time stays current without waking the app. It's
+  redrawn only on `NEXT_ALARM_CLOCK_CHANGED` and `LOCALE_CHANGED`. Colours are the system
+  dynamic palette, with a values-night set for dark mode.
+
 ## Settings (overflow menu, then Settings)
 
 - Snooze length: 5, 10, 15 or 20 minutes.
@@ -196,5 +215,4 @@ Not requested: storage, location (cities are chosen by hand), network.
 - Wake-up challenges.
 - Spotify and other streaming sounds.
 - Analog clock faces.
-- Widgets.
 - Wear OS.

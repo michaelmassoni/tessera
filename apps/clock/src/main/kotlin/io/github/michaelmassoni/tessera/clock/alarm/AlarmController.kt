@@ -66,7 +66,7 @@ class AlarmController(
             if (old != null &&
                 (old.hour != alarm.hour || old.minute != alarm.minute || old.days != alarm.days || !alarm.enabled)
             ) {
-                alarm.copy(snoozedUntil = null)
+                alarm.copy(snoozedUntil = null, skipped = null)
             } else {
                 alarm
             }
@@ -100,6 +100,42 @@ class AlarmController(
         val snoozed = alarm.copy(enabled = true, snoozedUntil = until)
         store.update { list -> list.map { if (it.id == id) snoozed else it } }
         reschedule(snoozed)
+    }
+
+    /**
+     * Skips the next time a repeating alarm would ring (or brings it back). A one-off alarm has
+     * nothing after its next time, so skipping it turns it off.
+     */
+    fun skipNext(
+        id: Int,
+        skip: Boolean = true,
+    ) {
+        val alarm = get(id) ?: return
+        val changed =
+            when {
+                !skip -> {
+                    alarm.copy(skipped = null)
+                }
+
+                !alarm.repeats -> {
+                    alarm.copy(enabled = false, snoozedUntil = null)
+                }
+
+                else -> {
+                    alarm.copy(
+                        snoozedUntil = null,
+                        skipped = AlarmTimes.nextOccurrence(alarm.copy(skipped = null), time.now()).toInstant().toEpochMilli(),
+                    )
+                }
+            }
+        store.update { list -> list.map { if (it.id == id) changed else it } }
+        reschedule(changed)
+    }
+
+    /** "Dismiss" on the upcoming-alarm notification: a snoozed alarm is dismissed, otherwise its next time is skipped. */
+    fun dismissUpcoming(id: Int) {
+        val alarm = get(id) ?: return
+        if (alarm.snoozedUntil != null) dismiss(id) else skipNext(id)
     }
 
     /** Dismissing a ringing or snoozed alarm. */

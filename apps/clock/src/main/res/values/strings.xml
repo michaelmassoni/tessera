@@ -34,6 +34,8 @@
     <string name="alarm_on">Alarm on</string>
     <string name="alarm_off">Alarm off</string>
     <string name="alarm_snoozed_until">Snoozed until %1$s</string>
+    <string name="alarm_skipping">Skipping %1$s</string>
+    <string name="alarm_skip_next">Skip next alarm</string>
     <string name="alarm_add_label">Add label</string>
     <string name="alarm_label">Label</string>
     <string name="timer_edit_label">Edit label</string>
@@ -121,4 +123,13 @@
     <string name="channel_timers">Running timers</string>
     <string name="channel_stopwatch">Stopwatch</string>
     <string name="channel_missed">Missed alarms</string>
+    <string name="channel_upcoming">Upcoming alarms</string>
+    <string name="upcoming_alarm">Upcoming alarm</string>
+    <string name="snoozed_alarm">Snoozed alarm</string>
+    <string name="action_dismiss_now">Dismiss now</string>
+    <string name="widget_clock_name">Clock</string>
+    <string name="widget_clock_description">The time, date and your next alarm</string>
+    <string name="widget_next_alarm">Next alarm %1$s</string>
+    <!-- A TextClock pattern: short weekday, day and short month. -->
+    <string name="widget_date_format" translatable="false">EEE, d MMM</string>
 </resources>

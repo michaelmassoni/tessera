@@ -23,7 +23,8 @@ object AlarmTimes {
         if (snooze != null && snooze > now.toInstant().toEpochMilli()) {
             return Instant.ofEpochMilli(snooze).atZone(now.zone)
         }
-        return nextOccurrence(alarm, now)
+        val next = nextOccurrence(alarm, now)
+        return if (next.toInstant().toEpochMilli() == alarm.skipped) nextOccurrence(alarm, next) else next
     }
 
     /** The next wall-clock occurrence of the alarm's time after [after], ignoring snooze. */
@@ -62,5 +63,6 @@ object AlarmTimes {
         alarm.copy(
             enabled = alarm.repeats,
             snoozedUntil = null,
+            skipped = null,
         )
 }

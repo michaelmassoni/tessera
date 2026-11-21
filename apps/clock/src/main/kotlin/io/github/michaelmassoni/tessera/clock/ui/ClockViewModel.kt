@@ -97,6 +97,11 @@ class ClockViewModel(
     /** Cancels a pending snooze ("Dismiss" on a snoozed alarm). */
     fun cancelSnooze(alarm: Alarm) = background { graph.alarms.dismiss(alarm.id) }
 
+    fun skipAlarm(
+        alarm: Alarm,
+        skip: Boolean,
+    ) = background { graph.alarms.skipNext(alarm.id, skip) }
+
     private fun announce(alarm: Alarm) {
         val trigger = graph.alarms.nextTrigger(graph.alarms.get(alarm.id) ?: return) ?: return
         eventChannel.trySend(ClockEvent.AlarmSet(TimeUntil.between(time.now(), trigger)))
