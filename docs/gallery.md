@@ -32,7 +32,13 @@ and needs no account.
   - Grid cells and album covers use MediaStore's cached thumbnails (`loadThumbnail`, through a
     Coil fetcher) instead of decoding the original or a video frame. On the emulator, scrolling 78
     items (72 photos of 12 MP, 6 videos) read 4 MB instead of over 300 MB, with about half the app
-    CPU time. The viewer still loads the full item.- **Selection:** long-press starts selection; tapping a day heading selects that day. The
+    CPU time. The viewer still loads the full item.
+  - MediaStore changes (a new photo, a download, a scan) reload the library once they settle
+    (500 ms), and only while the app is visible; returning to the app reloads anyway. The
+    library and the trash are queried in parallel.
+  - New photos show up in place when the grid is at the top (a lazy grid would otherwise keep the
+    old first photo in view and put them just above the screen).
+- **Selection:** long-press starts selection; tapping a day heading selects that day. The
   contextual bar offers Share, Favourite and Move to trash.
 
 ### Albums

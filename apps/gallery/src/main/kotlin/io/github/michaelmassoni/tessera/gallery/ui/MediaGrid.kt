@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -24,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,9 +62,26 @@ fun MediaGrid(
     caption: ((MediaItem) -> String?)? = null,
 ) {
     val selecting = selection.isNotEmpty()
+    val grid = rememberLazyGridState()
+    // New photos arrive above the first one, and a lazy grid keeps the old first item in place, so
+    // they would land just off screen. When the grid is at the top, keep it there to show them.
+    val first =
+        sections
+            ?.firstOrNull()
+            ?.items
+            ?.firstOrNull()
+            ?.id ?: items.firstOrNull()?.id
+    val shownFirst = remember { arrayOf(first) }
+    SideEffect {
+        if (shownFirst[0] != first) {
+            if (grid.firstVisibleItemIndex == 0 && grid.firstVisibleItemScrollOffset == 0) grid.requestScrollToItem(0)
+            shownFirst[0] = first
+        }
+    }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(104.dp),
         modifier = modifier.fillMaxSize(),
+        state = grid,
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
