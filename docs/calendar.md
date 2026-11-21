@@ -39,7 +39,9 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
   - Pills don't take touches: a tap anywhere on a day opens the day. TalkBack reads each day as
     its date, event count and titles.
   - A day tapped in the month or date widget opens on that day's sheet.
-  - Swipe or use the arrows to change month; "Today" jumps back.
+  - Months are pages: the grid follows a swipe and settles on the next or previous month, and
+    the arrows and "Today" animate the same way. The weekday names stay put. Events for the
+    months either side are loaded too, so a page arrives with its pills.
 - **Schedule:** a scrolling list of upcoming events grouped by day, starting today, loading more
   as you scroll.
 - **Picking a view:** chosen with a segmented button in the top bar; the choice is remembered.
@@ -51,6 +53,9 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 - **Editor:** title, all-day, start and end date and time (pickers), time zone (the device's),
   calendar, repeat (none, daily, weekly, monthly, yearly), reminders (none, at the start, 5, 10,
   15 or 30 minutes, 1 hour or 1 day before; up to several), location and description.
+  Laid out as current Android apps do: a large borderless title ("Add title"), then rounded
+  tonal sections of rows with icons (when and repeat; calendar, with its colour; reminders;
+  location and description as borderless fields). Rows open pickers or menus; no outlined boxes.
 - **Repeating events:** editing or deleting one changes the whole series in v0.1. The dialog
   says so.
 - **Creating:** the FAB creates an event on the selected day, starting at the next whole hour.
