@@ -195,6 +195,11 @@ fun ClockRoot(
                                 override fun onDelete(alarm: Alarm) = viewModel.deleteAlarm(alarm)
 
                                 override fun onCancelSnooze(alarm: Alarm) = viewModel.cancelSnooze(alarm)
+
+                                override fun onSkip(
+                                    alarm: Alarm,
+                                    skip: Boolean,
+                                ) = viewModel.skipAlarm(alarm, skip)
                             },
                         banners = { PermissionBanners() },
                         contentPadding = listPadding,

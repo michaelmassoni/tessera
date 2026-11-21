@@ -140,7 +140,7 @@ private fun LapList(
     val fastest = stopwatch.fastestLap
     val slowest = stopwatch.slowestLap
     LazyColumn(modifier.widthIn(max = 560.dp)) {
-        itemsIndexed(laps.indices.reversed().toList()) { position, index ->
+        itemsIndexed(laps.indices.reversed().toList(), key = { _, index -> index }) { position, index ->
             if (position > 0) HorizontalDivider()
             val note =
                 when (index) {

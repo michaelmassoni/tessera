@@ -4,6 +4,13 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Clock's widget is a RemoteViews layout, not Glance (Accepted)
+
+A clock widget must show the current minute. Glance has no `TextClock`, and redrawing a Glance
+widget every minute would wake the app 1,440 times a day. The Clock widget is therefore a plain
+`AppWidgetProvider` with an XML RemoteViews layout (`widget_clock.xml`). It's the only XML layout
+in the suite and is allowed as a resource. Other widgets keep using Glance.
+
 ## 2026-11-21: Sports joins the suite, with scores from ESPN (Accepted)
 
 **Decision:** Add a Sports app (the maintainer asked for it, after Apple Sports). Scores, fixtures

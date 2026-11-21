@@ -8,8 +8,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.text.format.DateFormat
+import android.text.format.DateUtils
 import io.github.michaelmassoni.tessera.clock.MainActivity
 import io.github.michaelmassoni.tessera.clock.R
+import io.github.michaelmassoni.tessera.clock.alarm.Alarm
 import io.github.michaelmassoni.tessera.clock.stopwatch.Stopwatch
 import io.github.michaelmassoni.tessera.clock.timer.ClockTimer
 import io.github.michaelmassoni.tessera.clock.ui.DurationFormat
@@ -39,6 +41,11 @@ class ClockNotifications(
                 },
                 liveChannel(CHANNEL_TIMERS, R.string.channel_timers),
                 liveChannel(CHANNEL_STOPWATCH, R.string.channel_stopwatch),
+                NotificationChannel(
+                    CHANNEL_UPCOMING,
+                    context.getString(R.string.channel_upcoming),
+                    NotificationManager.IMPORTANCE_LOW,
+                ),
                 NotificationChannel(
                     CHANNEL_MISSED,
                     context.getString(R.string.channel_missed),
@@ -143,6 +150,33 @@ class ClockNotifications(
                 .setAutoCancel(true)
                 .build()
         manager.notify(MISSED_NOTIFICATION_BASE + ringing.id, notification)
+    }
+
+    /**
+     * "Upcoming alarm" (or "Snoozed alarm") with Dismiss now, from 2 hours before it rings. It
+     * times out when the alarm rings; rescheduling the alarm cancels it.
+     */
+    fun showUpcoming(
+        alarm: Alarm,
+        triggerAtMillis: Long,
+    ) {
+        if (!canPost()) return
+        val time = DateFormat.getTimeFormat(context).format(java.util.Date(triggerAtMillis))
+        val day = DateUtils.formatDateTime(context, triggerAtMillis, DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY)
+        val snoozed = alarm.snoozedUntil != null
+        val notification =
+            Notification
+                .Builder(context, CHANNEL_UPCOMING)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setContentTitle(context.getString(if (snoozed) R.string.snoozed_alarm else R.string.upcoming_alarm))
+                .setContentText(listOf("$day $time", alarm.label).filter { it.isNotBlank() }.joinToString(" · "))
+                .setShowWhen(false)
+                .setContentIntent(openTab(MainActivity.TAB_ALARMS))
+                .setTimeoutAfter((triggerAtMillis - System.currentTimeMillis()).coerceAtLeast(1))
+                .addAction(broadcast(R.string.action_dismiss_now, ClockReceiver.ACTION_ALARM_DISMISS_UPCOMING, alarm.id))
+                .build()
+        manager.notify(UPCOMING_NOTIFICATION_BASE + alarm.id, notification)
     }
 
     /** One ongoing notification per running or paused timer, with a live countdown. */
@@ -279,11 +313,13 @@ class ClockNotifications(
         const val CHANNEL_STOPWATCH = "stopwatch_live"
         private val LEGACY_CHANNELS = listOf("timers", "stopwatch")
         const val CHANNEL_MISSED = "missed"
+        const val CHANNEL_UPCOMING = "upcoming"
 
         const val RINGING_NOTIFICATION_ID = 1
         const val STOPWATCH_NOTIFICATION_ID = 2
         const val TIMER_NOTIFICATION_BASE = 10_000
         const val MISSED_NOTIFICATION_BASE = 20_000
+        const val UPCOMING_NOTIFICATION_BASE = 30_000
         private const val ID_RANGE = 10_000
     }
 }
