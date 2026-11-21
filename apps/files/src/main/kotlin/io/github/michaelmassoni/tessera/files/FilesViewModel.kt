@@ -16,6 +16,7 @@ import io.github.michaelmassoni.tessera.files.engine.Sorting
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +78,8 @@ sealed interface FilesEvent {
 
     enum class Reason { IntoItself, NoSpace, Io, Cancelled, NoApp }
 }
+
+private const val SEARCH_DELAY_MS = 250L
 
 /**
  * Browser state and file actions. All disk access runs on [io]; the UI only renders state.
@@ -298,6 +301,8 @@ class FilesViewModel(
         if (query.isBlank()) return
         searching =
             viewModelScope.launch {
+                // Typing restarts the search: wait for a pause rather than walking the disk per key.
+                delay(SEARCH_DELAY_MS)
                 val job = coroutineContext[Job]
                 withContext(io) {
                     val batch = mutableListOf<FileEntry>()
