@@ -2,6 +2,8 @@ package io.github.michaelmassoni.tessera.notes.ui
 
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -35,9 +38,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,24 +51,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import io.github.michaelmassoni.tessera.notes.EditorState
 import io.github.michaelmassoni.tessera.notes.R
 import io.github.michaelmassoni.tessera.notes.engine.Checklist
 import io.github.michaelmassoni.tessera.notes.engine.ChecklistItem
+import io.github.michaelmassoni.tessera.notes.engine.DragTarget
 import io.github.michaelmassoni.tessera.notes.engine.Note
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -273,8 +288,89 @@ private fun ChecklistEditor(
     val unchecked = if (checkedLast) order.filter { !items[it].checked } else order
     val checked = if (checkedLast) order.filter { items[it].checked } else emptyList()
 
+    // Dragging a row by its handle: the row follows the finger, the rows it passes slide out of
+    // the way, and the move is saved (one undo step) when the finger lifts.
+    var dragging by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val heights = remember { mutableStateMapOf<Int, Int>() }
+    val currentItems by rememberUpdatedState(items)
+    val moveLabelUp = stringResource(R.string.move_up)
+    val moveLabelDown = stringResource(R.string.move_down)
+
+    fun groupOf(index: Int) = if (index in checked) checked else unchecked
+
+    fun drop() {
+        val group = groupOf(dragging)
+        val from = group.indexOf(dragging)
+        if (from >= 0) {
+            val to = DragTarget.position(group.map { heights[it] ?: 0 }, from, dragOffset)
+            if (to != from) actions.setItemsStep(Checklist.move(currentItems, dragging, group[to]))
+        }
+        dragging = -1
+        dragOffset = 0f
+    }
+
     val row: @Composable (Int) -> Unit = { index ->
+        val group = groupOf(index)
+        val position = group.indexOf(index)
+        val shift =
+            if (dragging < 0 || dragging == index || dragging !in group) {
+                0f
+            } else {
+                val from = group.indexOf(dragging)
+                val to = DragTarget.position(group.map { heights[it] ?: 0 }, from, dragOffset)
+                val draggedHeight = (heights[dragging] ?: 0).toFloat()
+                when {
+                    position in (from + 1)..to -> -draggedHeight
+                    position in to until from -> draggedHeight
+                    else -> 0f
+                }
+            }
+        val handle =
+            Modifier
+                .pointerInput(index) {
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            dragging = index
+                            dragOffset = 0f
+                        },
+                        onVerticalDrag = { change, amount ->
+                            change.consume()
+                            dragOffset += amount
+                        },
+                        onDragEnd = { drop() },
+                        onDragCancel = {
+                            dragging = -1
+                            dragOffset = 0f
+                        },
+                    )
+                }.semantics {
+                    customActions =
+                        listOfNotNull(
+                            group.getOrNull(position - 1)?.let { above ->
+                                CustomAccessibilityAction(moveLabelUp) {
+                                    actions.setItemsStep(Checklist.move(currentItems, index, above))
+                                    true
+                                }
+                            },
+                            group.getOrNull(position + 1)?.let { below ->
+                                CustomAccessibilityAction(moveLabelDown) {
+                                    actions.setItemsStep(Checklist.move(currentItems, index, below))
+                                    true
+                                }
+                            },
+                        )
+                }
         ItemRow(
+            modifier =
+                Modifier
+                    .onSizeChanged { heights[index] = it.height }
+                    .zIndex(if (dragging == index) 1f else 0f)
+                    .graphicsLayer {
+                        translationY = if (dragging == index) dragOffset else shift
+                        shadowElevation = if (dragging == index) 8.dp.toPx() else 0f
+                    }.background(if (dragging == index) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent),
+            handleModifier = handle,
             item = items[index],
             requestFocus = focusIndex == index,
             cursor = focusCursor,
@@ -358,6 +454,7 @@ private fun ItemRow(
     onToggle: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    handleModifier: Modifier = Modifier,
 ) {
     val focus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
@@ -379,9 +476,16 @@ private fun ItemRow(
     // A plain field rather than a Material TextField: its 56dp minimum and inner padding spread
     // the list out. Each row is the checkbox's 48dp, growing only when an item wraps.
     Row(
-        modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 4.dp, end = 4.dp),
+        modifier.fillMaxWidth().heightIn(min = 48.dp).padding(end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(handleModifier.size(width = 32.dp, height = 48.dp), contentAlignment = Alignment.Center) {
+            Icon(
+                painterResource(DesignR.drawable.ic_drag_indicator),
+                contentDescription = stringResource(R.string.reorder_item),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Checkbox(checked = item.checked, onCheckedChange = { onToggle() })
         val hint = stringResource(R.string.item_hint)
         BasicTextField(

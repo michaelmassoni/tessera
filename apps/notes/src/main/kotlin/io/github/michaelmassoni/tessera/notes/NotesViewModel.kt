@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -64,6 +66,8 @@ private enum class EditKind { Title, Body, Item }
 class NotesViewModel(
     private val repository: NoteRepository,
     private val io: CoroutineDispatcher,
+    /** Filtering, sorting and labelling the list; off the main thread, so long lists don't jank. */
+    private val compute: CoroutineDispatcher = io,
     private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val view = MutableStateFlow<NoteView>(NoteView.Notes)
@@ -80,7 +84,8 @@ class NotesViewModel(
                 labels = NoteQuery.labels(notes.values),
                 selection = sel.filter { it in notes }.toSet(),
             )
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, ListState())
+        }.flowOn(compute)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, ListState())
 
     private val _editor = MutableStateFlow<EditorState?>(null)
     val editor: StateFlow<EditorState?> = _editor.asStateFlow()
@@ -196,6 +201,14 @@ class NotesViewModel(
         if (_editor.value?.note?.id == id) return
         closeNote()
         repository.get(id)?.let(::open)
+    }
+
+    /** Opens [id] once the notes have loaded (from the widget, possibly at a cold start). */
+    fun openNoteWhenLoaded(id: String) {
+        viewModelScope.launch {
+            repository.loaded.first { it }
+            openNote(id)
+        }
     }
 
     private fun open(note: Note) {

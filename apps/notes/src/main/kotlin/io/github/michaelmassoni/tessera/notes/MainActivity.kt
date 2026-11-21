@@ -21,7 +21,7 @@ import kotlinx.coroutines.Dispatchers
 
 class MainActivity : ComponentActivity() {
     private val viewModel: NotesViewModel by viewModels {
-        viewModelFactory { initializer { NotesViewModel(notes, Dispatchers.IO) } }
+        viewModelFactory { initializer { NotesViewModel(notes, Dispatchers.IO, Dispatchers.Default) } }
     }
     private var checkedLastPref by mutableStateOf(true)
 
@@ -61,6 +61,10 @@ class MainActivity : ComponentActivity() {
 
             ACTION_NEW_CHECKLIST -> {
                 viewModel.newNote(checklist = true)
+            }
+
+            ACTION_OPEN_NOTE -> {
+                intent.getStringExtra(EXTRA_NOTE)?.let(viewModel::openNoteWhenLoaded)
             }
 
             Intent.ACTION_SEND -> {
@@ -162,5 +166,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val ACTION_NEW_NOTE = "io.github.michaelmassoni.tessera.notes.NEW_NOTE"
         const val ACTION_NEW_CHECKLIST = "io.github.michaelmassoni.tessera.notes.NEW_CHECKLIST"
+        const val ACTION_OPEN_NOTE = "io.github.michaelmassoni.tessera.notes.OPEN_NOTE"
+        const val EXTRA_NOTE = "note"
     }
 }

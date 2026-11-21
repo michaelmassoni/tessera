@@ -37,4 +37,14 @@ class ChecklistTest {
         assertEquals(listOf(0, 1, 2), Checklist.displayOrder(list, checkedLast = false))
         assertEquals(items("b", "c", "a"), Checklist.move(items("a", "b", "c"), 0, 2))
     }
+
+    @Test fun `a dragged row passes a neighbour at half its height`() {
+        val heights = listOf(100, 100, 200, 100)
+        assertEquals(1, DragTarget.position(heights, 1, 40f))
+        assertEquals(2, DragTarget.position(heights, 1, 101f))
+        assertEquals(3, DragTarget.position(heights, 1, 260f))
+        assertEquals(3, DragTarget.position(heights, 1, 5000f))
+        assertEquals(0, DragTarget.position(heights, 2, -151f))
+        assertEquals(1, DragTarget.position(heights, 2, -60f))
+    }
 }

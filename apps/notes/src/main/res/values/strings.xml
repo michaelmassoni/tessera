@@ -97,4 +97,9 @@
     <string name="settings_checked_last">Move checked items to the bottom</string>
     <string name="shortcut_new_note">New note</string>
     <string name="shortcut_new_checklist">New checklist</string>
+    <string name="reorder_item">Drag to reorder</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="widget_description">Pinned and recent notes, and a quick new note</string>
+    <string name="widget_empty">No notes yet</string>
 </resources>
