@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
@@ -43,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -368,26 +371,38 @@ private fun ItemRow(
             onFocused()
         }
     }
-    Row(modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    val textStyle =
+        MaterialTheme.typography.bodyLarge.copy(
+            textDecoration = if (item.checked) TextDecoration.LineThrough else null,
+            color = if (item.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+        )
+    // A plain field rather than a Material TextField: its 56dp minimum and inner padding spread
+    // the list out. Each row is the checkbox's 48dp, growing only when an item wraps.
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Checkbox(checked = item.checked, onCheckedChange = { onToggle() })
-        TextField(
+        val hint = stringResource(R.string.item_hint)
+        BasicTextField(
             value = field,
             onValueChange = {
                 field = it
                 if (it.text != item.text) onTextChange(it.text)
             },
-            placeholder = { Text(stringResource(R.string.item_hint)) },
-            textStyle =
-                MaterialTheme.typography.bodyLarge.copy(
-                    textDecoration = if (item.checked) TextDecoration.LineThrough else null,
-                    color =
-                        if (item.checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                ),
-            colors = plainFieldColors(),
+            textStyle = textStyle,
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            decorationBox = { inner ->
+                Box {
+                    if (field.text.isEmpty()) Text(hint, style = textStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+                    inner()
+                }
+            },
             modifier =
                 Modifier
                     .weight(1f)
+                    .padding(start = 4.dp, top = 12.dp, bottom = 12.dp)
                     .focusRequester(focus)
                     .onFocusChanged { focused = it.isFocused }
                     .onPreviewKeyEvent { event ->
