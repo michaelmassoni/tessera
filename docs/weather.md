@@ -32,6 +32,11 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
     the device, so a cached forecast survives a change of units).
   - Place search: `geocoding-api.open-meteo.com/v1/search`.
 - Only coordinates rounded to 2 decimals (about 1 km) are sent. Nothing else leaves the phone.
+- **Warnings (Australia, 0.4):** BOM's `/v1/locations/{geohash}/warnings`, and
+  `/v1/warnings/{id}` for a warning's text, from the same API and with the same geohash.
+- **Air quality (0.4):** Open-Meteo's air-quality API (`air-quality-api.open-meteo.com`, CAMS
+  data, keyless) with the same rounded coordinates: the US AQI and PM2.5/PM10 now, and today's
+  pollen counts (alder, birch, grass, mugwort, olive, ragweed), which CAMS has for Europe only.
 - F-Droid: Open-Meteo is open source and self-hostable; BOM's app API is not documented, which
   F-Droid may flag as a non-free network service.
 
@@ -58,6 +63,14 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
     direction), humidity (and dew point), feels like, precipitation today, pressure,
     visibility, sunrise and sunset.
   - "Updated 10 min ago" and the Open-Meteo credit at the bottom. Pull down to refresh.
+  - **Warnings (0.4):** under the hero, one banner per BOM warning in force for the place (error
+    colours for "major" warnings such as severe thunderstorms, floods, fire weather and
+    heatwaves; tertiary for minor ones), with its short and full titles. Tapping one opens a
+    sheet with when it was issued and the Bureau's text (its HTML as plain text, without the
+    embedded images). Expired and cancelled warnings aren't shown.
+  - **Air quality and pollen tiles (0.4):** the US AQI with its band (Good… Hazardous), and,
+    where there's pollen data, today's level (Low, Moderate, High, Very high; rough bands in
+    grains/m³) and the main type. They don't open the day details.
   - Tapping an hour, a day or a detail tile opens the **day details** for that day and measure.
 - **Day details** (0.3): the days to pick from (name, icon, high/low); chips for the measures
   the day has hourly (temperature, feels like, precipitation as chance of rain, UV index, wind,
@@ -73,6 +86,25 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
 - **Settings** (shared Tessera settings screen plus): units for temperature (°C/°F), wind
   (km/h, m/s, mph, knots) and precipitation (mm, in), defaulting from the locale; use current
   location on/off.
+
+## Notifications and widget (0.4)
+
+- **Settings → Notifications**, all off by default: a morning forecast at 7:00 (condition, high
+  and low, chance of rain, and BOM's text for today), rain alerts (the first hour in the next two
+  with a 60% or higher chance of rain, when it isn't raining already; once per hour), and severe
+  weather warnings (each new major BOM warning once, Australian places only). Turning one on asks
+  for the notification permission on Android 13+.
+- They're for the current location (its last fix: the app has no background location
+  permission) or else the first saved place.
+- **Background work** (WorkManager), only while something needs it: a check every 30 minutes
+  with a network connection while rain or warning alerts are on or a widget is placed, and a
+  one-off job at the next 7:00 for the morning forecast that schedules the next one. Each run
+  refreshes the cache the app reads.
+- **Widget (Glance, 4×2, resizable):** the place, the temperature now, the condition icon and
+  high/low; from 250dp wide, the next five hours too. It reads the cache, so it shows what the
+  app or the background check fetched last; the app redraws it after every fetch. Tapping it
+  opens the app.
+- Channels: "Morning forecast" (low), "Rain alerts" (default), "Severe weather warnings" (high).
 
 ## Behaviour
 
@@ -107,8 +139,11 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
 |------------|-----|
 | `INTERNET` | The forecast and place search (Open-Meteo). |
 | `ACCESS_COARSE_LOCATION` | Optional: the forecast for where you are. Asked only when you turn it on. |
+| `POST_NOTIFICATIONS` | Optional: the morning forecast, rain alerts and warnings. Asked when one is turned on. |
 
 ## Out of scope for v0.1
 
-- Widgets (next), notifications and severe-weather warnings, radar maps, air quality and
-  pollen, hourly detail per day, Wear OS.
+- Radar maps: Open-Meteo has none; the free radar tile services need a separate basemap
+  provider; and BOM's radar loops are images listed only on its web pages, so the app would
+  have to scrape them. Revisit if BOM's app API exposes radar.
+- Wear OS.

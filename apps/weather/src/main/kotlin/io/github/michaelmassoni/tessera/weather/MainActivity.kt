@@ -22,14 +22,17 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.weather.background.WeatherJobs
 import io.github.michaelmassoni.tessera.weather.data.ForecastCache
 import io.github.michaelmassoni.tessera.weather.data.Locator
 import io.github.michaelmassoni.tessera.weather.data.PlaceStore
 import io.github.michaelmassoni.tessera.weather.data.WeatherApi
 import io.github.michaelmassoni.tessera.weather.data.weatherSettings
 import io.github.michaelmassoni.tessera.weather.engine.Place
+import io.github.michaelmassoni.tessera.weather.engine.Warning
 import io.github.michaelmassoni.tessera.weather.ui.WeatherActions
 import io.github.michaelmassoni.tessera.weather.ui.WeatherApp
+import io.github.michaelmassoni.tessera.weather.widget.WeatherWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -46,6 +49,8 @@ class MainActivity : ComponentActivity() {
                     settings = weatherSettings(),
                     locator = Locator(applicationContext),
                     io = Dispatchers.IO,
+                    // The widget shows what the app just fetched.
+                    onForecast = { lifecycleScope.launch { WeatherWidget.refresh(applicationContext) } },
                 )
             }
         }
@@ -74,6 +79,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel.startOnce()
+        // Keeps the background check in line with the settings and widgets (it does nothing when nothing needs it).
+        lifecycleScope.launch { WeatherJobs.schedule(applicationContext) }
         val actions = Actions()
         setTesseraContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
@@ -139,5 +146,9 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+
+        override fun openWarning(warning: Warning) = viewModel.openWarning(warning)
+
+        override fun closeWarning() = viewModel.closeWarning()
     }
 }
