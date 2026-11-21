@@ -36,6 +36,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +85,7 @@ import io.github.michaelmassoni.tessera.phone.engine.ContactSections
 import io.github.michaelmassoni.tessera.phone.engine.Dialpad
 import io.github.michaelmassoni.tessera.phone.engine.DurationUnit
 import io.github.michaelmassoni.tessera.phone.engine.NumberMatch
+import io.github.michaelmassoni.tessera.phone.engine.T9
 import io.github.michaelmassoni.tessera.phone.engine.callDuration
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -95,6 +97,11 @@ data class PhoneState(
     val numbers: List<ContactNumber> = emptyList(),
     val isDefault: Boolean = false,
     val hasPermissions: Boolean = true,
+    /** The raw call log, newest first, for a number's call history. */
+    val calls: List<CallEntry> = emptyList(),
+    val blocked: List<String> = emptyList(),
+    /** Only the default phone app can block numbers. */
+    val canBlock: Boolean = false,
 )
 
 interface PhoneActions {
@@ -109,6 +116,12 @@ interface PhoneActions {
     fun addToContact(number: String)
 
     fun viewContact(contact: ContactNumber)
+
+    fun delete(ids: List<Long>)
+
+    fun block(number: String)
+
+    fun unblock(number: String)
 
     fun makeDefault()
 
@@ -138,6 +151,12 @@ fun PhoneApp(
     // Keyed on the dial request, so a new one (onNewIntent) opens the keypad with its number.
     var tab by rememberSaveable(initialTab, initialNumber) { mutableIntStateOf(initialTab) }
     var keypadNumber by rememberSaveable(initialNumber) { mutableStateOf(initialNumber) }
+    var history by rememberSaveable { mutableStateOf<String?>(null) }
+    history?.let { number ->
+        BackHandler { history = null }
+        CallHistory(number, state, actions, modifier, onBack = { history = null })
+        return
+    }
     NavigationSuiteScaffold(
         modifier = modifier,
         navigationSuiteItems = {
@@ -151,7 +170,7 @@ fun PhoneApp(
             }
         },
     ) {
-        PhoneTab(Tab.entries[tab], state, actions, keypadNumber) { number ->
+        PhoneTab(Tab.entries[tab], state, actions, keypadNumber, onHistory = { history = it }) { number ->
             keypadNumber = number
             tab = Tab.Keypad.ordinal
         }
@@ -165,6 +184,7 @@ private fun PhoneTab(
     state: PhoneState,
     actions: PhoneActions,
     initialNumber: String,
+    onHistory: (String) -> Unit,
     onEdit: (String) -> Unit,
 ) {
     val search = rememberTextFieldState()
@@ -202,7 +222,7 @@ private fun PhoneTab(
             }
             when (tab) {
                 Tab.Favourites -> Favourites(state, actions)
-                Tab.Recents -> Recents(state, actions, onEdit)
+                Tab.Recents -> Recents(state, actions, onHistory, onEdit)
                 Tab.Contacts -> Contacts(state, actions, search.text.toString())
                 Tab.Keypad -> Keypad(state, actions, initialNumber)
             }
@@ -262,6 +282,7 @@ private fun Favourites(
 private fun Recents(
     state: PhoneState,
     actions: PhoneActions,
+    onHistory: (String) -> Unit,
     onEdit: (String) -> Unit,
 ) {
     if (state.loaded && state.recents.isEmpty()) {
@@ -270,8 +291,11 @@ private fun Recents(
     }
     val context = LocalContext.current
     val country = LocalConfiguration.current.locales[0].country
-    var options by remember { mutableStateOf<CallEntry?>(null) }
-    options?.let { call ->
+    var options by remember { mutableStateOf<CallGroup?>(null) }
+    var confirmBlock by rememberSaveable { mutableStateOf<String?>(null) }
+    confirmBlock?.let { number -> BlockDialog(number, onBlock = { actions.block(number) }, onDismiss = { confirmBlock = null }) }
+    options?.let { group ->
+        val call = group.latest
         val contact =
             remember(call, state.numbers) {
                 state.numbers.firstOrNull { PhoneNumberUtils.areSamePhoneNumber(it.number, call.number, country) }
@@ -279,7 +303,17 @@ private fun Recents(
         val sheet = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
         val scope = rememberCoroutineScope()
         ModalBottomSheet(onDismissRequest = { options = null }, sheetState = sheet) {
-            RecentOptions(call, contact, actions, onEdit) { action ->
+            val blocked =
+                remember(call, state.blocked) { state.blocked.any { PhoneNumberUtils.areSamePhoneNumber(it, call.number, country) } }
+            RecentOptions(
+                group,
+                contact,
+                actions,
+                blocked = if (state.canBlock) blocked else null,
+                onEdit = onEdit,
+                onHistory = onHistory,
+                onBlock = { confirmBlock = it },
+            ) { action ->
                 scope.launch { sheet.hide() }.invokeOnCompletion {
                     options = null
                     action()
@@ -345,7 +379,7 @@ private fun Recents(
                     modifier =
                         Modifier.combinedClickable(onClick = {
                             if (call.number.isNotBlank()) actions.call(call.number)
-                        }, onLongClick = { if (call.number.isNotBlank()) options = call }),
+                        }, onLongClick = { if (call.number.isNotBlank()) options = g }),
                 ) {
                     Text(
                         if (g.count > 1) "$display (${g.count})" else display,
@@ -386,17 +420,22 @@ private fun durationText(seconds: Long): String {
 
 /**
  * What a long press on a recent call offers, like the system dialler: message, copy, edit before
- * calling, and either the contact or ways to save the number as one. [done] closes the sheet and
- * then runs the choice.
+ * calling, either the contact or ways to save the number as one, the number's call history,
+ * blocking (as the default phone app; [blocked] is null otherwise) and deleting the row's calls.
+ * [done] closes the sheet and then runs the choice.
  */
 @Composable
 internal fun RecentOptions(
-    call: CallEntry,
+    group: CallGroup,
     contact: ContactNumber?,
     actions: PhoneActions,
+    blocked: Boolean?,
     onEdit: (String) -> Unit,
+    onHistory: (String) -> Unit,
+    onBlock: (String) -> Unit,
     done: (() -> Unit) -> Unit,
 ) {
+    val call = group.latest
     val country = LocalConfiguration.current.locales[0].country
     val number = PhoneNumberUtils.formatNumber(call.number, country) ?: call.number
     val name = contact?.name ?: call.name
@@ -427,6 +466,19 @@ internal fun RecentOptions(
         Option(DesignR.drawable.ic_chat, R.string.send_message) { actions.message(call.number) }
         Option(DesignR.drawable.ic_content_copy, R.string.copy_number) { actions.copy(call.number) }
         Option(DesignR.drawable.ic_dialpad, R.string.edit_before_call) { onEdit(call.number) }
+        Option(DesignR.drawable.ic_history, R.string.call_history) { onHistory(call.number) }
+        when (blocked) {
+            true -> {
+                Option(DesignR.drawable.ic_block, R.string.unblock_number) { actions.unblock(call.number) }
+            }
+
+            false -> {
+                Option(DesignR.drawable.ic_block, R.string.block_number) { onBlock(call.number) }
+            }
+
+            null -> {}
+        }
+        Option(DesignR.drawable.ic_delete, R.string.delete_from_history) { actions.delete(group.ids) }
     }
 }
 
@@ -588,7 +640,14 @@ private fun Keypad(
 ) {
     var number by rememberSaveable { mutableStateOf(initialNumber) }
     val country = LocalConfiguration.current.locales[0].country
-    val suggestions = remember(number, state.numbers) { state.numbers.filter { NumberMatch.matches(number, it.number) }.take(3) }
+    // By number, or by name typed on the letters (T9), one row per contact.
+    val suggestions =
+        remember(number, state.numbers) {
+            state.numbers
+                .filter { NumberMatch.matches(number, it.number) || T9.matches(number, it.name) }
+                .distinctBy { it.contactId }
+                .take(3)
+        }
     Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         suggestions.forEach { s ->
             ListItem(onClick = {
@@ -634,3 +693,128 @@ private fun Empty(text: String) {
         )
     }
 }
+
+@Composable
+private fun BlockDialog(
+    number: String,
+    onBlock: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val country = LocalConfiguration.current.locales[0].country
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(painterResource(DesignR.drawable.ic_block), contentDescription = null) },
+        title = { Text(stringResource(R.string.block_title, PhoneNumberUtils.formatNumber(number, country) ?: number)) },
+        text = { Text(stringResource(R.string.block_text)) },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                onBlock()
+            }) { Text(stringResource(R.string.block)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** Every call with [number], newest first, under a header with the contact and quick actions. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun CallHistory(
+    number: String,
+    state: PhoneState,
+    actions: PhoneActions,
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit,
+) {
+    val context = LocalContext.current
+    val country = LocalConfiguration.current.locales[0].country
+    val calls = remember(number, state.calls) { state.calls.filter { PhoneNumberUtils.areSamePhoneNumber(it.number, number, country) } }
+    val contact =
+        remember(number, state.numbers) { state.numbers.firstOrNull { PhoneNumberUtils.areSamePhoneNumber(it.number, number, country) } }
+    val formatted = PhoneNumberUtils.formatNumber(number, country) ?: number
+    val name = contact?.name ?: calls.firstNotNullOfOrNull { it.name }
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.call_history)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(contentPadding = padding) {
+            item(key = "header") {
+                Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Avatar(name, contact?.lookupKey ?: number, contact?.photoUri, size = 96.dp)
+                    Text(
+                        name ?: formatted,
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                    if (name != null) Text(formatted, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        @Composable
+                        fun Action(
+                            icon: Int,
+                            label: Int,
+                            onClick: () -> Unit,
+                        ) = Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            FilledTonalIconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
+                                Icon(painterResource(icon), contentDescription = null)
+                            }
+                            Text(
+                                stringResource(label),
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        Action(DesignR.drawable.ic_call, R.string.call) { actions.call(number) }
+                        Action(DesignR.drawable.ic_chat, R.string.message) { actions.message(number) }
+                        if (contact != null) {
+                            Action(DesignR.drawable.ic_person, R.string.contact) { actions.viewContact(contact) }
+                        } else {
+                            Action(DesignR.drawable.ic_person_add, R.string.add_contact) { actions.createContact(number) }
+                        }
+                    }
+                }
+                HorizontalDivider(Modifier.padding(top = 8.dp))
+            }
+            items(calls, key = { it.id }) { call ->
+                val missed = call.type == CallType.Missed || call.type == CallType.Rejected
+                val length = durationText(call.durationSeconds)
+                ListItem(
+                    leadingContent = {
+                        Icon(
+                            painterResource(callTypeIcon(call.type)),
+                            contentDescription = null,
+                            tint = if (missed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            DateUtils.formatDateTime(
+                                context,
+                                call.date,
+                                DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_ALL or
+                                    DateUtils.FORMAT_SHOW_TIME,
+                            ),
+                        )
+                    },
+                    trailingContent = if (length.isNotEmpty()) ({ Text(length) }) else null,
+                ) { Text(stringResource(callTypeLabel(call.type))) }
+            }
+        }
+    }
+}
+
+private fun callTypeIcon(type: CallType) =
+    when (type) {
+        CallType.Outgoing -> DesignR.drawable.ic_call_made
+        CallType.Missed, CallType.Rejected, CallType.Blocked -> DesignR.drawable.ic_call_missed
+        else -> DesignR.drawable.ic_call_received
+    }

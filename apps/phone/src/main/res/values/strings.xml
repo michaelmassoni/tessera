@@ -59,4 +59,15 @@
         <item quantity="one">%d number</item>
         <item quantity="other">%d numbers</item>
     </plurals>
+    <string name="call_history">Call history</string>
+    <string name="block_number">Block number</string>
+    <string name="unblock_number">Unblock number</string>
+    <string name="block">Block</string>
+    <string name="block_title">Block %1$s?</string>
+    <string name="block_text">You won\'t get calls or texts from this number.</string>
+    <string name="delete_from_history">Delete from call history</string>
+    <string name="back">Back</string>
+    <string name="message">Message</string>
+    <string name="contact">Contact</string>
+    <string name="add_contact">Add contact</string>
 </resources>
