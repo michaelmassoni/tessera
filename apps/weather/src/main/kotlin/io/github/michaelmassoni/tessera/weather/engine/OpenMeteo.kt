@@ -16,7 +16,9 @@ object OpenMeteo {
     private const val CURRENT =
         "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code," +
             "pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m"
-    private const val HOURLY = "temperature_2m,precipitation_probability,weather_code,is_day,uv_index,visibility,dew_point_2m"
+    private const val HOURLY =
+        "temperature_2m,precipitation_probability,weather_code,is_day,uv_index,visibility,dew_point_2m," +
+            "apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,pressure_msl"
     private const val DAILY =
         "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_sum," +
             "precipitation_probability_max"
@@ -69,6 +71,13 @@ object OpenMeteo {
                     uv = h.uv?.getOrNull(i),
                     visibility = h.visibility?.getOrNull(i),
                     dewPoint = h.dewPoint?.getOrNull(i),
+                    feelsLike = h.feelsLike?.getOrNull(i),
+                    humidity = h.humidity?.getOrNull(i),
+                    windSpeed = h.windSpeed?.getOrNull(i),
+                    windDirection = h.windDirection?.getOrNull(i),
+                    windGusts = h.windGusts?.getOrNull(i),
+                    precipitation = h.precipitation?.getOrNull(i),
+                    pressure = h.pressure?.getOrNull(i),
                 )
             }
         val d = r.daily
@@ -129,6 +138,13 @@ object OpenMeteo {
         @SerialName("uv_index") val uv: List<Double?>? = null,
         val visibility: List<Double?>? = null,
         @SerialName("dew_point_2m") val dewPoint: List<Double?>? = null,
+        @SerialName("apparent_temperature") val feelsLike: List<Double?>? = null,
+        @SerialName("relative_humidity_2m") val humidity: List<Int?>? = null,
+        @SerialName("wind_speed_10m") val windSpeed: List<Double?>? = null,
+        @SerialName("wind_direction_10m") val windDirection: List<Int?>? = null,
+        @SerialName("wind_gusts_10m") val windGusts: List<Double?>? = null,
+        val precipitation: List<Double?>? = null,
+        @SerialName("pressure_msl") val pressure: List<Double?>? = null,
     )
 
     @Serializable
