@@ -159,8 +159,12 @@ class MainActivity : ComponentActivity() {
         // From a widget: a day tapped in the month or date widget, or + (a new event on today).
         val day = intent.getLongExtra(EXTRA_DAY, Long.MIN_VALUE)
         if (day != Long.MIN_VALUE) {
-            viewModel.select(java.time.LocalDate.ofEpochDay(day))
-            if (intent.action != Intent.ACTION_INSERT) return
+            val date = java.time.LocalDate.ofEpochDay(day)
+            if (intent.action != Intent.ACTION_INSERT) {
+                viewModel.openDay(date)
+                return
+            }
+            viewModel.select(date)
         }
         val data = intent.data
         when (intent.action) {
@@ -234,6 +238,10 @@ class MainActivity : ComponentActivity() {
         override fun showMonth(month: YearMonth) = viewModel.showMonth(month)
 
         override fun select(day: LocalDate) = viewModel.select(day)
+
+        override fun openDay(day: LocalDate) = viewModel.openDay(day)
+
+        override fun closeDay() = viewModel.closeDay()
 
         override fun today() = viewModel.goToToday()
 

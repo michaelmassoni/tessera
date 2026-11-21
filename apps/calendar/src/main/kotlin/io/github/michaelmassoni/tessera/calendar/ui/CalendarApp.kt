@@ -8,25 +8,32 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -78,6 +85,11 @@ interface CalendarActions {
     fun showMonth(month: YearMonth)
 
     fun select(day: LocalDate)
+
+    /** Selects [day] and shows its events (in a sheet on a phone). */
+    fun openDay(day: LocalDate)
+
+    fun closeDay()
 
     fun today()
 
@@ -283,21 +295,22 @@ private fun MonthScreen(
             }
         val day = state.selected
         val dayEvents = listOf(day to state.byDay[day].orEmpty())
-        val grid: @Composable (Modifier, Int) -> Unit = { m, chips ->
-            MonthGrid(
-                state.weeks,
-                state.month,
-                state.today,
-                day,
-                state.byDay,
-                actions::select,
-                m.then(swipe).padding(horizontal = 4.dp),
-                chips,
-            )
-        }
         if (wide) {
+            // Room for the grid and the selected day's events side by side.
             Row(Modifier.fillMaxSize()) {
-                grid(Modifier.weight(1f).fillMaxHeight(), 4)
+                MonthGrid(
+                    state.weeks,
+                    state.month,
+                    state.today,
+                    day,
+                    state.byDay,
+                    actions::select,
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .then(swipe)
+                        .padding(horizontal = 4.dp),
+                )
                 VerticalDivider()
                 Column(Modifier.widthIn(max = 420.dp).weight(0.6f)) {
                     DayHeading(day, state.today)
@@ -305,13 +318,49 @@ private fun MonthScreen(
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize()) {
-                grid(Modifier.fillMaxWidth().weight(0.62f), 2)
-                HorizontalDivider()
-                DayHeading(day, state.today)
-                EventList(dayEvents, state.today, actions::open, modifier = Modifier.weight(0.38f), showHeadings = false)
+            // The month takes the whole screen; a day's events open in a sheet.
+            MonthGrid(
+                state.weeks,
+                state.month,
+                state.today,
+                null,
+                state.byDay,
+                actions::openDay,
+                Modifier.fillMaxSize().then(swipe).padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+            )
+            if (state.dayOpen) DaySheet(day, state.today, dayEvents, actions)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DaySheet(
+    day: LocalDate,
+    today: LocalDate,
+    events: List<Pair<LocalDate, List<Instance>>>,
+    actions: CalendarActions,
+) {
+    ModalBottomSheet(onDismissRequest = actions::closeDay) {
+        Row(Modifier.fillMaxWidth().padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { DayHeading(day, today) }
+            FilledTonalButton(onClick = {
+                actions.closeDay()
+                actions.create()
+            }) {
+                Icon(painterResource(DesignR.drawable.ic_add), contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(stringResource(R.string.new_event))
             }
         }
+        EventList(
+            events,
+            today,
+            actions::open,
+            modifier = Modifier.heightIn(min = 120.dp),
+            showHeadings = false,
+            contentPadding = PaddingValues(bottom = 24.dp),
+        )
     }
 }
 

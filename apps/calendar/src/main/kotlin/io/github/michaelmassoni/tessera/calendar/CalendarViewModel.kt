@@ -31,6 +31,8 @@ data class CalendarState(
     val mode: ViewMode = ViewMode.Month,
     val month: YearMonth = YearMonth.now(),
     val selected: LocalDate = LocalDate.now(),
+    /** On a phone, the selected day's events are open in a sheet over the month. */
+    val dayOpen: Boolean = false,
     val today: LocalDate = LocalDate.now(),
     val weeks: List<List<LocalDate>> = emptyList(),
     val byDay: Map<LocalDate, List<Instance>> = emptyMap(),
@@ -154,6 +156,13 @@ class CalendarViewModel(
             _state.update { it.copy(selected = day) }
         }
     }
+
+    fun openDay(day: LocalDate) {
+        select(day)
+        _state.update { it.copy(dayOpen = true) }
+    }
+
+    fun closeDay() = _state.update { it.copy(dayOpen = false) }
 
     fun goToToday() = select(LocalDate.now(zone()))
 
