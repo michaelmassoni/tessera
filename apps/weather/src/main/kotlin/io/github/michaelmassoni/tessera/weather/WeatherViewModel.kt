@@ -3,10 +3,12 @@ package io.github.michaelmassoni.tessera.weather
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.michaelmassoni.tessera.weather.data.ForecastCache
+import io.github.michaelmassoni.tessera.weather.data.ForecastLoader
 import io.github.michaelmassoni.tessera.weather.data.Locator
 import io.github.michaelmassoni.tessera.weather.data.PlaceStore
 import io.github.michaelmassoni.tessera.weather.data.WeatherApi
 import io.github.michaelmassoni.tessera.weather.data.WeatherSettings
+import io.github.michaelmassoni.tessera.weather.engine.AirQuality
 import io.github.michaelmassoni.tessera.weather.engine.Bom
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
 import io.github.michaelmassoni.tessera.weather.engine.ForecastCodec
@@ -14,6 +16,8 @@ import io.github.michaelmassoni.tessera.weather.engine.OpenMeteo
 import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.engine.Units
+import io.github.michaelmassoni.tessera.weather.engine.Warning
+import io.github.michaelmassoni.tessera.weather.engine.Warnings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -35,6 +39,9 @@ data class PlacePage(
     val fetchedAt: Long = 0,
     val loading: Boolean = false,
     val failed: Boolean = false,
+    /** BOM warnings in force (Australian places). */
+    val warnings: List<Warning> = emptyList(),
+    val air: AirQuality? = null,
 )
 
 data class WeatherState(
@@ -49,6 +56,10 @@ data class WeatherState(
     val results: List<Place> = emptyList(),
     val searching: Boolean = false,
     val searchFailed: Boolean = false,
+    /** The warning whose text is open, and its text once loaded (null while loading or if it failed). */
+    val openWarning: Warning? = null,
+    val warningText: String? = null,
+    val warningFailed: Boolean = false,
 )
 
 sealed interface WeatherEvent {
@@ -65,12 +76,15 @@ class WeatherViewModel(
     private val locator: Locator,
     private val io: CoroutineDispatcher,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** A forecast was fetched and cached (the widget redraws). */
+    private val onForecast: () -> Unit = {},
 ) : ViewModel() {
     private val _state = MutableStateFlow(WeatherState())
     val state: StateFlow<WeatherState> = _state.asStateFlow()
     private val _events = MutableSharedFlow<WeatherEvent>(extraBufferCapacity = 4)
     val events = _events.asSharedFlow()
 
+    private val loader = ForecastLoader(api)
     private var search: Job? = null
     private var started = false
 
@@ -159,10 +173,7 @@ class WeatherViewModel(
             }
             val result =
                 runCatching {
-                    // The Bureau for Australian places; Open-Meteo elsewhere, or if BOM fails.
-                    val stored =
-                        (if (Bom.covers(target.latitude, target.longitude)) runCatching { loadBom(target) }.getOrNull() else null)
-                            ?: ForecastCodec.openMeteo(api.get(OpenMeteo.forecastUrl(target.latitude, target.longitude)))
+                    val stored = loader.load(target)
                     val forecast = withContext(io) { ForecastCodec.decode(stored) }
                     val now = clock()
                     withContext(io) { cache.write(target.id, stored, now) }
@@ -171,6 +182,8 @@ class WeatherViewModel(
             result
                 .onSuccess { (forecast, at) ->
                     setPage(place.id) { it.copy(place = target, forecast = forecast, fetchedAt = at, loading = false, failed = false) }
+                    loadExtras(place.id, target)
+                    onForecast()
                 }.onFailure {
                     setPage(place.id) { it.copy(place = target, loading = false, failed = true) }
                     _events.tryEmit(WeatherEvent.UpdateFailed)
@@ -178,21 +191,41 @@ class WeatherViewModel(
         }
     }
 
-    /** BOM's location, daily and hourly forecasts and observations, fetched together and checked. */
-    private suspend fun loadBom(place: Place): String =
-        coroutineScope {
-            val g = Bom.geohash(place.latitude, place.longitude)
-            val location = async { api.get(Bom.locationUrl(g)) }
-            val daily = async { api.get(Bom.dailyUrl(g)) }
-            val hourly = async { api.get(Bom.hourlyUrl(g)) }
-            val observations = async { api.get(Bom.observationsUrl(g)) }
-            // Open-Meteo's hours for what BOM's three hourly days don't cover (the day details); optional.
-            val openMeteo = async { runCatching { api.get(OpenMeteo.forecastUrl(place.latitude, place.longitude)) }.getOrNull() }
-            val stored = ForecastCodec.bom(location.await(), daily.await(), hourly.await(), observations.await(), openMeteo.await())
-            // A response that doesn't parse (BOM changed its API) falls back to Open-Meteo.
-            withContext(io) { ForecastCodec.decode(stored) }.also { check(it.days.isNotEmpty() && it.hours.isNotEmpty()) }
-            stored
+    /**
+     * Warnings (Australia, from BOM) and air quality for a place, after its forecast. Either may
+     * fail without bothering anyone: the page just doesn't show them.
+     */
+    private fun loadExtras(
+        id: Long,
+        place: Place,
+    ) {
+        viewModelScope.launch {
+            val warnings =
+                if (Bom.covers(place.latitude, place.longitude)) {
+                    runCatching {
+                        Warnings.parse(
+                            api.get(Warnings.listUrl(Bom.geohash(place.latitude, place.longitude))),
+                            clock(),
+                        )
+                    }.getOrNull()
+                } else {
+                    emptyList()
+                }
+            val air = runCatching { AirQuality.parse(api.get(AirQuality.url(place.latitude, place.longitude))) }.getOrNull()
+            setPage(id) { it.copy(warnings = warnings ?: it.warnings, air = air ?: it.air) }
         }
+    }
+
+    fun openWarning(warning: Warning) {
+        _state.update { it.copy(openWarning = warning, warningText = null, warningFailed = false) }
+        viewModelScope.launch {
+            runCatching { Warnings.message(api.get(Warnings.detailUrl(warning.id))) }
+                .onSuccess { text -> _state.update { if (it.openWarning == warning) it.copy(warningText = text) else it } }
+                .onFailure { _state.update { if (it.openWarning == warning) it.copy(warningFailed = true) else it } }
+        }
+    }
+
+    fun closeWarning() = _state.update { it.copy(openWarning = null, warningText = null, warningFailed = false) }
 
     private fun setPage(
         id: Long,

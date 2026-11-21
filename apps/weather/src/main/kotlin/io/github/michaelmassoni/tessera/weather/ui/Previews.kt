@@ -6,6 +6,7 @@ import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.weather.PlacePage
 import io.github.michaelmassoni.tessera.weather.WeatherState
+import io.github.michaelmassoni.tessera.weather.engine.AirQuality
 import io.github.michaelmassoni.tessera.weather.engine.Condition
 import io.github.michaelmassoni.tessera.weather.engine.Current
 import io.github.michaelmassoni.tessera.weather.engine.Day
@@ -15,6 +16,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Hour
 import io.github.michaelmassoni.tessera.weather.engine.Metric
 import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Units
+import io.github.michaelmassoni.tessera.weather.engine.Warning
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -127,6 +129,19 @@ private val state =
                         station = "Melbourne (Olympic Park)",
                     ),
                     fetchedAt = now - 9 * 60_000L,
+                    warnings =
+                        listOf(
+                            Warning(
+                                "VIC_FW",
+                                "Severe Thunderstorm Warning for Central and North Central districts",
+                                "Severe Thunderstorm Warning",
+                                "severe_thunderstorm_warning",
+                                major = true,
+                                issued = now - 3_600_000L,
+                                expires = null,
+                            ),
+                        ),
+                    air = AirQuality(usAqi = 54, pm25 = 14.0, pm10 = 18.5, pollen = mapOf("grass" to 64.0)),
                 ),
                 PlacePage(
                     sydney,
@@ -159,6 +174,10 @@ private object NoActions : WeatherActions {
     override fun setUseLocation(on: Boolean) = Unit
 
     override fun openSettings() = Unit
+
+    override fun openWarning(warning: Warning) = Unit
+
+    override fun closeWarning() = Unit
 }
 
 @TesseraPreviews

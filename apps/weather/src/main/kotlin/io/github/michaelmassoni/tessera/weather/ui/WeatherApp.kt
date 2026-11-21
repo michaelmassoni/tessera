@@ -65,6 +65,7 @@ import io.github.michaelmassoni.tessera.weather.R
 import io.github.michaelmassoni.tessera.weather.WeatherState
 import io.github.michaelmassoni.tessera.weather.engine.Metric
 import io.github.michaelmassoni.tessera.weather.engine.Place
+import io.github.michaelmassoni.tessera.weather.engine.Warning
 import java.time.LocalDate
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -88,6 +89,10 @@ interface WeatherActions {
 
     /** Turning it on asks for the permission first. */
     fun setUseLocation(on: Boolean)
+
+    fun openWarning(warning: Warning)
+
+    fun closeWarning()
 
     fun openSettings()
 }
@@ -216,9 +221,11 @@ private fun ForecastPager(
                     detailDay = date.toEpochDay()
                     detailMetric = metric.name
                 },
+                onWarning = actions::openWarning,
             )
         }
     }
+    state.openWarning?.let { WarningSheet(it, state.warningText, state.warningFailed, actions::closeWarning) }
 }
 
 @Composable

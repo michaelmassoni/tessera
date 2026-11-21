@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.michaelmassoni.tessera.weather.PlacePage
 import io.github.michaelmassoni.tessera.weather.R
+import io.github.michaelmassoni.tessera.weather.engine.AirQuality
 import io.github.michaelmassoni.tessera.weather.engine.Convert
 import io.github.michaelmassoni.tessera.weather.engine.Day
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
@@ -64,6 +65,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Ranges
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.engine.Units
 import io.github.michaelmassoni.tessera.weather.engine.Uv
+import io.github.michaelmassoni.tessera.weather.engine.Warning
 import io.github.michaelmassoni.tessera.weather.engine.Wind
 import io.github.michaelmassoni.tessera.weather.engine.WindUnit
 import java.time.Instant
@@ -85,6 +87,8 @@ fun ForecastPage(
     modifier: Modifier = Modifier,
     /** Opens a day's details on a measure (from a day, an hour or a tile). */
     onDetail: (LocalDate, Metric) -> Unit = { _, _ -> },
+    /** Opens a BOM warning's text. */
+    onWarning: (Warning) -> Unit = {},
 ) {
     val forecast = page.forecast
     if (forecast == null) {
@@ -108,10 +112,11 @@ fun ForecastPage(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             item(key = "hero") { Hero(forecast, placeName, units) }
+            items(page.warnings, key = { "w${it.id}" }) { WarningBanner(it) { onWarning(it) } }
             forecast.summary?.let { summary -> item(key = "summary") { Summary(summary) } }
             item(key = "hours") { Hours(Timeline.nextHours(forecast.hours, now), forecast.zone, units, onDetail) }
             item(key = "days") { Days(forecast, units, onDetail) }
-            item(key = "details") { Details(forecast, units, now, onDetail) }
+            item(key = "details") { Details(forecast, units, now, page.air, onDetail) }
             item(key = "footer") { Footer(page.fetchedAt, now, forecast) }
         }
     }
@@ -409,8 +414,8 @@ private fun RangeBarView(
 }
 
 private data class Tile(
-    /** What the tile opens in the day details. */
-    val metric: Metric,
+    /** What the tile opens in the day details (nothing for air quality and pollen). */
+    val metric: Metric?,
     val icon: Int,
     val label: String,
     val value: String,
@@ -422,6 +427,7 @@ private fun Details(
     forecast: Forecast,
     units: Units,
     now: Long,
+    air: AirQuality?,
     onDetail: (LocalDate, Metric) -> Unit,
 ) {
     val current = forecast.current
@@ -519,6 +525,28 @@ private fun Details(
                     ),
                 )
             }
+            air?.usAqi?.let { aqi ->
+                add(
+                    Tile(
+                        null,
+                        R.drawable.ic_aqi,
+                        stringResource(R.string.detail_air_quality),
+                        aqi.toString(),
+                        air.band?.let { stringResource(it.label()) },
+                    ),
+                )
+            }
+            air?.worstPollen?.let { (type, level) ->
+                add(
+                    Tile(
+                        null,
+                        R.drawable.ic_pollen,
+                        stringResource(R.string.detail_pollen),
+                        stringResource(level.label()),
+                        stringResource(pollenLabel(type)),
+                    ),
+                )
+            }
             if (today?.sunrise != null && today.sunset != null) {
                 // Before sunset: the next event is sunset (show sunrise as the note); after it, tomorrow's sunrise.
                 val tomorrow = forecast.days.getOrNull(1)
@@ -551,7 +579,7 @@ private fun Details(
                 row.forEach { tile ->
                     TileView(
                         tile,
-                        onClick = { onDetail(today?.date ?: LocalDate.now(forecast.zone), tile.metric) },
+                        onClick = tile.metric?.let { metric -> { onDetail(today?.date ?: LocalDate.now(forecast.zone), metric) } },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -573,12 +601,16 @@ private fun formatNumber(value: Double): String =
 @Composable
 private fun TileView(
     tile: Tile,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 128.dp).semantics(mergeDescendants = true) {},
+        modifier =
+            modifier
+                .heightIn(min = 128.dp)
+                .clip(MaterialTheme.shapes.extraLarge)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .semantics(mergeDescendants = true) {},
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {

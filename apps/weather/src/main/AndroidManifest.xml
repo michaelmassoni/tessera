@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Optional: the forecast for where you are. Asked only when turned on. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Optional morning forecast, rain and warning notifications (asked when one is turned on). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -65,6 +67,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Weather widget (Glance); the background check keeps it fresh while one is placed. -->
+        <receiver
+            android:name=".widget.WeatherWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

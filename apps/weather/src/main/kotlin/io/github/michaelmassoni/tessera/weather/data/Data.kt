@@ -148,6 +148,31 @@ class WeatherSettings(
                 }
             }
 
+    /** A notification each morning with the day's forecast. */
+    var morningForecast: Boolean
+        get() = prefs.getBoolean(KEY_MORNING, false)
+        set(value) = prefs.edit { putBoolean(KEY_MORNING, value) }
+
+    /** A notification when rain is likely within the next two hours. */
+    var rainAlerts: Boolean
+        get() = prefs.getBoolean(KEY_RAIN, false)
+        set(value) = prefs.edit { putBoolean(KEY_RAIN, value) }
+
+    /** A notification for each new severe-weather warning from the Bureau (Australia). */
+    var warningAlerts: Boolean
+        get() = prefs.getBoolean(KEY_WARNINGS, false)
+        set(value) = prefs.edit { putBoolean(KEY_WARNINGS, value) }
+
+    /** Warnings already notified, so each is told once. */
+    var seenWarnings: Set<String>
+        get() = prefs.getStringSet(KEY_SEEN, emptySet()).orEmpty()
+        set(value) = prefs.edit { putStringSet(KEY_SEEN, value) }
+
+    /** The hour (epoch ms) a "rain soon" notification was last posted for. */
+    var rainNotifiedFor: Long
+        get() = prefs.getLong(KEY_RAIN_HOUR, 0)
+        set(value) = prefs.edit { putLong(KEY_RAIN_HOUR, value) }
+
     private inline fun <reified E : Enum<E>> enumOr(
         name: String?,
         default: E,
@@ -162,6 +187,11 @@ class WeatherSettings(
         const val KEY_FIX_LAT = "fix_lat"
         const val KEY_FIX_LON = "fix_lon"
         const val KEY_FIX_NAME = "fix_name"
+        const val KEY_MORNING = "notify_morning"
+        const val KEY_RAIN = "notify_rain"
+        const val KEY_WARNINGS = "notify_warnings"
+        const val KEY_SEEN = "seen_warnings"
+        const val KEY_RAIN_HOUR = "rain_notified_for"
     }
 }
 
