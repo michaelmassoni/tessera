@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -76,6 +79,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.RecurrenceWords
 import io.github.michaelmassoni.tessera.calendar.engine.Repeat
+import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import io.github.michaelmassoni.tessera.calendar.engine.describe
 import java.time.Instant
 import java.time.ZoneId
@@ -114,8 +118,8 @@ fun recurrenceWords(resources: Resources) =
 @Composable
 fun EventDetailSheet(
     detail: Detail,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onEdit: (Scope) -> Unit,
+    onDelete: (Scope) -> Unit,
     onMap: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -125,6 +129,9 @@ fun EventDetailSheet(
     val event = detail.event
     val instance = detail.instance
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    // For a repeating event, Edit and Delete first ask which occurrences: true = edit, false = delete.
+    var askScope by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val repeating = event.rrule != null
     val writable = detail.calendar?.writable != false
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = modifier) {
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -138,9 +145,9 @@ fun EventDetailSheet(
                 )
                 if (writable) {
                     IconButton(
-                        onClick = onEdit,
+                        onClick = { if (repeating) askScope = true else onEdit(Scope.All) },
                     ) { Icon(painterResource(DesignR.drawable.ic_edit), contentDescription = stringResource(R.string.action_edit)) }
-                    IconButton(onClick = { confirmDelete = true }) {
+                    IconButton(onClick = { if (repeating) askScope = false else confirmDelete = true }) {
                         Icon(painterResource(DesignR.drawable.ic_delete), contentDescription = stringResource(R.string.action_delete))
                     }
                 }
@@ -161,14 +168,25 @@ fun EventDetailSheet(
             detail.calendar?.let { DetailRow(DesignR.drawable.ic_calendar_month, calendarName(it, resources)) }
         }
     }
+    askScope?.let { editing ->
+        ScopeDialog(
+            title = stringResource(if (editing) R.string.edit_recurring else R.string.delete_recurring),
+            confirm = stringResource(if (editing) R.string.action_ok else R.string.action_delete),
+            onConfirm = { scope ->
+                askScope = null
+                if (editing) onEdit(scope) else onDelete(scope)
+            },
+            onDismiss = { askScope = null },
+        )
+    }
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            text = { Text(stringResource(if (event.rrule != null) R.string.delete_series_confirm else R.string.delete_confirm)) },
+            text = { Text(stringResource(R.string.delete_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
-                    onDelete()
+                    onDelete(Scope.All)
                 }) { Text(stringResource(R.string.action_delete)) }
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.action_cancel)) } },
@@ -291,6 +309,8 @@ fun EventEditor(
                         val end = if (draft.allDay) newEnd + DAY else newEnd
                         onChange(draft.copy(end = maxOf(end, draft.start + if (draft.allDay) DAY else 0)))
                     }
+                    // One occurrence of a repeating event can't repeat on its own.
+                    if (state.scope == Scope.This) return@Section
                     val repeat = Repeat.of(draft.rrule)
                     val repeatLabels =
                         listOf(
@@ -625,4 +645,41 @@ private fun MenuRow(
             }
         }
     }
+}
+
+/** "This event / This and following events / All events", for changing a repeating event. */
+@Composable
+fun ScopeDialog(
+    title: String,
+    confirm: String,
+    onConfirm: (Scope) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var choice by rememberSaveable { mutableStateOf(Scope.This) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.selectableGroup()) {
+                listOf(
+                    Scope.This to R.string.scope_this,
+                    Scope.Following to R.string.scope_following,
+                    Scope.All to R.string.scope_all,
+                ).forEach { (scope, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .selectable(selected = choice == scope, role = Role.RadioButton, onClick = { choice = scope }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = choice == scope, onClick = null)
+                        Text(stringResource(label), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 16.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(choice) }) { Text(confirm) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
