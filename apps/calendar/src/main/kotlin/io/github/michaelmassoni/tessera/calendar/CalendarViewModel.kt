@@ -11,6 +11,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,6 +92,9 @@ class CalendarViewModel(
     val events: Flow<CalendarEvent> = eventChannel.receiveAsFlow()
 
     private var loading: Job? = null
+
+    // Once a writable calendar exists there is no need to check on every refresh.
+    private var hasWritable = false
     private var scheduleDays = 60L
 
     fun start() = refresh()
@@ -100,13 +104,18 @@ class CalendarViewModel(
             .onFailure { android.util.Log.w("TesseraCalendar", "Couldn't create the device calendar", it) }
     }
 
-    fun refresh() {
+    /**
+     * Reloads the visible range. [after] delays it, so a burst of provider changes (a sync writes
+     * row by row) becomes one reload: each call cancels the one before.
+     */
+    fun refresh(after: Long = 0) {
         val s = _state.value
         val today = LocalDate.now(zone())
         val weeks = MonthGrid.weeks(s.month, firstDayOfWeek())
         loading?.cancel()
         loading =
             viewModelScope.launch {
+                if (after > 0) delay(after)
                 val z = zone()
                 // The months either side too, so swiping shows them with their events straight away.
                 val (monthRange, scheduleRange) =
@@ -119,14 +128,15 @@ class CalendarViewModel(
                 val (monthInstances, scheduleInstances, calendars) =
                     withContext(io) {
                         // Right after the permission is granted the provider can refuse the first insert;
-                        // checking on every refresh makes sure a writable calendar appears.
-                        ensureCalendar()
+                        // checking on each refresh until one exists makes sure a writable calendar appears.
+                        if (!hasWritable) ensureCalendar()
                         Triple(
                             repository.instances(monthRange.first, monthRange.second),
                             repository.instances(scheduleRange.first, scheduleRange.second),
                             repository.calendars(),
                         )
                     }
+                hasWritable = calendars.any { it.writable }
                 val schedule =
                     DayLayout
                         .byDay(scheduleInstances, z)

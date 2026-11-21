@@ -66,16 +66,22 @@ class MainActivity : ComponentActivity() {
     private var pendingIntent: Intent? = null
     private var observing = false
 
+    // onCreate has just loaded: the first onResume needn't load again.
+    private var loadedOnCreate = false
+
     private val observer =
         object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) = viewModel.refresh()
+            override fun onChange(selfChange: Boolean) = viewModel.refresh(after = CHANGE_DELAY_MS)
         }
 
     private val request =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
             granted = hasCalendar()
             denied = !granted && result.isNotEmpty()
-            if (granted) onGranted()
+            if (granted) {
+                onGranted()
+                loadedOnCreate = true
+            }
         }
 
     private val importFile =
@@ -102,7 +108,10 @@ class MainActivity : ComponentActivity() {
                 CalendarApp(state, detail, editor, viewModel.events, actions)
             }
         }
-        if (granted) onGranted()
+        if (granted) {
+            onGranted()
+            loadedOnCreate = true
+        }
     }
 
     override fun onResume() {
@@ -111,15 +120,23 @@ class MainActivity : ComponentActivity() {
             granted = true
             onGranted()
         } else if (granted) {
-            viewModel.refresh()
+            if (loadedOnCreate) loadedOnCreate = false else viewModel.refresh()
             // Widgets pick up a new permission, and keep watching for calendar changes.
             CalendarWidgets.refreshSoon(this)
         }
     }
 
-    override fun onDestroy() {
+    override fun onStart() {
+        super.onStart()
+        if (granted) observe()
+    }
+
+    // Changes while in the background are picked up by onResume's refresh; watching meanwhile
+    // would reload for every sync.
+    override fun onStop() {
         if (observing) contentResolver.unregisterContentObserver(observer)
-        super.onDestroy()
+        observing = false
+        super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -145,11 +162,15 @@ class MainActivity : ComponentActivity() {
         request.launch((calendar + notifications).toTypedArray())
     }
 
-    private fun onGranted() {
+    private fun observe() {
         if (!observing) {
             contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, observer)
             observing = true
         }
+    }
+
+    private fun onGranted() {
+        observe()
         viewModel.start()
         pendingIntent?.let(::handleIntent)
         pendingIntent = null
@@ -284,5 +305,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Opens the app on this day (`LocalDate.toEpochDay`), from a widget. */
         const val EXTRA_DAY = "io.github.michaelmassoni.tessera.calendar.DAY"
+
+        // A sync writes events one at a time; wait for it to settle before reloading.
+        private const val CHANGE_DELAY_MS = 500L
     }
 }
