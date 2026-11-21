@@ -27,7 +27,11 @@
     <string name="feels_like">Feels like %1$s</string>
     <string name="hero_description">%1$s, %2$s, %3$s, high %4$s, low %5$s</string>
     <string name="next_24_hours">Next 24 hours</string>
-    <string name="ten_days">10-day forecast</string>
+    <plurals name="forecast_days">
+        <item quantity="one">%1$d-day forecast</item>
+        <item quantity="other">%1$d-day forecast</item>
+    </plurals>
+    <string name="todays_forecast">Today\'s forecast</string>
     <string name="now">Now</string>
     <string name="today">Today</string>
     <string name="percent">%1$d%%</string>
@@ -38,6 +42,8 @@
     <string name="updated">Updated %1$s</string>
     <string name="updated_just_now">Updated just now</string>
     <string name="credit">Weather data by Open-Meteo.com</string>
+    <string name="credit_bom">Forecast and observations from the Bureau of Meteorology</string>
+    <string name="observed_at">Observed at %1$s</string>
     <string name="current_location">Current location</string>
 
     <!-- Details -->

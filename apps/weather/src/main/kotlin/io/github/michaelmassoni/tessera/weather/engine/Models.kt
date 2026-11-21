@@ -63,11 +63,18 @@ data class Day(
     val rainChance: Int?,
 )
 
+enum class ForecastSource { OpenMeteo, Bom }
+
 data class Forecast(
     val zone: ZoneId,
     val current: Current,
     val hours: List<Hour>,
     val days: List<Day>,
+    val source: ForecastSource = ForecastSource.OpenMeteo,
+    /** The forecaster's words for today (BOM's extended forecast), when the source has them. */
+    val summary: String? = null,
+    /** Where the current conditions were observed (a BOM station), when they were. */
+    val station: String? = null,
 )
 
 /** A saved place, from a place search. */

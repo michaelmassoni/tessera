@@ -10,6 +10,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Condition
 import io.github.michaelmassoni.tessera.weather.engine.Current
 import io.github.michaelmassoni.tessera.weather.engine.Day
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
+import io.github.michaelmassoni.tessera.weather.engine.ForecastSource
 import io.github.michaelmassoni.tessera.weather.engine.Hour
 import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Units
@@ -110,7 +111,15 @@ private val state =
         loaded = true,
         pages =
             listOf(
-                PlacePage(melbourne, sampleForecast, fetchedAt = now - 9 * 60_000L),
+                PlacePage(
+                    melbourne,
+                    sampleForecast.copy(
+                        source = ForecastSource.Bom,
+                        summary = "Partly cloudy. Medium chance of showers in the afternoon and evening. Winds northerly 15 to 25 km/h.",
+                        station = "Melbourne (Olympic Park)",
+                    ),
+                    fetchedAt = now - 9 * 60_000L,
+                ),
                 PlacePage(
                     sydney,
                     sampleForecast.copy(current = sampleForecast.current.copy(temperature = 24.0, condition = Condition.Clear)),

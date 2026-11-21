@@ -14,15 +14,23 @@ save. Material 3 Expressive with dynamic colour, like the rest of Tessera.
 
 Weather needs the network; this spec is the justification CLAUDE.md asks for.
 
-- **[Open-Meteo](https://open-meteo.com)**: free, open-source forecast API (national weather
-  services' models, including the Bureau of Meteorology's ACCESS-G), no key, no account, no
+- **Places in Australia: the [Bureau of Meteorology](https://www.bom.gov.au)**, through the
+  API its own app uses (`api.weather.bom.gov.au/v1/locations/{geohash}`: location, daily and
+  hourly forecasts, observations). These are the Bureau's issued forecasts, the ones on its app
+  and the news, with the forecaster's text for today and the nearest station's observations.
+  It's undocumented and Australia-only, so if it fails or changes, the app falls back to
+  Open-Meteo. Places are addressed by 6-character geohash; only that is sent. The footer
+  credits the Bureau and names the observing station.
+- **Everywhere else, and as the fallback: [Open-Meteo](https://open-meteo.com)**: free,
+  open-source forecast API (global models such as ECMWF, GFS and ICON), no key, no account, no
   tracking. Data is CC BY 4.0, so the app credits "Weather data by Open-Meteo.com".
   - Forecast: `api.open-meteo.com/v1/forecast` with `current`, `hourly`, `daily`,
     `timezone=auto`, `timeformat=unixtime`, `forecast_days=10`, always in metric (converted on
     the device, so a cached forecast survives a change of units).
   - Place search: `geocoding-api.open-meteo.com/v1/search`.
 - Only coordinates rounded to 2 decimals (about 1 km) are sent. Nothing else leaves the phone.
-- F-Droid: no anti-features (Open-Meteo is open source and self-hostable).
+- F-Droid: Open-Meteo is open source and self-hostable; BOM's app API is not documented, which
+  F-Droid may flag as a non-free network service.
 
 ## Places
 
@@ -38,9 +46,10 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
 - **Forecast page** (one per place), a scrolling column:
   - Hero: place name, a large temperature, condition in words with its icon, "H 24° L 13°",
     "Feels like 21°".
+  - Today's forecast (BOM only): the forecaster's text for today.
   - Next 24 hours: a horizontal row of hour chips: time ("Now" first), icon, temperature,
     chance of rain when 20% or more.
-  - 10 days: one row per day: day name ("Today", "Tue"), icon, rain chance, low, a range bar
+  - The days the source gives (BOM about 8, Open-Meteo 10): one row per day: day name ("Today", "Tue"), icon, rain chance, low, a range bar
     placed on the 10 days' scale with today's current temperature marked, high.
   - Details: a grid of tiles: UV index (with its band: Low… Extreme), wind (speed, gusts,
     direction), humidity (and dew point), feels like, precipitation today, pressure,
