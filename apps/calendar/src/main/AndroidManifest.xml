@@ -47,6 +47,9 @@
                 <data android:scheme="content" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name=".data.SnoozeReceiver"
+            android:exported="false" />
 
         <!--
             Launcher entries, one per built-in icon style. Exactly one is enabled at a time;
