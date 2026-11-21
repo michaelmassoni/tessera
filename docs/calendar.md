@@ -20,9 +20,13 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 ## Calendars
 
 - **Device calendar:** if there are no writable calendars (no syncing account), the app creates a
-  local "Device" calendar (`ACCOUNT_TYPE_LOCAL`), so events can be added straight away.
+  local "Device" calendar (`ACCOUNT_TYPE_LOCAL`), so events can be added straight away. It checks on each
+  refresh until a writable calendar exists, then stops checking.
 - **Visibility:** each calendar can be shown or hidden. This is stored in `Calendars.VISIBLE`,
   so other calendar apps agree.
+- **Reloading:** the provider is watched only while the app is visible (returning reloads anyway),
+  and a burst of changes from a sync becomes one reload 500 ms after the last. Launching loads
+  once, not once in onCreate and again in onResume.
 - **Colours:** event and calendar colours are the user's data (they come from the account) and
   are shown as is, like contact photos. Everything else uses theme colours.
 
