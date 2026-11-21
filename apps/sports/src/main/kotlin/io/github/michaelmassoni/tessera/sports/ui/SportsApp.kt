@@ -1,6 +1,9 @@
 package io.github.michaelmassoni.tessera.sports.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -56,9 +59,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -82,6 +88,7 @@ import io.github.michaelmassoni.tessera.sports.engine.Scores
 import io.github.michaelmassoni.tessera.sports.engine.Section
 import io.github.michaelmassoni.tessera.sports.engine.StandingsGroup
 import io.github.michaelmassoni.tessera.sports.engine.Team
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -153,20 +160,18 @@ fun SportsApp(
             MainScreen(state, actions, now, zone, snackbar, onEdit = { editing = true }, modifier = modifier)
         }
     }
-    when (val detail = state.detail) {
-        null -> {}
-
-        // The sheet opens once its details are in, at its final height: a bottom sheet doesn't
-        // follow its content growing, so opening on a spinner made it jump when they arrived.
-        // Until then (usually under a second) a loading indicator shows over the list.
-        Load.Loading -> {
-            BackHandler(onBack = actions::closeDetail)
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
-        }
-
-        else -> {
-            GameSheet(detail, state.opened, state, actions, now, zone)
-        }
+    // The sheet opens once its details are in, at its final height: a bottom sheet doesn't follow
+    // its content growing, so opening on a spinner made it jump when they arrived. A loading
+    // indicator shows over the list until the sheet has finished rising (it covers the indicator
+    // as it comes up), then fades.
+    val detail = state.detail
+    var sheetUp by remember(state.opened) { mutableStateOf(false) }
+    if (detail != null && detail !is Load.Loading) {
+        GameSheet(detail, state.opened, state, actions, now, zone, onShown = { sheetUp = true })
+    }
+    if (detail == Load.Loading) BackHandler(onBack = actions::closeDetail)
+    AnimatedVisibility(visible = detail != null && !sheetUp, enter = fadeIn(), exit = fadeOut()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
     }
 }
 
@@ -631,9 +636,16 @@ private fun GameSheet(
     actions: SportsActions,
     now: Long,
     zone: ZoneId,
+    /** Called once the sheet has finished rising. */
+    onShown: () -> Unit,
 ) {
     // Always fully open: no half-open stop for the sheet to settle to.
     val sheet = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+    val shown by rememberUpdatedState(onShown)
+    LaunchedEffect(sheet) {
+        snapshotFlow { sheet.currentValue }.first { it == SheetValue.Expanded }
+        shown()
+    }
     ModalBottomSheet(onDismissRequest = actions::closeDetail, sheetState = sheet) {
         Column(
             Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
