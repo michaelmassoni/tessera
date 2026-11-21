@@ -27,7 +27,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.michaelmassoni.tessera.calendar.data.CalendarRepository
-import io.github.michaelmassoni.tessera.calendar.data.ReminderReceiver
+import io.github.michaelmassoni.tessera.calendar.data.Reminders
 import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Ics
@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         granted = hasCalendar()
         if (savedInstanceState == null) pendingIntent = intent
-        ReminderReceiver.ensureChannel(this)
+        Reminders.ensureChannel(this)
         lifecycleScope.launch(Dispatchers.Default) { WidgetPreview.publish(applicationContext) }
         val actions = Actions()
         setTesseraContent {

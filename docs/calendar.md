@@ -73,7 +73,11 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
   `ReminderReceiver` queries `CalendarAlerts` for alerts that are due and still scheduled, posts
   one notification per event (title, time, location; tap opens the event), and marks each alert
   fired.
-- **Snooze:** an action snoozes the reminder for 5 minutes with an alarm.
+  The receiver is exported because the provider must reach it, so it handles only
+  `EVENT_REMINDER` and shows only what it reads from the provider, never intent extras.
+- **Snooze:** an action snoozes the reminder for 5 minutes with an alarm. Snoozing and the
+  snoozed reminder go through `SnoozeReceiver`, which isn't exported, so no other app can post a
+  notification under Calendar's name.
 
 ## Import
 

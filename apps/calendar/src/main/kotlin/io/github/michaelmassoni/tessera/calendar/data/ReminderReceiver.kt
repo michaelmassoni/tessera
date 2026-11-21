@@ -22,48 +22,64 @@ import io.github.michaelmassoni.tessera.core.design.R as DesignR
 /**
  * Posts event reminders. The calendar provider broadcasts EVENT_REMINDER when alerts are due; on
  * a phone without Google Calendar nothing else turns those into notifications. Each due,
- * scheduled alert is shown once and marked fired. Snoozing re-posts it later with an alarm.
+ * scheduled alert is shown once and marked fired.
+ *
+ * This receiver is exported because the provider must reach it, so it handles only
+ * EVENT_REMINDER and reads everything it shows from the provider, never from the intent.
+ * Snoozing goes through [SnoozeReceiver], which isn't exported.
  */
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(
         context: Context,
         intent: Intent,
     ) {
-        val pending = goAsync()
-        thread(name = "calendar-reminders") {
-            try {
-                when (intent.action) {
-                    ACTION_SNOOZED -> {
-                        notify(
-                            context,
-                            Reminder(
-                                intent.getLongExtra(EXTRA_EVENT, 0),
-                                intent.getLongExtra(EXTRA_BEGIN, 0),
-                                intent.getLongExtra(EXTRA_END, 0),
-                                intent.getStringExtra(EXTRA_TITLE).orEmpty(),
-                                intent.getStringExtra(EXTRA_LOCATION).orEmpty(),
-                                intent.getBooleanExtra(EXTRA_ALL_DAY, false),
-                            ),
-                        )
-                    }
+        if (intent.action != CalendarContract.ACTION_EVENT_REMINDER) return
+        background { Reminders.fireDueAlerts(context) }
+    }
+}
 
-                    ACTION_SNOOZE -> {
-                        snooze(context, intent)
-                    }
-
-                    else -> {
-                        fireDueAlerts(context)
-                    }
-                }
-            } catch (_: SecurityException) {
-                // Calendar access was revoked: nothing to show.
-            } finally {
-                pending.finish()
+/** Snooze, and the snoozed reminder coming back. Not exported: only this app can send these. */
+class SnoozeReceiver : BroadcastReceiver() {
+    override fun onReceive(
+        context: Context,
+        intent: Intent,
+    ) {
+        background {
+            when (intent.action) {
+                Reminders.ACTION_SNOOZE -> Reminders.snooze(context, intent)
+                Reminders.ACTION_SNOOZED -> Reminders.notify(context, Reminders.reminder(intent))
             }
         }
     }
+}
 
-    private data class Reminder(
+private fun BroadcastReceiver.background(work: () -> Unit) {
+    val pending = goAsync()
+    thread(name = "calendar-reminders") {
+        try {
+            work()
+        } catch (_: SecurityException) {
+            // Calendar access was revoked: nothing to show.
+        } finally {
+            pending.finish()
+        }
+    }
+}
+
+internal object Reminders {
+    const val CHANNEL = "reminders"
+    const val ACTION_SNOOZE = "io.github.michaelmassoni.tessera.calendar.SNOOZE"
+    const val ACTION_SNOOZED = "io.github.michaelmassoni.tessera.calendar.SNOOZED"
+    private const val EXTRA_EVENT = "event"
+    private const val EXTRA_BEGIN = "begin"
+    private const val EXTRA_END = "end"
+    private const val EXTRA_TITLE = "title"
+    private const val EXTRA_LOCATION = "location"
+    private const val EXTRA_ALL_DAY = "all_day"
+    private const val SNOOZE_MILLIS = 5 * 60_000L
+    private const val GRACE_MILLIS = 60_000L
+
+    data class Reminder(
         val eventId: Long,
         val begin: Long,
         val end: Long,
@@ -72,7 +88,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val allDay: Boolean,
     )
 
-    private fun fireDueAlerts(context: Context) {
+    fun fireDueAlerts(context: Context) {
         val resolver = context.contentResolver
         val now = System.currentTimeMillis()
         val due = mutableListOf<Pair<Long, Reminder>>()
@@ -116,7 +132,17 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun notify(
+    fun reminder(intent: Intent) =
+        Reminder(
+            intent.getLongExtra(EXTRA_EVENT, 0),
+            intent.getLongExtra(EXTRA_BEGIN, 0),
+            intent.getLongExtra(EXTRA_END, 0),
+            intent.getStringExtra(EXTRA_TITLE).orEmpty(),
+            intent.getStringExtra(EXTRA_LOCATION).orEmpty(),
+            intent.getBooleanExtra(EXTRA_ALL_DAY, false),
+        )
+
+    fun notify(
         context: Context,
         r: Reminder,
     ) {
@@ -139,7 +165,7 @@ class ReminderReceiver : BroadcastReceiver() {
             PendingIntent.getBroadcast(
                 context,
                 id,
-                reminderIntent(context, ACTION_SNOOZE, r),
+                snoozeIntent(context, ACTION_SNOOZE, r),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val time =
@@ -164,26 +190,18 @@ class ReminderReceiver : BroadcastReceiver() {
         NotificationManagerCompat.from(context).notify(id, notification)
     }
 
-    private fun snooze(
+    fun snooze(
         context: Context,
         intent: Intent,
     ) {
-        val r =
-            Reminder(
-                intent.getLongExtra(EXTRA_EVENT, 0),
-                intent.getLongExtra(EXTRA_BEGIN, 0),
-                intent.getLongExtra(EXTRA_END, 0),
-                intent.getStringExtra(EXTRA_TITLE).orEmpty(),
-                intent.getStringExtra(EXTRA_LOCATION).orEmpty(),
-                intent.getBooleanExtra(EXTRA_ALL_DAY, false),
-            )
+        val r = reminder(intent)
         val id = r.eventId.toInt() xor r.begin.toInt()
         NotificationManagerCompat.from(context).cancel(id)
         val later =
             PendingIntent.getBroadcast(
                 context,
                 id,
-                reminderIntent(context, ACTION_SNOOZED, r),
+                snoozeIntent(context, ACTION_SNOOZED, r),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         // Inexact is fine for a 5-minute snooze and needs no exact-alarm permission.
@@ -194,11 +212,11 @@ class ReminderReceiver : BroadcastReceiver() {
         )
     }
 
-    private fun reminderIntent(
+    private fun snoozeIntent(
         context: Context,
         action: String,
         r: Reminder,
-    ) = Intent(context, ReminderReceiver::class.java)
+    ) = Intent(context, SnoozeReceiver::class.java)
         .setAction(action)
         .putExtra(EXTRA_EVENT, r.eventId)
         .putExtra(EXTRA_BEGIN, r.begin)
@@ -207,25 +225,11 @@ class ReminderReceiver : BroadcastReceiver() {
         .putExtra(EXTRA_LOCATION, r.location)
         .putExtra(EXTRA_ALL_DAY, r.allDay)
 
-    companion object {
-        const val CHANNEL = "reminders"
-        private const val ACTION_SNOOZE = "io.github.michaelmassoni.tessera.calendar.SNOOZE"
-        private const val ACTION_SNOOZED = "io.github.michaelmassoni.tessera.calendar.SNOOZED"
-        private const val EXTRA_EVENT = "event"
-        private const val EXTRA_BEGIN = "begin"
-        private const val EXTRA_END = "end"
-        private const val EXTRA_TITLE = "title"
-        private const val EXTRA_LOCATION = "location"
-        private const val EXTRA_ALL_DAY = "all_day"
-        private const val SNOOZE_MILLIS = 5 * 60_000L
-        private const val GRACE_MILLIS = 60_000L
-
-        fun ensureChannel(context: Context) {
-            val manager = context.getSystemService(NotificationManager::class.java) ?: return
-            if (manager.getNotificationChannel(CHANNEL) != null) return
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL, context.getString(R.string.channel_reminders), NotificationManager.IMPORTANCE_HIGH),
-            )
-        }
+    fun ensureChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        if (manager.getNotificationChannel(CHANNEL) != null) return
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL, context.getString(R.string.channel_reminders), NotificationManager.IMPORTANCE_HIGH),
+        )
     }
 }
