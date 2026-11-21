@@ -1,69 +1,77 @@
-# Sports (draft: waiting on the data-source decision)
+# Sports
 
-Scores, fixtures and standings for the teams and leagues you follow, with live games updating on
-their own. Inspired by Apple Sports' focus (your teams first, scores at a glance, no news feed or
-video), in Tessera's Material 3 Expressive style with dynamic colour.
+Scores, fixtures and standings for the teams and leagues you follow, with your team's live game
+in a Live Update. Inspired by Apple Sports' focus (your teams first, scores at a glance; no news,
+video or betting), in Tessera's Material 3 Expressive style with dynamic colour.
 
-## Goals
+## Leagues
 
-- Open the app and see your teams' games: live first, then today's, then upcoming and recent.
-- Live scores refresh by themselves while a game is on, without opening the app (a Live Update
-  notification for a followed team's game).
-- No account, no ads, no betting odds, no news, no video.
+NBA, WNBA, NBL, AFL, NRL, MLB and NFL. The maintainer also asked for the WNBL, but ESPN doesn't
+carry it (checked 2026-11-21: none of ESPN's 15 basketball leagues is the WNBL); it needs another
+source, behind the same `ScoreSource` interface.
 
-## Data source (network) — to decide
+## Data source (network)
 
-Sports needs the network; this spec is the justification CLAUDE.md asks for. Options:
+Sports needs the network; this spec is the justification CLAUDE.md asks for.
 
-| Source | Coverage | Key | Live | Notes |
-|---|---|---|---|---|
-| **ESPN public JSON** (`site.api.espn.com/apis/site/v2/sports/...`) | NBA, NFL, MLB, NHL, AFL, NRL, NBL, EPL, A-League, cricket, F1 and more | None | Yes | Undocumented and unofficial; could change without notice. F-Droid would mark it NonFreeNet. |
-| TheSportsDB | Broad | Free test key; paid for live | Paid only | Official API, community data. |
-| League-specific (balldontlie, football-data.org…) | One sport each | Yes | Varies | Several keys to manage; no keyless option. |
-
-**Proposed:** ESPN, behind a small `ScoreSource` interface so another source can replace it.
-Only league and team ids are sent; nothing about the person.
+- **ESPN's public JSON** (`site.api.espn.com`): keyless, live scores for every league above. It's
+  undocumented and unofficial, so it may change without notice, and F-Droid would mark the app
+  with the NonFreeNet anti-feature. Everything goes through `ScoreSource`, so another source can
+  replace it. The maintainer chose it (2026-11-21).
+- Only league and team ids and dates are sent. Team logos come from ESPN's image server.
+- Requests: a scoreboard per followed league for yesterday, today and tomorrow (ESPN's days are
+  US time for US leagues, and it no longer accepts date ranges), and a season schedule per
+  followed team. Where both have a game, the scoreboard's is fresher.
+- The app credits "Scores from ESPN".
 
 ## Following
 
-- First run: pick leagues, then teams (searchable; logos come from the source).
-- Followed teams and leagues are stored on the device and can be reordered.
+- First run (and Edit teams): switch leagues on, then pick teams (chips with logos). With no team
+  picked, a league shows all its games around today.
+- Follows are stored on the device (`follows.json`).
 
 ## Screens
 
-- **Scores** (home): followed teams' games grouped as Live, Today, Upcoming, Recent. A game card:
-  both teams (logo, short name, record), the score or start time, the state ("Q3 4:12",
-  "Half time", "Final", "Tomorrow 11:30 AM"), and the broadcaster when known. Live cards have a
-  pulsing dot and update every 30 seconds while visible. Pull to refresh.
-- **League** pages (tabs per followed league): the day's scoreboard with a date strip, and
-  Standings (table or ladder: AFL percentage, NBA conference standings, EPL points/goal
-  difference).
-- **Game**: header with the score; box score or team stats; scoring summary or key plays when
-  the source has them.
-- **Team**: next game, recent results, fixture list, ladder position.
-- **Settings**: followed leagues and teams, Live Update notifications on/off, spoiler-free mode
-  (hide scores until tapped).
+- **Scores**: followed games as Live, Today, Upcoming (a week ahead) and Recent (three days
+  back). A game card: league and broadcaster; away team left, home right (logo, name, record);
+  between them the start time and day, or the score with "Final" (the loser dimmed) or, live, a
+  red dot with the period and clock. Followed teams' names are bold. Pull to refresh; while the
+  app is open it refreshes every 30 s when something is live or about to start, every 5 min
+  otherwise.
+- **League tabs** (one per followed league): Games (yesterday to three days ahead) and Standings
+  (conferences or one ladder, with the league's columns: NBA/WNBA/NBL W, L, PCT, GB, STRK; AFL P,
+  W, L, D, %, PTS; NRL P, W, L, D, PD, PTS; MLB W, L, PCT, GB, STRK; NFL W, L, T, PCT, STRK).
+  Followed teams are highlighted.
+- **Game** (a sheet): the score card, the line score by period, and each team's leaders.
+- **Settings**: Live Updates on or off.
 
 ## Live Updates
 
-A followed team's live game posts an ongoing Live Update notification (Android 16 progress-centric
-style, like Clock's timers): score, period and clock, refreshed by a short-lived foreground
-service only while that game is live. Ends with the final score. Needs `POST_NOTIFICATIONS`.
+While a followed team plays, its score is in an ongoing notification (asking to be promoted to a
+Live Update on Android 16 QPR1+): "HOU 115 – 117 DEN", "3:20 - 4th". When it ends, a dismissible
+final score stays for up to three hours.
+
+A WorkManager job checks about every minute while a followed game is live, and otherwise sleeps
+until a minute before the next one starts. It's not a foreground service: Android doesn't let an
+app start one from the background for this, so in deep sleep updates can come less often. The
+notification permission is asked when teams are picked.
 
 ## Engine (pure Kotlin, unit tested)
 
-- Source JSON → games, teams, standings; game state and period wording per sport.
-- Grouping (live / today / upcoming / recent) in the device's time zone.
-- Refresh schedule: how often while live, when the next game starts.
+- ESPN JSON → games, teams, standings and game detail, read loosely (fields can be missing, and
+  a score is a string on scoreboards but an object on schedules).
+- Sections (live, today, upcoming, recent) in the device's time zone; which games are followed;
+  the refresh schedule.
 
 ## Permissions
 
 | Permission | Why |
 |------------|-----|
-| `INTERNET` | Scores, fixtures and standings. |
-| `POST_NOTIFICATIONS` | Optional: Live Updates for followed teams' games. |
-| `FOREGROUND_SERVICE` (`dataSync`) | Keeping a live game's notification current while it's on. |
+| `INTERNET` | Scores, fixtures, standings and logos. |
+| `POST_NOTIFICATIONS` | Live Updates for followed teams' games. Asked when teams are picked. |
+| `POST_PROMOTED_NOTIFICATIONS` | Lets the live score show as a Live Update. |
 
 ## Out of scope for v0.1
 
-Betting odds, news, video, fantasy, player profiles, widgets (next), Wear OS.
+WNBL (needs a source), team pages, spoiler-free mode, betting odds, news, video, fantasy, player
+profiles, widgets, Wear OS.
