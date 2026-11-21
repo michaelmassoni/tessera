@@ -42,5 +42,6 @@
     <string name="route_selected">Selected</string>
     <string name="hold">Hold</string>
     <string name="hide_keypad">Hide keypad</string>
-    <string name="channel_calls">Calls</string>
+    <string name="channel_incoming_calls">Incoming calls</string>
+    <string name="channel_ongoing_calls">Ongoing calls</string>
 </resources>
