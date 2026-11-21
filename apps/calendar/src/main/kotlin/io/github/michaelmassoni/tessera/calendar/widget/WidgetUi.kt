@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +50,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.AgendaRow
 import io.github.michaelmassoni.tessera.calendar.engine.DayLayout
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
+import io.github.michaelmassoni.tessera.calendar.engine.WeekLayout
 import io.github.michaelmassoni.tessera.calendar.engine.WidgetPlan
 import io.github.michaelmassoni.tessera.calendar.ui.firstDayOfWeek
 import java.time.LocalDate
@@ -126,12 +129,23 @@ private fun style(
 @Composable
 private fun eventColor(instance: Instance) = if (instance.color == 0) GlanceTheme.colors.primary else ColorProvider(Color(instance.color))
 
+/** Black or white, whichever reads on the event's colour (onPrimary on the theme colour). */
+@Composable
+private fun pillTextColor(instance: Instance): ColorProvider =
+    when {
+        instance.color == 0 -> GlanceTheme.colors.onPrimary
+        Color(instance.color).copy(alpha = 1f).luminance() > 0.4f -> ColorProvider(Color.Black)
+        else -> ColorProvider(Color.White)
+    }
+
 /**
  * The next 30 days, like Calendula's agenda: today's date with a + for a new event, then each
  * day's events as tonal cards with the calendar's colour bar. Tapping an event opens it.
  */
 class AgendaWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
+
+    override val previewSizeMode = SizeMode.Responsive(setOf(DpSize(236.dp, 236.dp)))
 
     override suspend fun provideGlance(
         context: Context,
@@ -265,6 +279,9 @@ class AgendaWidget : GlanceAppWidget() {
 class MonthWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
+    // The picker draws the preview at this size (the default gives no size, so no room for pills).
+    override val previewSizeMode = SizeMode.Responsive(setOf(DpSize(320.dp, 560.dp)))
+
     override suspend fun provideGlance(
         context: Context,
         id: GlanceId,
@@ -295,11 +312,17 @@ class MonthWidget : GlanceAppWidget() {
         byDay: Map<LocalDate, List<Instance>>,
     ) {
         val size = LocalSize.current
-        val cellHeight = (size.height - 92.dp) / weeks.size
-        val roomy = cellHeight >= 52.dp && size.width >= 260.dp
-        WidgetSurface(CalendarWidgets.openApp(context), padding = 10.dp) {
+        val padding = 8.dp
+        // Glance has no weighted spans, so bars get exact widths from the cell width.
+        val cellWidth = (size.width - padding * 2) / 7
+        val rowHeight = (size.height - padding * 2 - HeaderHeight - WeekdayHeight) / weeks.size
+        val lanes = ((rowHeight - NumberHeight - 4.dp) / LaneHeight).toInt().coerceAtLeast(0)
+        WidgetSurface(CalendarWidgets.openApp(context), padding = padding) {
             Column(GlanceModifier.fillMaxSize()) {
-                Row(GlanceModifier.fillMaxWidth().padding(start = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    GlanceModifier.fillMaxWidth().height(HeaderHeight).padding(start = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         CalendarWidgets.pattern("MMMMy").format(month),
                         style = style(GlanceTheme.colors.onSurface, 18.sp, FontWeight.Medium),
@@ -307,11 +330,12 @@ class MonthWidget : GlanceAppWidget() {
                     )
                     AddButton(context, 32.dp)
                 }
-                Row(GlanceModifier.fillMaxWidth().padding(bottom = 2.dp)) {
+                Row(GlanceModifier.fillMaxWidth().height(WeekdayHeight), verticalAlignment = Alignment.CenterVertically) {
                     weeks.first().forEach { day ->
                         Text(
-                            day.dayOfWeek.getDisplayName(DayStyle.NARROW, data.locale),
+                            day.dayOfWeek.getDisplayName(DayStyle.SHORT, data.locale),
                             style = style(GlanceTheme.colors.onSurfaceVariant, 11.sp, FontWeight.Medium, TextAlign.Center),
+                            maxLines = 1,
                             modifier = GlanceModifier.defaultWeight(),
                         )
                     }
@@ -320,8 +344,58 @@ class MonthWidget : GlanceAppWidget() {
                     Message(context.getString(R.string.widget_needs_access))
                 } else {
                     weeks.forEach { week ->
-                        Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
-                            week.forEach { day -> DayCell(context, day, month, data.today, byDay[day].orEmpty(), roomy) }
+                        WeekRow(context, week, month, data.today, byDay, cellWidth, lanes, GlanceModifier.fillMaxWidth().defaultWeight())
+                    }
+                }
+            }
+        }
+    }
+
+    /** Day cells underneath, and the week's events as pills on top (laid out as in the app). */
+    @Composable
+    private fun WeekRow(
+        context: Context,
+        week: List<LocalDate>,
+        month: YearMonth,
+        today: LocalDate,
+        byDay: Map<LocalDate, List<Instance>>,
+        cellWidth: Dp,
+        lanes: Int,
+        modifier: GlanceModifier = GlanceModifier,
+    ) {
+        val plan = WeekLayout.plan(week, byDay, lanes)
+        Box(modifier) {
+            Row(GlanceModifier.fillMaxSize()) {
+                week.forEach { day -> DayCell(context, day, YearMonth.from(day) == month, day == today) }
+            }
+            // The pills don't take taps, so a tap reaches the day underneath.
+            Column(GlanceModifier.fillMaxWidth().padding(top = NumberHeight + 2.dp)) {
+                repeat(lanes) { lane ->
+                    Row(GlanceModifier.fillMaxWidth().height(LaneHeight)) {
+                        var col = 0
+                        while (col < week.size) {
+                            val bar = plan.bars.firstOrNull { it.lane == lane && it.start == col }
+                            when {
+                                bar != null -> {
+                                    Pill(bar.instance, cellWidth * bar.span)
+                                    col += bar.span
+                                }
+
+                                lane == lanes - 1 && plan.more[col] > 0 -> {
+                                    Text(
+                                        context.getString(R.string.more_events, plan.more[col]),
+                                        style = style(GlanceTheme.colors.onSurfaceVariant, 10.sp, align = TextAlign.Center),
+                                        maxLines = 1,
+                                        modifier = GlanceModifier.width(cellWidth),
+                                    )
+                                    col++
+                                }
+
+                                else -> {
+                                    Spacer(GlanceModifier.width(cellWidth))
+                                    col++
+                                }
+                            }
                         }
                     }
                 }
@@ -330,70 +404,92 @@ class MonthWidget : GlanceAppWidget() {
     }
 
     @Composable
+    private fun Pill(
+        event: Instance,
+        width: Dp,
+    ) {
+        Box(GlanceModifier.width(width).fillMaxHeight().padding(horizontal = 2.dp, vertical = 1.dp)) {
+            Box(
+                GlanceModifier
+                    .fillMaxSize()
+                    .cornerRadius(3.dp)
+                    .background(eventColor(event))
+                    .padding(horizontal = 3.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(event.title, style = style(pillTextColor(event), 10.sp), maxLines = 1)
+            }
+        }
+    }
+
+    @Composable
     private fun androidx.glance.layout.RowScope.DayCell(
         context: Context,
         day: LocalDate,
-        month: YearMonth,
-        today: LocalDate,
-        events: List<Instance>,
-        roomy: Boolean,
+        inMonth: Boolean,
+        isToday: Boolean,
     ) {
-        val isToday = day == today
-        val inMonth = YearMonth.from(day) == month
-        Column(
+        Box(
             GlanceModifier
                 .defaultWeight()
                 .fillMaxHeight()
-                .padding(1.dp)
+                .padding(1.5.dp)
                 .clickable(actionStartActivity(CalendarWidgets.openDay(context, day))),
-            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
+            Column(
                 GlanceModifier
-                    .size(22.dp)
-                    .cornerRadius(11.dp)
-                    .background(if (isToday) GlanceTheme.colors.primary else ColorProvider(Color.Transparent)),
-                contentAlignment = Alignment.Center,
+                    .fillMaxSize()
+                    .cornerRadius(8.dp)
+                    .background(
+                        when {
+                            isToday -> GlanceTheme.colors.secondaryContainer
+
+                            // Other months' days only dim their number, as in the app.
+                            else -> GlanceTheme.colors.surfaceVariant
+                        },
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    day.dayOfMonth.toString(),
-                    style =
-                        style(
-                            when {
-                                isToday -> GlanceTheme.colors.onPrimary
-                                inMonth -> GlanceTheme.colors.onSurface
-                                else -> GlanceTheme.colors.outline
-                            },
-                            12.sp,
-                            if (isToday) FontWeight.Bold else FontWeight.Normal,
-                            TextAlign.Center,
-                        ),
-                )
-            }
-            if (roomy) {
-                events.take(2).forEach { event ->
-                    Row(GlanceModifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(GlanceModifier.size(5.dp).cornerRadius(3.dp).background(eventColor(event))) {}
-                        Spacer(GlanceModifier.width(2.dp))
-                        Text(event.title, style = style(GlanceTheme.colors.onSurface, 9.sp), maxLines = 1)
-                    }
-                }
-                if (events.size > 2) Text("+${events.size - 2}", style = style(GlanceTheme.colors.onSurfaceVariant, 9.sp))
-            } else if (events.isNotEmpty()) {
-                Row(GlanceModifier.padding(top = 2.dp)) {
-                    events.take(3).forEach { event ->
-                        Box(GlanceModifier.size(5.dp).cornerRadius(3.dp).background(eventColor(event))) {}
-                        Spacer(GlanceModifier.width(2.dp))
-                    }
+                Box(
+                    GlanceModifier
+                        .padding(top = 2.dp)
+                        .size(NumberHeight - 2.dp)
+                        .cornerRadius((NumberHeight - 2.dp) / 2)
+                        .background(if (isToday) GlanceTheme.colors.primary else ColorProvider(Color.Transparent)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        day.dayOfMonth.toString(),
+                        style =
+                            style(
+                                when {
+                                    isToday -> GlanceTheme.colors.onPrimary
+                                    inMonth -> GlanceTheme.colors.onSurface
+                                    else -> GlanceTheme.colors.outline
+                                },
+                                11.sp,
+                                if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                TextAlign.Center,
+                            ),
+                    )
                 }
             }
         }
+    }
+
+    private companion object {
+        val HeaderHeight = 40.dp
+        val WeekdayHeight = 18.dp
+        val NumberHeight = 20.dp
+        val LaneHeight = 14.dp
     }
 }
 
 /** Today's weekday and date; with room, the next event under it. */
 class DateWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
+
+    override val previewSizeMode = SizeMode.Responsive(setOf(DpSize(160.dp, 120.dp)))
 
     override suspend fun provideGlance(
         context: Context,
