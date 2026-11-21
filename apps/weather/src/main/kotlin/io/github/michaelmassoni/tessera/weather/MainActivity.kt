@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) viewModel.start()
+        viewModel.startOnce()
         val actions = Actions()
         setTesseraContent {
             val state by viewModel.state.collectAsStateWithLifecycle()

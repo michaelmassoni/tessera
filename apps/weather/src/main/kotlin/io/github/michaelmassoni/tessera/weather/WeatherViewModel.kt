@@ -72,9 +72,19 @@ class WeatherViewModel(
     val events = _events.asSharedFlow()
 
     private var search: Job? = null
+    private var started = false
+
+    /**
+     * Starts once per ViewModel. The activity calls it on every create: one restored after the
+     * process was killed has saved state but a fresh ViewModel, which would otherwise never load.
+     */
+    fun startOnce() {
+        if (!started) start()
+    }
 
     /** Builds the pages from what's stored, then refreshes whatever is stale. */
     fun start() {
+        started = true
         viewModelScope.launch {
             val saved = withContext(io) { places.load() }
             val useLocation = settings.useLocation
