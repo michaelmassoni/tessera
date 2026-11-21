@@ -49,6 +49,16 @@ data class Hour(
     /** Metres. */
     val visibility: Double?,
     val dewPoint: Double?,
+    val feelsLike: Double? = null,
+    val humidity: Int? = null,
+    val windSpeed: Double? = null,
+    /** Degrees the wind comes from. */
+    val windDirection: Int? = null,
+    val windGusts: Double? = null,
+    /** Millimetres in the hour. */
+    val precipitation: Double? = null,
+    /** Sea-level pressure, hPa. */
+    val pressure: Double? = null,
 )
 
 data class Day(
@@ -75,6 +85,8 @@ data class Forecast(
     val summary: String? = null,
     /** Where the current conditions were observed (a BOM station), when they were. */
     val station: String? = null,
+    /** Some hours (beyond the source's own hourly forecast) came from Open-Meteo. */
+    val hoursFromOpenMeteo: Boolean = false,
 )
 
 /** A saved place, from a place search. */

@@ -12,6 +12,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Day
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
 import io.github.michaelmassoni.tessera.weather.engine.ForecastSource
 import io.github.michaelmassoni.tessera.weather.engine.Hour
+import io.github.michaelmassoni.tessera.weather.engine.Metric
 import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Units
 import java.time.LocalDate
@@ -27,7 +28,7 @@ private val now =
         .toEpochMilli()
 private val hour0 =
     today
-        .atTime(10, 0)
+        .atStartOfDay()
         .atZone(zone)
         .toInstant()
         .toEpochMilli()
@@ -37,14 +38,14 @@ private val sampleForecast =
         zone = zone,
         current = Current(now, 18.4, 17.2, 62, true, Condition.PartlyCloudy, 0.0, 1016.0, 14.0, 200, 31.0),
         hours =
-            (0 until 30).map { i ->
-                val h = (10 + i) % 24
+            (0 until 48).map { i ->
+                val h = i % 24
                 Hour(
                     time = hour0 + i * 3_600_000L,
                     temperature = 18.0 + 5 * kotlin.math.sin((h - 9) / 24.0 * 2 * Math.PI),
-                    rainChance = if (i in 6..9) 40 + i * 5 else 5,
+                    rainChance = if (i in 16..19) 40 + (i - 10) * 5 else 5,
                     condition =
-                        if (i in 6..9) {
+                        if (i in 16..19) {
                             Condition.Showers
                         } else if (h in 6..19) {
                             Condition.PartlyCloudy
@@ -55,6 +56,13 @@ private val sampleForecast =
                     uv = if (h in 7..17) 6.0 else 0.0,
                     visibility = 24_000.0,
                     dewPoint = 10.6,
+                    feelsLike = 17.0 + 5 * kotlin.math.sin((h - 9) / 24.0 * 2 * Math.PI),
+                    humidity = 60 + (h % 7) * 3,
+                    windSpeed = 10.0 + (h % 5) * 3,
+                    windDirection = 200,
+                    windGusts = 25.0 + (h % 5) * 4,
+                    precipitation = if (i in 16..19) 0.6 else 0.0,
+                    pressure = 1016.0,
                 )
             },
         days =
@@ -172,5 +180,22 @@ private fun PlacesPreview() {
 private fun WelcomePreview() {
     TesseraTheme(dynamicColor = false) {
         WeatherApp(WeatherState(loaded = true), NoActions, now, SnackbarHostState())
+    }
+}
+
+@TesseraPreviews
+@Composable
+private fun DayDetailPreview() {
+    TesseraTheme(dynamicColor = false) {
+        DayDetailScreen(
+            forecast = sampleForecast,
+            placeName = "Melbourne",
+            units = Units(),
+            now = now,
+            date = today,
+            metric = Metric.Temperature,
+            onSelect = { _, _ -> },
+            onBack = {},
+        )
     }
 }

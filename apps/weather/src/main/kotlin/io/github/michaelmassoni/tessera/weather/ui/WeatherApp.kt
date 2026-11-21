@@ -63,7 +63,9 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.weather.PlacePage
 import io.github.michaelmassoni.tessera.weather.R
 import io.github.michaelmassoni.tessera.weather.WeatherState
+import io.github.michaelmassoni.tessera.weather.engine.Metric
 import io.github.michaelmassoni.tessera.weather.engine.Place
+import java.time.LocalDate
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 interface WeatherActions {
@@ -151,6 +153,28 @@ private fun ForecastPager(
         if (i >= 0 && i != pager.currentPage) pager.scrollToPage(i)
     }
     val current = pages.getOrNull(pager.currentPage) ?: pages.first()
+    // The day details open over the pager, for the page they were opened from.
+    var detailDay by rememberSaveable { mutableStateOf<Long?>(null) }
+    var detailMetric by rememberSaveable { mutableStateOf(Metric.Temperature.name) }
+    val detailForecast = current.forecast
+    val day = detailDay
+    if (day != null && detailForecast != null) {
+        DayDetailScreen(
+            forecast = detailForecast,
+            placeName = placeName(current),
+            units = state.units,
+            now = now,
+            date = LocalDate.ofEpochDay(day),
+            metric = Metric.valueOf(detailMetric),
+            onSelect = { date, metric ->
+                detailDay = date.toEpochDay()
+                detailMetric = metric.name
+            },
+            onBack = { detailDay = null },
+            modifier = modifier,
+        )
+        return
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -182,7 +206,17 @@ private fun ForecastPager(
     ) { padding ->
         HorizontalPager(pager, Modifier.fillMaxSize().padding(padding), key = { pages[it].place.id }) { i ->
             val page = pages[i]
-            ForecastPage(page, placeName(page), state.units, now, onRefresh = actions::refresh)
+            ForecastPage(
+                page,
+                placeName(page),
+                state.units,
+                now,
+                onRefresh = actions::refresh,
+                onDetail = { date, metric ->
+                    detailDay = date.toEpochDay()
+                    detailMetric = metric.name
+                },
+            )
         }
     }
 }

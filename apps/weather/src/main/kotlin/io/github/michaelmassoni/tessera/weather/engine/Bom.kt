@@ -52,6 +52,13 @@ object Bom {
                     uv = it.uv,
                     visibility = null,
                     dewPoint = it.dewPoint,
+                    feelsLike = it.feelsLike,
+                    humidity = it.humidity,
+                    windSpeed = it.wind?.speed,
+                    windDirection = it.wind?.direction?.let(::degrees),
+                    windGusts = it.wind?.gust,
+                    // BOM gives a range; its upper end, or the lower when that's all there is.
+                    precipitation = it.rain?.amount?.let { a -> a.max ?: a.min },
                 )
             }
         val firstHour = json.decodeFromString<HourlyResponse>(hourly).data.firstOrNull()

@@ -21,6 +21,9 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
   It's undocumented and Australia-only, so if it fails or changes, the app falls back to
   Open-Meteo. Places are addressed by 6-character geohash; only that is sent. The footer
   credits the Bureau and names the observing station.
+  BOM's hourly forecast covers about three days from now, so the day details (below) also
+  fetch Open-Meteo for the same place and use its hours only where BOM has none (earlier today,
+  and the later days); BOM's own hours always win, and the screen says where hours came from.
 - **Everywhere else, and as the fallback: [Open-Meteo](https://open-meteo.com)**: free,
   open-source forecast API (global models such as ECMWF, GFS and ICON), no key, no account, no
   tracking. Data is CC BY 4.0, so the app credits "Weather data by Open-Meteo.com".
@@ -47,14 +50,24 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
   - Hero: place name, a large temperature, condition in words with its icon, "H 24° L 13°",
     "Feels like 21°".
   - Today's forecast (BOM only): the forecaster's text for today.
-  - Next 24 hours: a horizontal row of hour chips: time ("Now" first), icon, temperature,
-    chance of rain when 20% or more.
+  - Next 24 hours: a horizontal row of hour chips: time ("Now" first), icon, chance of rain
+    when 20% or more (a compact line under the icon), temperature.
   - The days the source gives (BOM about 8, Open-Meteo 10): one row per day: day name ("Today", "Tue"), icon, rain chance, low, a range bar
     placed on the 10 days' scale with today's current temperature marked, high.
   - Details: a grid of tiles: UV index (with its band: Low… Extreme), wind (speed, gusts,
     direction), humidity (and dew point), feels like, precipitation today, pressure,
     visibility, sunrise and sunset.
   - "Updated 10 min ago" and the Open-Meteo credit at the bottom. Pull down to refresh.
+  - Tapping an hour, a day or a detail tile opens the **day details** for that day and measure.
+- **Day details** (0.3): the days to pick from (name, icon, high/low); chips for the measures
+  the day has hourly (temperature, feels like, precipitation as chance of rain, UV index, wind,
+  humidity, visibility, pressure; at least half the day's hours, so BOM days show no pressure);
+  the day at a glance (high/low and condition, strongest wind and gusts, highest UV and when,
+  highest chance of rain and the expected total, average humidity or pressure and their range);
+  and a chart of the day's hours: a line (bars for rain chance and UV) with values every three
+  hours, conditions above temperature, wind arrows under wind, and a line at the current hour on
+  today. Tap or drag on the chart to read any hour. TalkBack reads the values every three hours.
+  Short notes explain UV, feels like, humidity and rain chance.
 - **Places**: a list with each place's current temperature and condition; search field to add;
   each row's menu moves it up or down, or deletes it.
 - **Settings** (shared Tessera settings screen plus): units for temperature (°C/°F), wind
