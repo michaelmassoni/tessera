@@ -45,7 +45,9 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
   (conferences or one ladder, with the league's columns: NBA/WNBA/NBL W, L, PCT, GB, STRK; AFL P,
   W, L, D, %, PTS; NRL P, W, L, D, PD, PTS; MLB W, L, PCT, GB, STRK; NFL W, L, T, PCT, STRK).
   Followed teams are highlighted and starred.
-- **Game** (a sheet): the score card, the line score by period, and each team's leaders.
+- **Game** (a sheet): the score card, the line score by period, and each team's leaders. The
+  sheet opens once the details are in (a loading indicator shows over the list meanwhile; Back
+  cancels), so it comes up at its final height instead of growing and jumping.
 - **Settings**: Live Updates on or off.
 
 ## Live Updates
