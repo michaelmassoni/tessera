@@ -109,9 +109,10 @@ Three home screen widgets, built with Jetpack Glance. They use the launcher's wi
   next 30 days. Each day with events gets a heading ("Today", "Tomorrow", "Mon, Nov 23"),
   all-day events first. Events that have ended drop off; a multi-day event shows on each day.
   Tapping an event opens it. Below 240dp wide the date shortens to "Nov 21".
-- **Month** (4×4, resizable): this month's grid, today highlighted. Roomy cells list two event
-  titles with a colour dot and "+N"; small cells show dots only. Tapping a day opens the app on
-  that day.
+- **Month** (4×4, resizable): looks like the app's month view: rounded day cells (today's
+  tinted) with events as pills in their calendar's colour, multi-day events as one bar, laid out
+  by the same `WeekLayout`. As many lanes as the size allows, then "+N". Tapping a day opens the
+  app on that day's sheet.
 - **Date** (1×1, resizable): the weekday and date; from 140dp wide, the next event too.
 
 Without calendar access a widget says "Open Calendar to allow access to your calendars".
