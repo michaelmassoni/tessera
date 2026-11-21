@@ -79,6 +79,14 @@
       "name": "Tessera Messages",
       "preferredApkIndex": 0,
       "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Messages \",\"apkFilterRegEx\":\"^tessera-messages-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Messages\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.weather",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Weather",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Weather \",\"apkFilterRegEx\":\"^tessera-weather-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Weather\"}"
     }
   ]
 }
