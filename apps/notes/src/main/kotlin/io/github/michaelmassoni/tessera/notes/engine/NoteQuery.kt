@@ -43,6 +43,26 @@ object NoteQuery {
             ).toList()
     }
 
+    /**
+     * What a widget row shows under the title: a checklist's open items ("☐ Milk"), or the first
+     * lines of the text. A note with no title shows its first line as the title instead.
+     */
+    fun preview(
+        note: Note,
+        lines: Int = 3,
+    ): Pair<String, String> {
+        val body =
+            note.checklist
+                ?.filter { !it.checked && it.text.isNotBlank() }
+                ?.map { "☐ ${it.text}" }
+                ?: note.body.lines().filter { it.isNotBlank() }
+        return if (note.title.isNotBlank()) {
+            note.title to body.take(lines).joinToString("\n")
+        } else {
+            body.firstOrNull().orEmpty() to body.drop(1).take(lines).joinToString("\n")
+        }
+    }
+
     /** Every label in use, sorted for display. */
     fun labels(notes: Collection<Note>): List<String> =
         notes

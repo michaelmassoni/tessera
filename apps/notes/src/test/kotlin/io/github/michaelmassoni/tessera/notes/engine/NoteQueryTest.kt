@@ -39,4 +39,15 @@ class NoteQueryTest {
         val notes = all + Note("6", labels = setOf("Work", "apple")) + Note("7", labels = setOf("zzz"), trashedAt = 1)
         assertEquals(listOf("apple", "home", "Work"), NoteQuery.labels(notes))
     }
+
+    @Test fun `widget preview shows open checklist items, or the text`() {
+        val list =
+            Note(
+                "l",
+                title = "Shop",
+                checklist = listOf(ChecklistItem("Milk"), ChecklistItem("Eggs", checked = true), ChecklistItem("Tea")),
+            )
+        assertEquals("Shop" to "☐ Milk\n☐ Tea", NoteQuery.preview(list))
+        assertEquals("First" to "Second\nThird", NoteQuery.preview(Note("t", body = "First\n\nSecond\nThird\nFourth\nFifth"), lines = 2))
+    }
 }

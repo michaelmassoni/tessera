@@ -72,3 +72,30 @@ object Checklist {
             items.indices.filter { !items[it].checked } + items.indices.filter { items[it].checked }
         }
 }
+
+/**
+ * Where a dragged checklist row lands. Rows are [heights] tall in display order; the row at
+ * [from] has moved by [offset] pixels. It passes a neighbour once it covers half of it.
+ */
+object DragTarget {
+    fun position(
+        heights: List<Int>,
+        from: Int,
+        offset: Float,
+    ): Int {
+        var left = offset
+        var to = from
+        if (left > 0) {
+            while (to < heights.lastIndex && left > heights[to + 1] / 2f) {
+                left -= heights[to + 1]
+                to++
+            }
+        } else {
+            while (to > 0 && -left > heights[to - 1] / 2f) {
+                left += heights[to - 1]
+                to--
+            }
+        }
+        return to
+    }
+}

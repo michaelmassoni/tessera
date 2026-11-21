@@ -37,6 +37,10 @@ and no network.
   - Enter adds an item, and Backspace on an empty item removes it.
   - Checked items move to a collapsible "Checked items" group at the bottom.
   - Converting between text and checklist keeps the lines.
+  - **Reorder:** drag an item by its handle (left of the checkbox). The row follows the finger,
+    the rows it passes slide aside, and the move is one undo step when the finger lifts.
+    Unchecked and checked items reorder within their own group. TalkBack gets Move up and Move
+    down actions on the handle.
   - Items sit close together like a paper list: each row is the checkbox's 48dp touch target,
     growing only when an item wraps (a plain text field, not a Material `TextField` with its 56dp
     minimum and padding).
@@ -52,6 +56,10 @@ and no network.
 - **Receive text:** `ACTION_SEND` with `text/plain` from other apps creates a new note. The
   subject becomes the title and the text the body.
 - **Shortcuts:** "New note" and "New checklist" app shortcuts (static shortcuts.xml).
+- **Widget (Glance, 3×3, resizable):** pinned notes first, then the most recently edited (up to
+  20), each with its title and first lines or open checklist items. Tapping one opens it; the
+  header has New checklist and New note. `NotesApplication` redraws it a second after notes
+  stop changing.
 
 ### Backup
 
@@ -115,5 +123,4 @@ None.
 - Reminders.
 - Note colours.
 - Sync.
-- Widgets.
 - Locking notes.
