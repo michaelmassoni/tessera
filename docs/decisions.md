@@ -4,6 +4,19 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-21: Sports joins the suite, with scores from ESPN (Accepted)
+
+**Decision:** Add a Sports app (the maintainer asked for it, after Apple Sports). Scores, fixtures
+and standings come from ESPN's public JSON (`site.api.espn.com`), which the maintainer chose over
+TheSportsDB (live scores need a paid key) and league-specific APIs (a key each). Leagues: NBA, WNBA,
+NBL, AFL, NRL, MLB, NFL. Live Updates for followed teams' games are in v0.1.
+
+**Reason:** ESPN is keyless and covers every requested league but one, with live scores. It's
+undocumented and unofficial, so the app reads it behind a `ScoreSource` interface, and F-Droid
+would mark it NonFreeNet. The WNBL isn't on ESPN; it needs another source later.
+
+**Status:** Accepted (maintainer, 2026-11-21).
+
 ## 2026-11-21: Weather joins the suite; the Bureau for Australia, Open-Meteo elsewhere (Accepted)
 
 **Decision:** Add a Weather app (the maintainer asked for it). It is the first Tessera app that
