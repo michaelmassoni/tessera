@@ -53,6 +53,8 @@ data class SportsState(
     /** Teams to pick from when following. */
     val teams: Map<League, Load<List<Team>>> = emptyMap(),
     val detail: Load<GameDetail>? = null,
+    /** The game whose sheet is open (shown while its details load). */
+    val opened: Game? = null,
 )
 
 sealed interface SportsEvent {
@@ -156,7 +158,7 @@ class SportsViewModel(
         quiet: Boolean,
     ) {
         detailJob?.cancel()
-        if (!quiet) _state.update { it.copy(detail = Load.Loading) }
+        if (!quiet) _state.update { it.copy(detail = Load.Loading, opened = game) }
         detailJob =
             viewModelScope.launch {
                 val result = runCatching { source.detail(game) }.getOrNull()
@@ -172,7 +174,7 @@ class SportsViewModel(
 
     fun closeDetail() {
         detailJob?.cancel()
-        _state.update { it.copy(detail = null) }
+        _state.update { it.copy(detail = null, opened = null) }
     }
 
     // ---- Following ----
