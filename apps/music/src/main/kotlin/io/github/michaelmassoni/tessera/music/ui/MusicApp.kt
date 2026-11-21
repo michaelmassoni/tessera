@@ -202,12 +202,31 @@ private fun LibraryScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
-                !library.loaded -> Unit
-                library.songs.isEmpty() -> Empty(stringResource(R.string.empty_library))
-                query.isNotBlank() -> SongList(Library.search(library.songs, query), actions, showShuffle = false)
-                tab == Tab.Songs -> SongList(library.songs, actions, showShuffle = true)
-                tab == Tab.Albums -> AlbumGrid(library.albums, onAlbum)
-                else -> ArtistList(library.artists, onArtist)
+                !library.loaded -> {}
+
+                library.songs.isEmpty() -> {
+                    Empty(stringResource(R.string.empty_library))
+                }
+
+                query.isNotBlank() -> {
+                    SongList(
+                        remember(library.songs, query) { Library.search(library.songs, query) },
+                        actions,
+                        showShuffle = false,
+                    )
+                }
+
+                tab == Tab.Songs -> {
+                    SongList(library.songs, actions, showShuffle = true)
+                }
+
+                tab == Tab.Albums -> {
+                    AlbumGrid(library.albums, onAlbum)
+                }
+
+                else -> {
+                    ArtistList(library.artists, onArtist)
+                }
             }
         }
     }
