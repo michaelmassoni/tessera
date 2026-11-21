@@ -113,10 +113,10 @@
         <item quantity="other">Deleted %d items</item>
     </plurals>
     <plurals name="delete_title">
-        <item quantity="one">Delete %d item?</item>
-        <item quantity="other">Delete %d items?</item>
+        <item quantity="one">Move %d item to the trash?</item>
+        <item quantity="other">Move %d items to the trash?</item>
     </plurals>
-    <string name="delete_permanent">This can\'t be undone. Deleted files don\'t go to a trash folder.</string>
+    <string name="delete_permanent">You can restore them from Trash for 30 days.</string>
     <string name="error_into_itself">A folder can\'t be copied or moved into itself.</string>
     <string name="error_no_space">Not enough free space.</string>
     <string name="error_io">Something went wrong. Some files may not have been changed.</string>
@@ -136,4 +136,35 @@
     <string name="detail_size">Size</string>
     <string name="detail_modified">Modified</string>
     <string name="calculating">Calculating…</string>
+    <string name="trash">Trash</string>
+    <plurals name="trash_empty">
+        <item quantity="one">Trash is empty. Deleted files stay here for %d day.</item>
+        <item quantity="other">Trash is empty. Deleted files stay here for %d days.</item>
+    </plurals>
+    <plurals name="trash_note">
+        <item quantity="one">Items are deleted for good after %d day.</item>
+        <item quantity="other">Items are deleted for good after %d days.</item>
+    </plurals>
+    <string name="action_empty_trash">Empty trash</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_move_to_trash">Move to trash</string>
+    <string name="action_undo">Undo</string>
+    <string name="empty_trash_title">Empty the trash?</string>
+    <string name="delete_forever_text">They\'ll be deleted for good. This can\'t be undone.</string>
+    <plurals name="delete_forever_title">
+        <item quantity="one">Delete %d item forever?</item>
+        <item quantity="other">Delete %d items forever?</item>
+    </plurals>
+    <plurals name="trashed">
+        <item quantity="one">Moved %d item to the trash</item>
+        <item quantity="other">Moved %d items to the trash</item>
+    </plurals>
+    <plurals name="restored">
+        <item quantity="one">Restored %d item</item>
+        <item quantity="other">Restored %d items</item>
+    </plurals>
+    <plurals name="days_left">
+        <item quantity="one">%d day left</item>
+        <item quantity="other">%d days left</item>
+    </plurals>
 </resources>

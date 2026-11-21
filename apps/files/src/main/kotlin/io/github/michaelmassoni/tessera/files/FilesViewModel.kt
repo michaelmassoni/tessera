@@ -13,6 +13,8 @@ import io.github.michaelmassoni.tessera.files.engine.OperationException
 import io.github.michaelmassoni.tessera.files.engine.Progress
 import io.github.michaelmassoni.tessera.files.engine.Search
 import io.github.michaelmassoni.tessera.files.engine.Sorting
+import io.github.michaelmassoni.tessera.files.engine.Trash
+import io.github.michaelmassoni.tessera.files.engine.TrashedItem
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -60,6 +62,14 @@ data class FilesUiState(
     val operation: RunningOperation? = null,
     val search: SearchState? = null,
     val volumes: List<Volume> = emptyList(),
+    /** The Trash screen, when it's open. */
+    val trash: TrashState? = null,
+)
+
+data class TrashState(
+    val items: List<TrashedItem> = emptyList(),
+    val selection: Set<String> = emptySet(),
+    val loading: Boolean = false,
 )
 
 sealed interface FilesEvent {
@@ -69,6 +79,15 @@ sealed interface FilesEvent {
     ) : FilesEvent
 
     data class Deleted(
+        val count: Int,
+    ) : FilesEvent
+
+    /** Moved to the trash; [ids] undo it. */
+    data class Trashed(
+        val ids: List<String>,
+    ) : FilesEvent
+
+    data class Restored(
         val count: Int,
     ) : FilesEvent
 
@@ -89,6 +108,7 @@ class FilesViewModel(
     private val volumes: () -> List<Volume>,
     private val io: CoroutineDispatcher,
     private val ops: FileOperations,
+    private val trash: Trash,
 ) : ViewModel() {
     private val _state = MutableStateFlow(FilesUiState(options = settings.options))
     val state: StateFlow<FilesUiState> = _state.asStateFlow()
@@ -102,6 +122,8 @@ class FilesViewModel(
 
     init {
         refreshVolumes()
+        // Items kept longer than 30 days go for good.
+        viewModelScope.launch(io) { runCatching { trash.purge() } }
     }
 
     // ------------------------------------------------------------------ navigation
@@ -115,6 +137,14 @@ class FilesViewModel(
     fun back(): Boolean {
         val s = _state.value
         when {
+            s.trash != null && s.trash.selection.isNotEmpty() -> {
+                clearTrashSelection()
+            }
+
+            s.trash != null -> {
+                closeTrash()
+            }
+
             s.selection.isNotEmpty() -> {
                 clearSelection()
             }
@@ -236,7 +266,12 @@ class FilesViewModel(
         val list = files.toList()
         _state.update { it.copy(operation = RunningOperation(null, null), selection = emptySet()) }
         viewModelScope.launch {
-            val error = withContext(io) { runCatching { ops.delete(list) }.exceptionOrNull() as? IOException }
+            // Into the trash, not gone: Undo (or the Trash screen) brings it back for 30 days.
+            val moved = mutableListOf<TrashedItem>()
+            val error =
+                withContext(io) {
+                    runCatching { moved += trash.move(list, ::rootOf) }.exceptionOrNull() as? IOException
+                }
             _state.update { s ->
                 s.copy(
                     operation = null,
@@ -246,8 +281,101 @@ class FilesViewModel(
                         },
                 )
             }
-            eventChannel.trySend(if (error == null) FilesEvent.Deleted(list.size) else FilesEvent.Failed(FilesEvent.Reason.Io))
+            eventChannel.trySend(if (error == null) FilesEvent.Trashed(moved.map { it.id }) else FilesEvent.Failed(FilesEvent.Reason.Io))
             reload()
+        }
+    }
+
+    // ------------------------------------------------------------------ trash
+
+    /** The volume [file] is on, whose root holds its trash (its own folder as a last resort). */
+    private fun rootOf(file: File): File =
+        _state.value.volumes
+            .firstOrNull { Naming.isInside(file, it.root) }
+            ?.root ?: file.absoluteFile.parentFile ?: file
+
+    fun openTrash() {
+        _state.update { it.copy(trash = TrashState(loading = true), selection = emptySet(), search = null) }
+        reloadTrash()
+    }
+
+    private fun reloadTrash() {
+        viewModelScope.launch {
+            val items =
+                withContext(io) {
+                    trash.purge()
+                    trash.items()
+                }
+            _state.update { s ->
+                s.trash?.let { t ->
+                    s.copy(
+                        trash =
+                            t.copy(
+                                items = items,
+                                loading = false,
+                                selection =
+                                    t.selection
+                                        .filter { id ->
+                                            items.any {
+                                                it.id ==
+                                                    id
+                                            }
+                                        }.toSet(),
+                            ),
+                    )
+                }
+                    ?: s
+            }
+        }
+    }
+
+    fun closeTrash() = _state.update { it.copy(trash = null) }
+
+    fun toggleTrashSelection(id: String) =
+        _state.update { s ->
+            s.copy(
+                trash =
+                    s.trash?.let { t ->
+                        t.copy(
+                            selection =
+                                if (id in
+                                    t.selection
+                                ) {
+                                    t.selection - id
+                                } else {
+                                    t.selection + id
+                                },
+                        )
+                    },
+            )
+        }
+
+    fun selectAllTrash() = _state.update { s -> s.copy(trash = s.trash?.let { t -> t.copy(selection = t.items.map { it.id }.toSet()) }) }
+
+    fun clearTrashSelection() = _state.update { s -> s.copy(trash = s.trash?.copy(selection = emptySet())) }
+
+    /** Puts items back (also Undo after moving to the trash). */
+    fun restore(ids: Collection<String>) {
+        viewModelScope.launch {
+            val restored = withContext(io) { runCatching { trash.restore(ids) }.getOrNull() }
+            _state.update { s -> s.copy(trash = s.trash?.copy(selection = emptySet())) }
+            eventChannel.trySend(if (restored != null) FilesEvent.Restored(restored.size) else FilesEvent.Failed(FilesEvent.Reason.Io))
+            if (_state.value.trash != null) reloadTrash()
+            reload()
+        }
+    }
+
+    /** Deletes items in the trash for good; [ids] null empties it. */
+    fun deleteForever(ids: Collection<String>?) {
+        viewModelScope.launch {
+            val count =
+                ids?.size ?: _state.value.trash
+                    ?.items
+                    ?.size ?: 0
+            val error = withContext(io) { runCatching { if (ids == null) trash.empty() else trash.delete(ids) }.exceptionOrNull() }
+            _state.update { s -> s.copy(trash = s.trash?.copy(selection = emptySet())) }
+            eventChannel.trySend(if (error == null) FilesEvent.Deleted(count) else FilesEvent.Failed(FilesEvent.Reason.Io))
+            reloadTrash()
         }
     }
 

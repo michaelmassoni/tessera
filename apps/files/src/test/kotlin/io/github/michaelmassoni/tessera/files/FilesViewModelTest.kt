@@ -5,6 +5,7 @@ import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
+import io.github.michaelmassoni.tessera.files.engine.Trash
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -43,7 +44,14 @@ class FilesViewModelTest {
         File(root, "Download/folder").mkdirs()
         File(root, "Music").mkdirs()
         val volume = Volume(root, "Internal storage", isPrimary = true, isRemovable = false, totalBytes = 1, freeBytes = 1)
-        vm = FilesViewModel(MemorySettings(), { listOf(volume) }, dispatcher, FileOperations(freeSpace = { it.usableSpace }))
+        vm =
+            FilesViewModel(
+                MemorySettings(),
+                { listOf(volume) },
+                dispatcher,
+                FileOperations(freeSpace = { it.usableSpace }),
+                Trash(File(tmp.root, "trash.json")),
+            )
     }
 
     @After fun tearDown() = Dispatchers.resetMain()
@@ -129,6 +137,36 @@ class FilesViewModelTest {
         assertFalse(File(root, "Download/New").exists())
         assertFalse(File(root, "Download/a.txt").exists())
         assertEquals(listOf("folder", "b.txt"), names)
+    }
+
+    @Test fun `deleted files go to the trash on their volume and come back`() {
+        vm.open(File(root, "Download"))
+        vm.delete(listOf(File(root, "Download/a.txt")))
+        assertTrue(File(root, ".Trash-tessera").isDirectory)
+        vm.openTrash()
+        val item =
+            vm.state.value.trash!!
+                .items
+                .single()
+        assertEquals("a.txt", item.name)
+        vm.restore(listOf(item.id))
+        assertTrue(File(root, "Download/a.txt").exists())
+        assertTrue(
+            vm.state.value.trash!!
+                .items
+                .isEmpty(),
+        )
+        vm.delete(listOf(File(root, "Download/b.txt")))
+        vm.openTrash()
+        vm.deleteForever(null)
+        assertTrue(
+            vm.state.value.trash!!
+                .items
+                .isEmpty(),
+        )
+        assertFalse(File(root, "Download/b.txt").exists())
+        assertTrue(vm.back())
+        assertNull(vm.state.value.trash)
     }
 
     @Test fun `search finds nested matches from the current folder`() {
