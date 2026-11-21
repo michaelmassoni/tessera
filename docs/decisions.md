@@ -4,6 +4,20 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-21: Weather joins the suite; forecasts from Open-Meteo (Proposed)
+
+**Decision:** Add a Weather app (the maintainer asked for it). It is the first Tessera app that
+uses the network, which docs/weather.md justifies. Forecasts and place search come from
+[Open-Meteo](https://open-meteo.com): free, open source, no key or account, data under CC BY 4.0
+(credited in the app). Only coordinates, rounded to about 1 km, are sent. Location is optional and
+uses `ACCESS_COARSE_LOCATION` through the platform `LocationManager`, not Play Services.
+
+**Reason:** Open-Meteo is the only forecast API that is both keyless and open source, so the app
+needs no secrets in an F-Droid build and has no F-Droid anti-features. It serves national
+models, including the Bureau of Meteorology's.
+
+**Status:** Proposed until the maintainer confirms the data source.
+
 ## 2026-11-19: Messages is a full default SMS app (Accepted)
 
 **Decision:** Messages 0.2 can be the default SMS app. It receives SMS and MMS, notifies, records
