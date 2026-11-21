@@ -40,7 +40,12 @@ covers the incoming-call screen.
   - The call log, newest first, grouped by day.
   - Each row has an icon for incoming, outgoing, missed or rejected, the name (or number), and
     the time.
-  - Tap to call back. Long-press to copy the number.
+  - Answered calls show how long they lasted after the time ("6:15 PM · 3 min, 20 sec", from
+    `CallLog.Calls.DURATION`, formatted with `MeasureFormat` in the phone's language).
+  - Tap to call back. Long-press for a sheet of options: View contact (a saved number) or Create
+    new contact and Add to a contact (an unsaved one, through the contacts app's insert and
+    insert-or-edit intents), Send message (`smsto:`), Copy number, and Edit number before call
+    (opens the keypad with it).
 - **Contacts:** every contact with a phone number, with search. Tap to call, or choose a
   number if there are several.
 - **Keypad:**

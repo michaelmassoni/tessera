@@ -95,3 +95,23 @@ fun formatTimer(seconds: Long): String {
     val s = seconds % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
+
+enum class DurationUnit { Hours, Minutes, Seconds }
+
+/**
+ * A finished call's length as the recents list shows it: hours and minutes, minutes and seconds,
+ * or seconds, leaving out a zero part ("3 min", not "3 min, 0 sec"). Empty for an unanswered call.
+ */
+fun callDuration(seconds: Long): List<Pair<Long, DurationUnit>> {
+    if (seconds <= 0) return emptyList()
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    val s = seconds % 60
+    val parts =
+        if (h > 0) {
+            listOf(h to DurationUnit.Hours, m to DurationUnit.Minutes)
+        } else {
+            listOf(m to DurationUnit.Minutes, s to DurationUnit.Seconds)
+        }
+    return parts.filter { it.first > 0 }
+}
