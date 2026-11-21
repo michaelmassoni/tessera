@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import io.github.michaelmassoni.tessera.music.PlaybackState
+import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
@@ -151,6 +152,7 @@ fun AlbumArt(
 @Composable
 fun MiniPlayer(
     state: PlaybackState,
+    progress: () -> Progress,
     actions: PlayerActions,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
@@ -158,7 +160,7 @@ fun MiniPlayer(
     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = modifier.fillMaxWidth().clickable(onClick = onOpen)) {
         Column {
             LinearProgressIndicator(
-                progress = { if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f },
+                progress = { progress().fraction },
                 modifier = Modifier.fillMaxWidth(),
                 drawStopIndicator = {},
             )
@@ -207,6 +209,7 @@ private fun PlayPause(
 @Composable
 fun FullPlayer(
     state: PlaybackState,
+    progress: () -> Progress,
     actions: PlayerActions,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -254,7 +257,7 @@ fun FullPlayer(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                SeekBar(state, actions)
+                SeekBar(progress, actions)
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -313,16 +316,18 @@ fun FullPlayer(
     }
 }
 
+/** Reads [progress] itself, so the tick recomposes only this. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SeekBar(
-    state: PlaybackState,
+    progress: () -> Progress,
     actions: PlayerActions,
 ) {
+    val state = progress()
     val label = stringResource(R.string.position)
     val slider = remember { SliderState(0f) }
     var dragging by remember { mutableStateOf<Float?>(null) }
-    slider.value = dragging ?: if (state.durationMs > 0) state.positionMs.toFloat() / state.durationMs else 0f
+    slider.value = dragging ?: state.fraction
     Column(Modifier.fillMaxWidth()) {
         Slider(
             state = slider,

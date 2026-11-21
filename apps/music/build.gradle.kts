@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.tessera.android.application)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -7,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.music"
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.2.0"
     }
 }
 
@@ -16,4 +17,7 @@ dependencies {
     implementation(libs.compose.material3.navigation.suite)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

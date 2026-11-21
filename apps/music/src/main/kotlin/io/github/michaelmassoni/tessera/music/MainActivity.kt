@@ -22,6 +22,8 @@ import androidx.lifecycle.lifecycleScope
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Playlist
+import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
 import io.github.michaelmassoni.tessera.music.ui.LibraryActions
 import io.github.michaelmassoni.tessera.music.ui.LibraryState
@@ -31,6 +33,8 @@ import io.github.michaelmassoni.tessera.music.ui.PlayerActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 
 class MainActivity : ComponentActivity() {
     private val player by lazy { PlayerConnection(lifecycleScope) }
@@ -74,7 +78,8 @@ class MainActivity : ComponentActivity() {
                 )
             } else {
                 val playback by player.state.collectAsStateWithLifecycle()
-                MusicApp(library, playback, libraryActions, playerActions)
+                val progress = player.progress.collectAsStateWithLifecycle()
+                MusicApp(library, playback, { progress.value }, libraryActions, playerActions)
             }
         }
         if (granted) onGranted()
@@ -111,11 +116,38 @@ class MainActivity : ComponentActivity() {
         load()
     }
 
+    private val playlistFile by lazy { File(filesDir, "playlists.json") }
+
     private fun load() {
         lifecycleScope.launch {
             val songs = withContext(Dispatchers.IO) { MusicRepository(contentResolver).songs() }
+            // Once loaded, the playlists on screen are the latest (writes are in flight); only read them once.
+            val playlists = if (library.loaded) library.playlists else withContext(Dispatchers.IO) { readPlaylists() }
             library =
-                withContext(Dispatchers.Default) { LibraryState(true, Library.songs(songs), Library.albums(songs), Library.artists(songs)) }
+                withContext(Dispatchers.Default) {
+                    LibraryState(true, Library.songs(songs), Library.albums(songs), Library.artists(songs), playlists)
+                }
+        }
+    }
+
+    private fun readPlaylists(): List<Playlist> =
+        try {
+            if (playlistFile.exists()) Playlists.decode(playlistFile.readText()) else emptyList()
+        } catch (_: IOException) {
+            emptyList()
+        }
+
+    /** Applies a change to the playlists on screen at once, then writes them. */
+    private fun editPlaylists(change: (List<Playlist>) -> List<Playlist>) {
+        val updated = change(library.playlists)
+        library = library.copy(playlists = updated)
+        val text = Playlists.encode(updated)
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                val temp = File(playlistFile.path + ".tmp")
+                temp.writeText(text)
+                temp.renameTo(playlistFile)
+            }
         }
     }
 
@@ -126,6 +158,28 @@ class MainActivity : ComponentActivity() {
         ) = player.play(songs, index)
 
         override fun shuffle(songs: List<Song>) = player.play(songs, 0, shuffle = true)
+
+        override fun createPlaylist(
+            name: String,
+            songIds: List<Long>,
+        ) = editPlaylists { Playlists.create(it, name, songIds).first }
+
+        override fun renamePlaylist(
+            id: Long,
+            name: String,
+        ) = editPlaylists { Playlists.rename(it, id, name) }
+
+        override fun deletePlaylist(id: Long) = editPlaylists { Playlists.delete(it, id) }
+
+        override fun addToPlaylist(
+            id: Long,
+            songIds: List<Long>,
+        ) = editPlaylists { Playlists.add(it, id, songIds) }
+
+        override fun removeFromPlaylist(
+            id: Long,
+            index: Int,
+        ) = editPlaylists { Playlists.remove(it, id, index) }
 
         override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
     }

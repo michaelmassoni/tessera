@@ -36,4 +36,24 @@
     <string name="permission_grant">Continue</string>
     <string name="permission_settings">Open settings</string>
     <string name="permission_denied">Access was denied. Allow it in system settings to use Music.</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="new_playlist">New playlist</string>
+    <string name="empty_playlists">Long-press a song to add it to a playlist.</string>
+    <string name="empty_playlist">No songs yet. Long-press a song anywhere to add it.</string>
+    <string name="more">More options</string>
+    <string name="rename">Rename</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete_playlist">Delete playlist</string>
+    <string name="delete_playlist_title">Delete %1$s?</string>
+    <string name="delete_playlist_text">The songs stay in your library.</string>
+    <string name="add_to_playlist">Add to playlist</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="playlist_name">Name</string>
+    <string name="song_options">Song options</string>
+    <string name="widget_name">Now playing</string>
+    <string name="widget_description">What\'s playing, with play, pause and skip</string>
+    <string name="widget_nothing_playing">Nothing playing</string>
+    <string name="widget_tap_to_open">Tap to open Music</string>
 </resources>
