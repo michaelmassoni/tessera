@@ -4,19 +4,23 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
-## 2026-11-21: Weather joins the suite; forecasts from Open-Meteo (Proposed)
+## 2026-11-21: Weather joins the suite; the Bureau for Australia, Open-Meteo elsewhere (Accepted)
 
 **Decision:** Add a Weather app (the maintainer asked for it). It is the first Tessera app that
-uses the network, which docs/weather.md justifies. Forecasts and place search come from
-[Open-Meteo](https://open-meteo.com): free, open source, no key or account, data under CC BY 4.0
-(credited in the app). Only coordinates, rounded to about 1 km, are sent. Location is optional and
-uses `ACCESS_COARSE_LOCATION` through the platform `LocationManager`, not Play Services.
+uses the network, which docs/weather.md justifies. Places in Australia get the Bureau of
+Meteorology's issued forecasts and observations, through the API its own app uses; everywhere
+else, and whenever BOM fails, forecasts come from [Open-Meteo](https://open-meteo.com) (open
+source, keyless, CC BY 4.0, credited). Place search uses Open-Meteo. Only rounded coordinates or
+a 6-character geohash are sent. Location is optional (`ACCESS_COARSE_LOCATION` through the
+platform `LocationManager`, not Play Services).
 
-**Reason:** Open-Meteo is the only forecast API that is both keyless and open source, so the app
-needs no secrets in an F-Droid build and has no F-Droid anti-features. It serves national
-models, including the Bureau of Meteorology's.
+**Reason:** The maintainer trusts the Bureau's forecasts. Weather 0.1 used Open-Meteo alone,
+and its notes said Open-Meteo includes BOM's ACCESS-G model: that was wrong. Checked on
+2026-11-21, Open-Meteo's `bom_access_global` had returned no data for at least 30 days, so its
+Australian forecasts come from global models. BOM's app API is undocumented and Australia-only,
+hence the Open-Meteo fallback.
 
-**Status:** Proposed until the maintainer confirms the data source.
+**Status:** Accepted (maintainer, 2026-11-21).
 
 ## 2026-11-19: Messages is a full default SMS app (Accepted)
 

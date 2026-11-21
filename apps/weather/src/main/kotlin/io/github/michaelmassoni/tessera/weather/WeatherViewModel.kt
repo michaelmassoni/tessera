@@ -7,13 +7,17 @@ import io.github.michaelmassoni.tessera.weather.data.Locator
 import io.github.michaelmassoni.tessera.weather.data.PlaceStore
 import io.github.michaelmassoni.tessera.weather.data.WeatherApi
 import io.github.michaelmassoni.tessera.weather.data.WeatherSettings
+import io.github.michaelmassoni.tessera.weather.engine.Bom
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
+import io.github.michaelmassoni.tessera.weather.engine.ForecastCodec
 import io.github.michaelmassoni.tessera.weather.engine.OpenMeteo
 import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.engine.Units
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +93,7 @@ class WeatherViewModel(
                         val entry = cache.read(place.id)
                         PlacePage(
                             place = place,
-                            forecast = entry?.let { runCatching { OpenMeteo.parseForecast(it.body) }.getOrNull() },
+                            forecast = entry?.let { runCatching { ForecastCodec.decode(it.body) }.getOrNull() },
                             fetchedAt = entry?.fetchedAt ?: 0,
                         )
                     }
@@ -145,10 +149,13 @@ class WeatherViewModel(
             }
             val result =
                 runCatching {
-                    val body = api.get(OpenMeteo.forecastUrl(target.latitude, target.longitude))
-                    val forecast = OpenMeteo.parseForecast(body)
+                    // The Bureau for Australian places; Open-Meteo elsewhere, or if BOM fails.
+                    val stored =
+                        (if (Bom.covers(target.latitude, target.longitude)) runCatching { loadBom(target) }.getOrNull() else null)
+                            ?: ForecastCodec.openMeteo(api.get(OpenMeteo.forecastUrl(target.latitude, target.longitude)))
+                    val forecast = withContext(io) { ForecastCodec.decode(stored) }
                     val now = clock()
-                    withContext(io) { cache.write(target.id, body, now) }
+                    withContext(io) { cache.write(target.id, stored, now) }
                     forecast to now
                 }
             result
@@ -160,6 +167,20 @@ class WeatherViewModel(
                 }
         }
     }
+
+    /** BOM's location, daily and hourly forecasts and observations, fetched together and checked. */
+    private suspend fun loadBom(place: Place): String =
+        coroutineScope {
+            val g = Bom.geohash(place.latitude, place.longitude)
+            val location = async { api.get(Bom.locationUrl(g)) }
+            val daily = async { api.get(Bom.dailyUrl(g)) }
+            val hourly = async { api.get(Bom.hourlyUrl(g)) }
+            val observations = async { api.get(Bom.observationsUrl(g)) }
+            val stored = ForecastCodec.bom(location.await(), daily.await(), hourly.await(), observations.await())
+            // A response that doesn't parse (BOM changed its API) falls back to Open-Meteo.
+            withContext(io) { ForecastCodec.decode(stored) }.also { check(it.days.isNotEmpty() && it.hours.isNotEmpty()) }
+            stored
+        }
 
     private fun setPage(
         id: Long,

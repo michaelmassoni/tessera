@@ -28,8 +28,8 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 - **Feels built in.** Material 3 Expressive, colours from your wallpaper, dark mode, edge-to-edge,
   predictive back, and layouts for phones, foldables and tablets.
 - **Private by design.** No ads, trackers, analytics or crash reporters. No internet access unless
-  an app truly needs it: only Weather does, for forecasts from the open-source Open-Meteo
-  (coordinates only, no account or key).
+  an app truly needs it: only Weather does, for forecasts (the Bureau of Meteorology in Australia,
+  Open-Meteo elsewhere; no account or key, only the place is sent).
 - **Works on de-Googled phones.** Nothing depends on Google Play Services, so the apps work the same
   on GrapheneOS, LineageOS or a stock phone.
 - **One theme for all of them.** Choose light, dark or system, wallpaper colours and pure black once,
@@ -49,7 +49,7 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 | <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Songs, albums and artists, search, background playback. | [![music][v music]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Music to Obtainium">][obtainium music] |
 | <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, recents, keypad, and the call screen when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
 | <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive. | [![messages][v messages]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Messages to Obtainium">][obtainium messages] |
-| <img src="docs/icons/weather.svg" width="48" alt=""/> | **Weather**<br/>Now, 24 hours, 10 days and details, for your location and saved places. | [![weather][v weather]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Weather to Obtainium">][obtainium weather] |
+| <img src="docs/icons/weather.svg" width="48" alt=""/> | **Weather**<br/>Forecasts from the Bureau of Meteorology in Australia (Open-Meteo elsewhere), for your location and saved places. | [![weather][v weather]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Weather to Obtainium">][obtainium weather] |
 
 Each app has a short spec in [docs/](docs) describing what it does and why it asks for each
 permission.
