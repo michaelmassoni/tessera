@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -65,12 +66,14 @@ import io.github.michaelmassoni.tessera.files.ClipMode
 import io.github.michaelmassoni.tessera.files.FilesEvent
 import io.github.michaelmassoni.tessera.files.FilesUiState
 import io.github.michaelmassoni.tessera.files.R
+import io.github.michaelmassoni.tessera.files.TrashState
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
 import io.github.michaelmassoni.tessera.files.engine.FileEntry
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
 import io.github.michaelmassoni.tessera.files.engine.Search
 import io.github.michaelmassoni.tessera.files.engine.SortField
+import io.github.michaelmassoni.tessera.files.engine.TrashedItem
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -106,6 +109,17 @@ interface FilesActions {
     fun cancelOperation()
 
     fun delete(files: Collection<File>)
+
+    fun openTrash()
+
+    fun toggleTrashSelection(id: String)
+
+    fun selectAllTrash()
+
+    fun restore(ids: Collection<String>)
+
+    /** Deletes items in the trash for good; null empties it. */
+    fun deleteForever(ids: Collection<String>?)
 
     fun rename(
         file: File,
@@ -147,6 +161,20 @@ fun FilesScreen(
                         resources.getQuantityString(R.plurals.deleted, e.count, e.count)
                     }
 
+                    is FilesEvent.Trashed -> {
+                        val result =
+                            snackbar.showSnackbar(
+                                resources.getQuantityString(R.plurals.trashed, e.ids.size, e.ids.size),
+                                actionLabel = resources.getString(R.string.action_undo),
+                            )
+                        if (result == SnackbarResult.ActionPerformed) actions.restore(e.ids)
+                        null
+                    }
+
+                    is FilesEvent.Restored -> {
+                        resources.getQuantityString(R.plurals.restored, e.count, e.count)
+                    }
+
                     is FilesEvent.Failed -> {
                         resources.getString(
                             when (e.reason) {
@@ -159,10 +187,16 @@ fun FilesScreen(
                         )
                     }
                 }
-            snackbar.showSnackbar(message)
+            if (message != null) snackbar.showSnackbar(message)
         }
     }
-    BackHandler(enabled = state.location != null || state.selection.isNotEmpty() || state.search != null) { actions.back() }
+    BackHandler(enabled = state.location != null || state.selection.isNotEmpty() || state.search != null || state.trash != null) {
+        actions.back()
+    }
+    state.trash?.let { trash ->
+        TrashScreen(trash, actions, snackbar, modifier)
+        return
+    }
 
     var dialog by remember { mutableStateOf<FileDialog?>(null) }
     val selected = state.selection.toList()
@@ -229,13 +263,25 @@ fun FilesScreen(
             val wide = width >= ExpandedWidth
             Row(Modifier.fillMaxSize()) {
                 if (wide) {
-                    HomeContent(state.volumes, actions::open, compact = true, modifier = Modifier.width(320.dp).fillMaxHeight())
+                    HomeContent(
+                        state.volumes,
+                        actions::open,
+                        actions::openTrash,
+                        compact = true,
+                        modifier = Modifier.width(320.dp).fillMaxHeight(),
+                    )
                     VerticalDivider()
                 }
                 Box(Modifier.weight(1f).fillMaxHeight()) {
                     when {
                         state.location == null && state.search == null && !wide -> {
-                            HomeContent(state.volumes, actions::open, compact = false, modifier = Modifier.fillMaxSize())
+                            HomeContent(
+                                state.volumes,
+                                actions::open,
+                                actions::openTrash,
+                                compact = false,
+                                modifier = Modifier.fillMaxSize(),
+                            )
                         }
 
                         state.location == null && state.search == null -> {
@@ -616,6 +662,7 @@ private fun BrowserContent(
 fun HomeContent(
     volumes: List<Volume>,
     onOpen: (File) -> Unit,
+    onTrash: () -> Unit,
     compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -700,6 +747,23 @@ fun HomeContent(
                     }
                 }
             }
+            item(key = "trash") {
+                Card(
+                    onClick = onTrash,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_delete),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Text(stringResource(R.string.trash), style = MaterialTheme.typography.titleSmall)
+                    }
+                }
+            }
         }
     }
 }
@@ -759,6 +823,16 @@ private object PreviewActions : FilesActions {
     override fun cancelOperation() = Unit
 
     override fun delete(files: Collection<File>) = Unit
+
+    override fun openTrash() = Unit
+
+    override fun toggleTrashSelection(id: String) = Unit
+
+    override fun selectAllTrash() = Unit
+
+    override fun restore(ids: Collection<String>) = Unit
+
+    override fun deleteForever(ids: Collection<String>?) = Unit
 
     override fun rename(
         file: File,
@@ -850,4 +924,21 @@ private fun MenuItem(
     onClick: () -> Unit,
 ) {
     DropdownMenuItem(text = { Text(text) }, leadingIcon = { Icon(painterResource(icon), contentDescription = null) }, onClick = onClick)
+}
+
+// The trash with one item selected, in both themes.
+@io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+@Composable
+private fun TrashPreview() {
+    val day = 86_400_000L
+    val now = 100 * day
+    val items =
+        listOf(
+            TrashedItem("1", "/storage/emulated/0/Download/Invoice.pdf", "", now - day, isDirectory = false, size = 182_000),
+            TrashedItem("2", "/storage/emulated/0/DCIM/Holiday", "", now - 12 * day, isDirectory = true, size = 48_000_000),
+            TrashedItem("3", "/storage/emulated/0/Music/Demo.mp3", "", now - 29 * day, isDirectory = false, size = 4_200_000),
+        )
+    io.github.michaelmassoni.tessera.core.design.TesseraTheme(dynamicColor = false) {
+        TrashScreen(TrashState(items, selection = setOf("2")), PreviewActions, remember { SnackbarHostState() }, now = now)
+    }
 }
