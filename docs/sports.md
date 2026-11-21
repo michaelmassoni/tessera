@@ -32,16 +32,19 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
 
 ## Screens
 
-- **Scores**: followed games as Live, Today, Upcoming (a week ahead) and Recent (three days
-  back). A game card: league and broadcaster; away team left, home right (logo, name, record);
-  between them the start time and day, or the score with "Final" (the loser dimmed) or, live, a
-  red dot with the period and clock. Followed teams' names are bold. Pull to refresh; while the
+- **Scores** (0.2, laid out like Apple Sports): tabs Yesterday (results from the last three days,
+  older days under their date), Today (live games, then results, then "Later today") and Upcoming
+  (a week ahead, by day). A game card: the league centred on top; away team left, home right
+  (logo with the name under it, a star on the outer edge for followed teams); beside each logo the
+  score, or before the game the team's record; between them the clock with a red dot, "Final"
+  (the loser dimmed) or the start time. The broadcaster is only in the game sheet. Logos use
+  ESPN's dark-background versions on a dark theme. Pull to refresh; while the
   app is open it refreshes every 30 s when something is live or about to start, every 5 min
   otherwise.
-- **League tabs** (one per followed league): Games (yesterday to three days ahead) and Standings
+- **Leagues** (a screen from the top bar, a tab per followed league): Games (yesterday to three days ahead) and Standings
   (conferences or one ladder, with the league's columns: NBA/WNBA/NBL W, L, PCT, GB, STRK; AFL P,
   W, L, D, %, PTS; NRL P, W, L, D, PD, PTS; MLB W, L, PCT, GB, STRK; NFL W, L, T, PCT, STRK).
-  Followed teams are highlighted.
+  Followed teams are highlighted and starred.
 - **Game** (a sheet): the score card, the line score by period, and each team's leaders.
 - **Settings**: Live Updates on or off.
 

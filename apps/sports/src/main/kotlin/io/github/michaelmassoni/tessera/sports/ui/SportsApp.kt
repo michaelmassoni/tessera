@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
@@ -32,6 +34,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -50,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,11 +72,14 @@ import io.github.michaelmassoni.tessera.sports.R
 import io.github.michaelmassoni.tessera.sports.SportsState
 import io.github.michaelmassoni.tessera.sports.engine.Game
 import io.github.michaelmassoni.tessera.sports.engine.GameDetail
+import io.github.michaelmassoni.tessera.sports.engine.GameState
 import io.github.michaelmassoni.tessera.sports.engine.League
+import io.github.michaelmassoni.tessera.sports.engine.ScoreTab
 import io.github.michaelmassoni.tessera.sports.engine.Scores
 import io.github.michaelmassoni.tessera.sports.engine.Section
 import io.github.michaelmassoni.tessera.sports.engine.StandingsGroup
 import io.github.michaelmassoni.tessera.sports.engine.Team
+import kotlinx.coroutines.launch
 import java.time.ZoneId
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -149,6 +156,7 @@ fun SportsApp(
     }
 }
 
+/** Scores for your teams as Yesterday, Today and Upcoming, as in Apple Sports. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MainScreen(
@@ -160,10 +168,14 @@ private fun MainScreen(
     onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val leagues = state.follows.leagues()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    val league = leagues.getOrNull(tab - 1)
-    LaunchedEffect(league) { league?.let { actions.loadLeague(it) } }
+    var leagues by rememberSaveable { mutableStateOf(false) }
+    if (leagues) {
+        LeaguesScreen(state, actions, now, zone, onBack = { leagues = false }, modifier = modifier)
+        return
+    }
+    val tabs = ScoreTab.entries
+    val pager = rememberPagerState(initialPage = ScoreTab.Today.ordinal) { tabs.size }
+    val scope = rememberCoroutineScope()
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -171,58 +183,91 @@ private fun MainScreen(
                 TopAppBar(
                     title = { Text(stringResource(R.string.app_name)) },
                     actions = {
+                        IconButton(onClick = { leagues = true }) {
+                            Icon(painterResource(R.drawable.ic_scoreboard), contentDescription = stringResource(R.string.leagues))
+                        }
                         IconButton(onClick = onEdit) {
-                            Icon(painterResource(DesignR.drawable.ic_edit), contentDescription = stringResource(R.string.edit_teams))
+                            Icon(painterResource(DesignR.drawable.ic_star), contentDescription = stringResource(R.string.my_teams))
                         }
                         IconButton(onClick = actions::openSettings) {
                             Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                         }
                     },
                 )
-                PrimaryScrollableTabRow(selectedTabIndex = tab.coerceAtMost(leagues.size), edgePadding = 16.dp) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.tab_scores)) })
-                    leagues.forEachIndexed { i, l ->
-                        Tab(selected = tab == i + 1, onClick = { tab = i + 1 }, text = { Text(stringResource(l.label())) })
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    PrimaryTabRow(selectedTabIndex = pager.currentPage, modifier = Modifier.widthIn(max = 480.dp), divider = {}) {
+                        tabs.forEach { tab ->
+                            Tab(
+                                selected = pager.currentPage == tab.ordinal,
+                                onClick = { scope.launch { pager.animateScrollToPage(tab.ordinal) } },
+                                text = { Text(stringResource(tab.label())) },
+                            )
+                        }
                     }
                 }
             }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            if (league == null) {
-                ScoresTab(state, actions, now, zone)
-            } else {
-                LeagueTab(league, state, actions, now, zone)
-            }
+        HorizontalPager(pager, Modifier.fillMaxSize().padding(padding), key = { it }) { page ->
+            ScoresPage(tabs[page], state, actions, now, zone)
         }
     }
 }
 
+private fun ScoreTab.label(): Int =
+    when (this) {
+        ScoreTab.Yesterday -> R.string.tab_yesterday
+        ScoreTab.Today -> R.string.section_today
+        ScoreTab.Upcoming -> R.string.section_upcoming
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ScoresTab(
+private fun ScoresPage(
+    tab: ScoreTab,
     state: SportsState,
     actions: SportsActions,
     now: Long,
     zone: ZoneId,
 ) {
-    val sections = Scores.sections(state.games, now, zone)
+    val days = Scores.tab(state.games, tab, now, zone)
+    val today = today(now, zone)
     val followed = state.follows.teamKeys
     PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (sections.isEmpty() && state.fetchedAt > 0) {
-                item(key = "empty") { Message(stringResource(R.string.no_games)) }
+            if (days.isEmpty() && state.fetchedAt > 0) {
+                item(key = "empty") {
+                    Message(
+                        stringResource(
+                            when (tab) {
+                                ScoreTab.Yesterday -> R.string.no_games_yesterday
+                                ScoreTab.Today -> R.string.no_games_today
+                                ScoreTab.Upcoming -> R.string.no_games_upcoming
+                            },
+                        ),
+                    )
+                }
             }
-            sections.forEach { section ->
-                item(key = "h${section.section}") { SectionHeading(stringResource(section.section.label())) }
-                items(section.games, key = { "${it.league.id}:${it.id}" }) { game ->
-                    GameCard(game, now, zone, onClick = { actions.open(game) }, followed = followed)
+            days.forEach { day ->
+                // Yesterday's own tab needs no heading for yesterday; older days and every upcoming day do.
+                if (tab == ScoreTab.Upcoming || (tab == ScoreTab.Yesterday && day.date != today.minusDays(1))) {
+                    item(key = "d${day.date}") { SectionHeading(dayLabel(day.date, today)) }
+                }
+                day.games.forEachIndexed { i, game ->
+                    // Today: what's still to come goes under "Later today", after the live games and results.
+                    val laterStarts =
+                        tab == ScoreTab.Today && game.state == GameState.Scheduled && i > 0 &&
+                            day.games[i - 1].state != GameState.Scheduled
+                    if (laterStarts) item(key = "later") { SectionHeading(stringResource(R.string.later_today)) }
+                    item(key = "${game.league.id}:${game.id}") {
+                        GameCard(game, now, zone, onClick = { actions.open(game) }, followed = followed, showDay = false)
+                    }
                 }
             }
             item(key = "credit") {
@@ -233,6 +278,50 @@ private fun ScoresTab(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
+        }
+    }
+}
+
+/** Each followed league's games and standings, a tab per league. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LeaguesScreen(
+    state: SportsState,
+    actions: SportsActions,
+    now: Long,
+    zone: ZoneId,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BackHandler(onBack = onBack)
+    val leagues = state.follows.leagues()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val league = leagues.getOrNull(tab) ?: leagues.firstOrNull()
+    LaunchedEffect(league) { league?.let { actions.loadLeague(it) } }
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.leagues)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                        }
+                    },
+                )
+                if (leagues.size > 1) {
+                    PrimaryScrollableTabRow(selectedTabIndex = tab.coerceIn(0, leagues.lastIndex), edgePadding = 16.dp) {
+                        leagues.forEachIndexed { i, l ->
+                            Tab(selected = tab == i, onClick = { tab = i }, text = { Text(stringResource(l.label())) })
+                        }
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            league?.let { LeagueTab(it, state, actions, now, zone) }
         }
     }
 }
@@ -387,14 +476,16 @@ private fun StandingsTable(
                 ) {
                     Text(row.position.toString(), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(24.dp))
                     TeamLogo(row.team, 20.dp, Modifier.padding(end = 8.dp))
-                    Text(
-                        row.team.shortName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (mine) FontWeight.Bold else FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.width(100.dp),
-                    )
+                    Row(Modifier.width(100.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            row.team.shortName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (mine) FollowedStar(Modifier.padding(start = 4.dp))
+                    }
                     row.values.forEach {
                         Text(it, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.End, modifier = Modifier.width(44.dp))
                     }
