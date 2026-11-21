@@ -36,6 +36,8 @@ import io.github.michaelmassoni.tessera.calendar.ui.CalendarActions
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarApp
 import io.github.michaelmassoni.tessera.calendar.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.calendar.ui.firstDayOfWeek
+import io.github.michaelmassoni.tessera.calendar.widget.CalendarWidgets
+import io.github.michaelmassoni.tessera.calendar.widget.WidgetPreview
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -84,6 +86,7 @@ class MainActivity : ComponentActivity() {
         granted = hasCalendar()
         if (savedInstanceState == null) pendingIntent = intent
         ReminderReceiver.ensureChannel(this)
+        lifecycleScope.launch(Dispatchers.Default) { WidgetPreview.publish(applicationContext) }
         val actions = Actions()
         setTesseraContent {
             if (!granted) {
@@ -109,6 +112,8 @@ class MainActivity : ComponentActivity() {
             onGranted()
         } else if (granted) {
             viewModel.refresh()
+            // Widgets pick up a new permission, and keep watching for calendar changes.
+            CalendarWidgets.refreshSoon(this)
         }
     }
 
@@ -151,6 +156,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
+        // From a widget: a day tapped in the month or date widget, or + (a new event on today).
+        val day = intent.getLongExtra(EXTRA_DAY, Long.MIN_VALUE)
+        if (day != Long.MIN_VALUE) {
+            viewModel.select(java.time.LocalDate.ofEpochDay(day))
+            if (intent.action != Intent.ACTION_INSERT) return
+        }
         val data = intent.data
         when (intent.action) {
             Intent.ACTION_INSERT, Intent.ACTION_EDIT -> {
@@ -260,5 +271,10 @@ class MainActivity : ComponentActivity() {
         override fun import() = importFile.launch(arrayOf("text/calendar", "application/octet-stream"))
 
         override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+    }
+
+    companion object {
+        /** Opens the app on this day (`LocalDate.toEpochDay`), from a widget. */
+        const val EXTRA_DAY = "io.github.michaelmassoni.tessera.calendar.DAY"
     }
 }

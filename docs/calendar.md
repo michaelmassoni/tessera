@@ -88,6 +88,34 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 - Day cells read "Wednesday 19 November, 3 events". Event chips read title and time.
 - Colour is never the only signal: titles are always shown.
 
+## Widgets (0.2)
+
+Three home screen widgets, built with Jetpack Glance. They use the launcher's widget colours
+(dynamic colour, light and dark follow the system), as first-party widgets do.
+
+- **Agenda** (3×3, resizable): today's weekday and date, a + for a new event on today, then the
+  next 30 days. Each day with events gets a heading ("Today", "Tomorrow", "Mon, Nov 23"),
+  all-day events first. Events that have ended drop off; a multi-day event shows on each day.
+  Tapping an event opens it. Below 240dp wide the date shortens to "Nov 21".
+- **Month** (4×4, resizable): this month's grid, today highlighted. Roomy cells list two event
+  titles with a colour dot and "+N"; small cells show dots only. Tapping a day opens the app on
+  that day.
+- **Date** (1×1, resizable): the weekday and date; from 140dp wide, the next event too.
+
+Without calendar access a widget says "Open Calendar to allow access to your calendars".
+
+Redrawing, without polling:
+
+- When the calendar changes (an edit here, or a sync by DAVx⁵ or any other app): a WorkManager
+  job with a content trigger on `content://com.android.calendar`. Each run redraws and arms the
+  next; it stops when no widget is placed.
+- At midnight, and when an event ends: an inexact (non-waking) alarm. Nobody sees the widget
+  with the screen off.
+- On time, time zone and locale changes.
+
+The widget picker shows generated previews with made-up events (Android 15 and later),
+published once per app version.
+
 ## Out of scope for v0.1
 
 - Week and day timeline views.
@@ -95,6 +123,5 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 - Attendees and invitations.
 - Event colours.
 - Tasks.
-- Widgets.
 - Exporting ICS.
 - Time zone picker.
