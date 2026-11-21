@@ -58,6 +58,8 @@ class Notifier(
                     .Builder()
                     .setName(repository.name(address) ?: address)
                     .setKey(address)
+                    // Lets Do Not Disturb match the sender against starred contacts.
+                    .apply { if (address.any(Char::isDigit) && !address.contains('@')) setUri("tel:$address") }
                     .build()
             }
         val style =
@@ -99,6 +101,8 @@ class Notifier(
                 .setShortcutId(shortcutId)
                 .setLocusId(LocusIdCompat(shortcutId))
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                // MessagingStyle's senders aren't in the people list Do Not Disturb checks for starred contacts.
+                .apply { addresses.forEach { addPerson(person(it)) } }
                 .setContentIntent(open)
                 .setAutoCancel(true)
                 .setSilent(afterReply)
@@ -153,12 +157,22 @@ class Notifier(
             .build()
 
     private fun createChannel() {
-        val channel = NotificationChannel(CHANNEL, context.getString(R.string.channel_messages), NotificationManager.IMPORTANCE_HIGH)
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val notifications = context.getSystemService(NotificationManager::class.java)
+        notifications.deleteNotificationChannel(OLD_CHANNEL)
+        // The default sound, and vibration (a channel doesn't vibrate unless asked to). The phone's
+        // own settings still decide: silent mode, vibrate mode, Do Not Disturb.
+        val channel =
+            NotificationChannel(CHANNEL, context.getString(R.string.channel_messages), NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+            }
+        notifications.createNotificationChannel(channel)
     }
 
     private companion object {
-        const val CHANNEL = "messages"
+        const val CHANNEL = "incoming_messages"
+
+        /** Before 0.3.3: it didn't vibrate, and a channel's vibration can't be changed once made. */
+        const val OLD_CHANNEL = "messages"
         const val MAX_LINES = 8
     }
 }
