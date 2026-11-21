@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
+import io.github.michaelmassoni.tessera.clock.data.AndroidScheduler
 import io.github.michaelmassoni.tessera.clock.graph
 
 /**
@@ -22,6 +23,21 @@ class ClockReceiver : BroadcastReceiver() {
             ACTION_ALARM_FIRED -> {
                 val alarm = graph.alarms.onFired(id) ?: return
                 startRinging(context, RingingService.ringAlarm(context, alarm.id))
+            }
+
+            ACTION_ALARM_UPCOMING -> {
+                val alarm = graph.alarms.get(id) ?: return
+                val trigger =
+                    graph.alarms
+                        .nextTrigger(alarm)
+                        ?.toInstant()
+                        ?.toEpochMilli() ?: return
+                val left = trigger - graph.time.currentTimeMillis()
+                if (left > 0 && left <= AndroidScheduler.UPCOMING_MILLIS + 60_000) graph.notifications.showUpcoming(alarm, trigger)
+            }
+
+            ACTION_ALARM_DISMISS_UPCOMING -> {
+                graph.alarms.dismissUpcoming(id)
             }
 
             ACTION_TIMER_EXPIRED -> {
@@ -88,6 +104,8 @@ class ClockReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_ALARM_FIRED = "io.github.michaelmassoni.tessera.clock.ALARM_FIRED"
+        const val ACTION_ALARM_UPCOMING = "io.github.michaelmassoni.tessera.clock.ALARM_UPCOMING"
+        const val ACTION_ALARM_DISMISS_UPCOMING = "io.github.michaelmassoni.tessera.clock.ALARM_DISMISS_UPCOMING"
         const val ACTION_TIMER_EXPIRED = "io.github.michaelmassoni.tessera.clock.TIMER_EXPIRED"
         const val ACTION_TIMER_PAUSE = "io.github.michaelmassoni.tessera.clock.TIMER_PAUSE"
         const val ACTION_TIMER_RESUME = "io.github.michaelmassoni.tessera.clock.TIMER_RESUME"

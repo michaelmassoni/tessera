@@ -129,4 +129,13 @@ class AlarmTimesTest {
         assertEquals(TimeUntil(0, 0, 1), TimeUntil.between(now, at("2026-11-18T07:01")))
         assertEquals(TimeUntil(1, 0, 0), TimeUntil.between(at("2026-11-18T07:00"), at("2026-11-19T07:00")))
     }
+
+    @Test fun `a skipped occurrence moves to the one after, and a past skip does nothing`() {
+        val weekdays = alarm(7, 0, MONDAY, WEDNESDAY, FRIDAY)
+        val wed = at("2026-11-18T07:00").toInstant().toEpochMilli()
+        val skipped = weekdays.copy(skipped = wed)
+        assertEquals(at("2026-11-20T07:00"), AlarmTimes.nextTrigger(skipped, at("2026-11-18T06:00")))
+        assertEquals(at("2026-11-20T07:00"), AlarmTimes.nextTrigger(skipped, at("2026-11-18T08:00")))
+        assertNull(AlarmTimes.afterRinging(skipped).skipped)
+    }
 }

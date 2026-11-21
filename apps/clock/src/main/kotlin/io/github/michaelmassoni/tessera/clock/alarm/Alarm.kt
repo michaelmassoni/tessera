@@ -9,6 +9,7 @@ import java.time.DayOfWeek
  *
  * @property ringtone null = system default alarm sound, "" = silent, otherwise a content URI.
  * @property snoozedUntil epoch millis of a pending snooze, or null.
+ * @property skipped epoch millis of one occurrence of a repeating alarm that won't ring, or null.
  */
 @Serializable
 data class Alarm(
@@ -21,6 +22,7 @@ data class Alarm(
     val ringtone: String? = null,
     val vibrate: Boolean = true,
     val snoozedUntil: Long? = null,
+    val skipped: Long? = null,
 ) {
     init {
         require(hour in 0..23 && minute in 0..59) { "invalid time $hour:$minute" }

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The clock widget. A RemoteViews layout rather than Glance: only TextClock keeps a widget's time
+    current without waking the app every minute, and Glance has no TextClock (docs/decisions.md).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextClock
+        android:id="@+id/time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="h:mm"
+        android:format24Hour="HH:mm"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textColor="@color/widget_primary"
+        android:textSize="64sp" />
+
+    <TextClock
+        android:id="@+id/date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="@string/widget_date_format"
+        android:format24Hour="@string/widget_date_format"
+        android:maxLines="1"
+        android:textColor="@color/widget_on_surface"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/next_alarm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:drawablePadding="6dp"
+        android:drawableStart="@drawable/ic_alarm_small"
+        android:drawableTint="@color/widget_on_surface_variant"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:minHeight="32dp"
+        android:textColor="@color/widget_on_surface_variant"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</LinearLayout>

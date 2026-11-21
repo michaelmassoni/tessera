@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.michaelmassoni.tessera.clock.alarm.AlarmTimes
+import io.github.michaelmassoni.tessera.clock.data.AndroidScheduler
 import io.github.michaelmassoni.tessera.clock.graph
 import io.github.michaelmassoni.tessera.clock.ringing.ClockReceiver
 import io.github.michaelmassoni.tessera.clock.ringing.RingingService
@@ -40,7 +41,37 @@ class AlarmDeliveryTest {
         ShadowAlarmManager.setCanScheduleExactAlarms(true)
     }
 
-    private fun scheduledRtc() = shadowAlarms.scheduledAlarms.filter { it.getType() == AlarmManager.RTC_WAKEUP }
+    // The field is deprecated in favour of getters this Robolectric version doesn't have yet.
+    @Suppress("DEPRECATION")
+    private fun action(a: ShadowAlarmManager.ScheduledAlarm) = shadowOf(a.operation).savedIntent.action
+
+    private fun scheduledRtc() =
+        shadowAlarms.scheduledAlarms.filter { it.getType() == AlarmManager.RTC_WAKEUP && action(it) == ClockReceiver.ACTION_ALARM_FIRED }
+
+    private fun upcoming() = shadowAlarms.scheduledAlarms.filter { action(it) == ClockReceiver.ACTION_ALARM_UPCOMING }
+
+    @Test fun `the upcoming notification is scheduled 2 hours ahead and goes with the alarm`() {
+        val alarm = graph.alarms.add(7, 30)
+        val trigger = AlarmTimes.nextTrigger(alarm, graph.time.now())!!.toInstant().toEpochMilli()
+        assertEquals(trigger - AndroidScheduler.UPCOMING_MILLIS, upcoming().single().triggerAtMs)
+        graph.alarms.delete(alarm.id)
+        assertTrue(upcoming().isEmpty())
+    }
+
+    @Test fun `dismissing from the upcoming notification skips a repeating alarm once`() {
+        val alarm = graph.alarms.add(7, 30, days = DayOfWeek.entries.toSet())
+        val first = scheduledRtc().single().triggerAtMs
+        app.sendBroadcast(
+            Intent(
+                app,
+                ClockReceiver::class.java,
+            ).setAction(ClockReceiver.ACTION_ALARM_DISMISS_UPCOMING).putExtra(ClockReceiver.EXTRA_ID, alarm.id),
+        )
+        shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertTrue(scheduledRtc().single().triggerAtMs - first in 82_800_000L..90_000_000L)
+        graph.alarms.skipNext(alarm.id, skip = false)
+        assertEquals(first, scheduledRtc().single().triggerAtMs)
+    }
 
     @Test fun `new alarm is scheduled as an alarm clock at its next trigger`() {
         val alarm = graph.alarms.add(7, 30)

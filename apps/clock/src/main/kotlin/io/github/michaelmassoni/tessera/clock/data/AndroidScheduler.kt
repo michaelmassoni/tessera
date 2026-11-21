@@ -1,11 +1,13 @@
 package io.github.michaelmassoni.tessera.clock.data
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import io.github.michaelmassoni.tessera.clock.MainActivity
 import io.github.michaelmassoni.tessera.clock.alarm.AlarmSchedule
+import io.github.michaelmassoni.tessera.clock.ringing.ClockNotifications
 import io.github.michaelmassoni.tessera.clock.ringing.ClockReceiver
 import io.github.michaelmassoni.tessera.clock.timer.TimerSchedule
 
@@ -21,6 +23,7 @@ class AndroidScheduler(
 ) : AlarmSchedule,
     TimerSchedule {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
+    private val notifications = context.getSystemService(NotificationManager::class.java)
 
     fun canScheduleExactAlarms(): Boolean = alarmManager.canScheduleExactAlarms()
 
@@ -43,9 +46,17 @@ class AndroidScheduler(
             // is an inexact alarm that still runs in Doze. The app shows a warning banner.
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, operation)
         }
+        // The "upcoming alarm" notification, 2 hours ahead (straight away if it's sooner). Inexact is
+        // fine for it. Whatever it showed for an earlier time is out of date now.
+        notifications.cancel(ClockNotifications.UPCOMING_NOTIFICATION_BASE + id)
+        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis - UPCOMING_MILLIS, upcomingIntent(id))
     }
 
-    override fun cancelAlarm(id: Int) = alarmManager.cancel(alarmIntent(id))
+    override fun cancelAlarm(id: Int) {
+        alarmManager.cancel(alarmIntent(id))
+        alarmManager.cancel(upcomingIntent(id))
+        notifications.cancel(ClockNotifications.UPCOMING_NOTIFICATION_BASE + id)
+    }
 
     override fun scheduleTimer(
         id: Int,
@@ -72,6 +83,14 @@ class AndroidScheduler(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+    private fun upcomingIntent(id: Int) =
+        PendingIntent.getBroadcast(
+            context,
+            UPCOMING_REQUEST_OFFSET + id,
+            Intent(context, ClockReceiver::class.java).setAction(ClockReceiver.ACTION_ALARM_UPCOMING).putExtra(ClockReceiver.EXTRA_ID, id),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
     private fun timerIntent(id: Int) =
         PendingIntent.getBroadcast(
             context,
@@ -86,5 +105,11 @@ class AndroidScheduler(
     companion object {
         /** Keeps timer PendingIntent request codes apart from alarm ids. */
         const val TIMER_REQUEST_OFFSET = 1_000_000
+
+        /** Keeps upcoming-alarm request codes apart from alarms and timers. */
+        const val UPCOMING_REQUEST_OFFSET = 2_000_000
+
+        /** How long before an alarm the upcoming notification appears, as on Pixel. */
+        const val UPCOMING_MILLIS = 2 * 60 * 60_000L
     }
 }

@@ -75,6 +75,11 @@ interface AlarmActions {
     fun onDelete(alarm: Alarm)
 
     fun onCancelSnooze(alarm: Alarm)
+
+    fun onSkip(
+        alarm: Alarm,
+        skip: Boolean,
+    )
 }
 
 @Composable
@@ -200,6 +205,18 @@ private fun AlarmCard(
                     ) { Text(stringResource(R.string.action_dismiss)) }
                 }
             }
+            val skipped = alarm.skipped
+            if (skipped != null && alarm.enabled && skipped > System.currentTimeMillis()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.alarm_skipping, skipDay(skipped, locale)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { actions.onSkip(alarm, false) }) { Text(stringResource(R.string.action_undo)) }
+                }
+            }
             AnimatedVisibility(visible = expanded) {
                 Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DayToggles(alarm, locale) { days -> actions.onUpdate(alarm.copy(days = days)) }
@@ -225,6 +242,16 @@ private fun AlarmCard(
                     ) {
                         Checkbox(checked = alarm.vibrate, onCheckedChange = null, modifier = Modifier.padding(12.dp))
                         Text(stringResource(R.string.alarm_vibrate), style = MaterialTheme.typography.bodyLarge)
+                    }
+                    if (alarm.repeats && alarm.enabled && (skipped == null || skipped <= System.currentTimeMillis())) {
+                        TextButton(onClick = { actions.onSkip(alarm, true) }) {
+                            Icon(
+                                painterResource(DesignR.drawable.ic_skip_next),
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                            Text(stringResource(R.string.alarm_skip_next))
+                        }
                     }
                     TextButton(onClick = { actions.onDelete(alarm) }) {
                         Icon(
@@ -496,6 +523,11 @@ private object NoAlarmActions : AlarmActions {
     override fun onDelete(alarm: Alarm) = Unit
 
     override fun onCancelSnooze(alarm: Alarm) = Unit
+
+    override fun onSkip(
+        alarm: Alarm,
+        skip: Boolean,
+    ) = Unit
 }
 
 @TesseraPreviews
@@ -527,3 +559,19 @@ private fun AlarmsPreview() {
         )
     }
 }
+
+/** "Mon 24 Nov" for the skipped occurrence. */
+private fun skipDay(
+    millis: Long,
+    locale: Locale,
+): String =
+    java.time.Instant
+        .ofEpochMilli(millis)
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(
+            java.time.format.DateTimeFormatter.ofPattern(
+                android.text.format.DateFormat
+                    .getBestDateTimePattern(locale, "EEEdMMM"),
+                locale,
+            ),
+        )
