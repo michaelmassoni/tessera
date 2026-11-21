@@ -53,6 +53,11 @@ A clean SMS and MMS app over the system message database. It works in two modes:
   - After a reply, the notification is updated silently with the reply. Android doesn't let an
     app cancel a notification that was just replied to.
   - Nothing is posted while that conversation is open.
+  - The `incoming_messages` channel plays the default sound and vibrates (a channel doesn't
+    vibrate unless it asks to; the old `messages` channel didn't, and is deleted). Silent and
+    vibrate modes apply as usual.
+  - Senders are the notification's people, with a `tel:` URI, so Do Not Disturb lets messages
+    from starred contacts through.
 - **Respond via message:** `HeadlessSmsSendService` sends the Phone app's "Can't talk now" replies.
 
 ## Features
