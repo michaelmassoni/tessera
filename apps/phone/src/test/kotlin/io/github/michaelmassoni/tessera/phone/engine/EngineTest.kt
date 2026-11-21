@@ -43,4 +43,13 @@ class EngineTest {
         assertEquals("0:42", formatTimer(42))
         assertEquals("1:02:03", formatTimer(3723))
     }
+
+    @Test fun `call durations drop zero parts and seconds once past an hour`() {
+        assertEquals(emptyList<Pair<Long, DurationUnit>>(), callDuration(0))
+        assertEquals(listOf(42L to DurationUnit.Seconds), callDuration(42))
+        assertEquals(listOf(3L to DurationUnit.Minutes), callDuration(180))
+        assertEquals(listOf(3L to DurationUnit.Minutes, 20L to DurationUnit.Seconds), callDuration(200))
+        assertEquals(listOf(1L to DurationUnit.Hours, 2L to DurationUnit.Minutes), callDuration(3723))
+        assertEquals(listOf(2L to DurationUnit.Hours), callDuration(7205))
+    }
 }

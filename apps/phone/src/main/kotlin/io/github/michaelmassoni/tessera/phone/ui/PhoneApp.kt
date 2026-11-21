@@ -1,5 +1,8 @@
 package io.github.michaelmassoni.tessera.phone.ui
 
+import android.icu.text.MeasureFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.telephony.PhoneNumberUtils
 import android.text.format.DateUtils
@@ -26,22 +29,27 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,10 +64,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.data.ContactNumber
+import io.github.michaelmassoni.tessera.phone.engine.CallEntry
 import io.github.michaelmassoni.tessera.phone.engine.CallGroup
 import io.github.michaelmassoni.tessera.phone.engine.CallType
 import io.github.michaelmassoni.tessera.phone.engine.Dialpad
+import io.github.michaelmassoni.tessera.phone.engine.DurationUnit
 import io.github.michaelmassoni.tessera.phone.engine.NumberMatch
+import io.github.michaelmassoni.tessera.phone.engine.callDuration
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -75,6 +87,14 @@ interface PhoneActions {
     fun call(number: String)
 
     fun copy(number: String)
+
+    fun message(number: String)
+
+    fun createContact(number: String)
+
+    fun addToContact(number: String)
+
+    fun viewContact(contact: ContactNumber)
 
     fun makeDefault()
 
@@ -101,7 +121,9 @@ fun PhoneApp(
     initialTab: Int = 1,
     initialNumber: String = "",
 ) {
-    var tab by rememberSaveable { mutableIntStateOf(initialTab) }
+    // Keyed on the dial request, so a new one (onNewIntent) opens the keypad with its number.
+    var tab by rememberSaveable(initialTab, initialNumber) { mutableIntStateOf(initialTab) }
+    var keypadNumber by rememberSaveable(initialNumber) { mutableStateOf(initialNumber) }
     NavigationSuiteScaffold(
         modifier = modifier,
         navigationSuiteItems = {
@@ -115,7 +137,10 @@ fun PhoneApp(
             }
         },
     ) {
-        PhoneTab(Tab.entries[tab], state, actions, initialNumber)
+        PhoneTab(Tab.entries[tab], state, actions, keypadNumber) { number ->
+            keypadNumber = number
+            tab = Tab.Keypad.ordinal
+        }
     }
 }
 
@@ -126,6 +151,7 @@ private fun PhoneTab(
     state: PhoneState,
     actions: PhoneActions,
     initialNumber: String,
+    onEdit: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -147,7 +173,7 @@ private fun PhoneTab(
             }
             when (tab) {
                 Tab.Favourites -> Favourites(state, actions)
-                Tab.Recents -> Recents(state, actions)
+                Tab.Recents -> Recents(state, actions, onEdit)
                 Tab.Contacts -> Contacts(state, actions)
                 Tab.Keypad -> Keypad(state, actions, initialNumber)
             }
@@ -223,11 +249,12 @@ private fun Initial(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun Recents(
     state: PhoneState,
     actions: PhoneActions,
+    onEdit: (String) -> Unit,
 ) {
     if (state.loaded && state.recents.isEmpty()) {
         Empty(stringResource(R.string.empty_recents))
@@ -235,6 +262,23 @@ private fun Recents(
     }
     val context = LocalContext.current
     val country = LocalConfiguration.current.locales[0].country
+    var options by remember { mutableStateOf<CallEntry?>(null) }
+    options?.let { call ->
+        val contact =
+            remember(call, state.numbers) {
+                state.numbers.firstOrNull { PhoneNumberUtils.areSamePhoneNumber(it.number, call.number, country) }
+            }
+        val sheet = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
+        val scope = rememberCoroutineScope()
+        ModalBottomSheet(onDismissRequest = { options = null }, sheetState = sheet) {
+            RecentOptions(call, contact, actions, onEdit) { action ->
+                scope.launch { sheet.hide() }.invokeOnCompletion {
+                    options = null
+                    action()
+                }
+            }
+        }
+    }
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
         state.recents.forEach { (day, groups) ->
             item(key = "d$day") {
@@ -272,8 +316,12 @@ private fun Recents(
                                 tint = if (missed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp),
                             )
+                            val time = DateUtils.formatDateTime(context, call.date, DateUtils.FORMAT_SHOW_TIME)
+                            val length = durationText(call.durationSeconds)
                             Text(
-                                DateUtils.formatDateTime(context, call.date, DateUtils.FORMAT_SHOW_TIME),
+                                if (length.isEmpty()) time else "$time · $length",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(start = 6.dp),
                             )
                         }
@@ -289,7 +337,7 @@ private fun Recents(
                     modifier =
                         Modifier.combinedClickable(onClick = {
                             if (call.number.isNotBlank()) actions.call(call.number)
-                        }, onLongClick = { actions.copy(call.number) }),
+                        }, onLongClick = { if (call.number.isNotBlank()) options = call }),
                 ) {
                     Text(
                         if (g.count > 1) "$display (${g.count})" else display,
@@ -300,6 +348,77 @@ private fun Recents(
                 }
             }
         }
+    }
+}
+
+/** "3 min, 20 sec" in the phone's language; empty for an unanswered call. */
+@Composable
+private fun durationText(seconds: Long): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return remember(seconds, locale) {
+        val parts = callDuration(seconds)
+        if (parts.isEmpty()) {
+            ""
+        } else {
+            val measures =
+                parts.map { (amount, unit) ->
+                    Measure(
+                        amount,
+                        when (unit) {
+                            DurationUnit.Hours -> MeasureUnit.HOUR
+                            DurationUnit.Minutes -> MeasureUnit.MINUTE
+                            DurationUnit.Seconds -> MeasureUnit.SECOND
+                        },
+                    )
+                }
+            MeasureFormat.getInstance(locale, MeasureFormat.FormatWidth.SHORT).formatMeasures(*measures.toTypedArray())
+        }
+    }
+}
+
+/**
+ * What a long press on a recent call offers, like the system dialler: message, copy, edit before
+ * calling, and either the contact or ways to save the number as one. [done] closes the sheet and
+ * then runs the choice.
+ */
+@Composable
+internal fun RecentOptions(
+    call: CallEntry,
+    contact: ContactNumber?,
+    actions: PhoneActions,
+    onEdit: (String) -> Unit,
+    done: (() -> Unit) -> Unit,
+) {
+    val country = LocalConfiguration.current.locales[0].country
+    val number = PhoneNumberUtils.formatNumber(call.number, country) ?: call.number
+    val name = contact?.name ?: call.name
+    Column(Modifier.padding(bottom = 16.dp)) {
+        ListItem(
+            leadingContent = { Initial(name, 40) },
+            supportingContent = if (name != null) ({ Text(number) }) else null,
+        ) {
+            Text(name ?: number, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+
+        @Composable
+        fun Option(
+            icon: Int,
+            label: Int,
+            action: () -> Unit,
+        ) = ListItem(
+            onClick = { done(action) },
+            leadingContent = { Icon(painterResource(icon), contentDescription = null) },
+        ) { Text(stringResource(label)) }
+        if (contact != null) {
+            Option(DesignR.drawable.ic_person, R.string.view_contact) { actions.viewContact(contact) }
+        } else {
+            Option(DesignR.drawable.ic_person_add, R.string.create_contact) { actions.createContact(call.number) }
+            Option(DesignR.drawable.ic_account_circle, R.string.add_to_contact) { actions.addToContact(call.number) }
+        }
+        Option(DesignR.drawable.ic_chat, R.string.send_message) { actions.message(call.number) }
+        Option(DesignR.drawable.ic_content_copy, R.string.copy_number) { actions.copy(call.number) }
+        Option(DesignR.drawable.ic_dialpad, R.string.edit_before_call) { onEdit(call.number) }
     }
 }
 

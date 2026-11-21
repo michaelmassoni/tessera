@@ -24,6 +24,13 @@
     <string name="type_missed">Missed call</string>
     <string name="type_rejected">Declined call</string>
     <string name="type_blocked">Blocked call</string>
+    <string name="send_message">Send message</string>
+    <string name="copy_number">Copy number</string>
+    <string name="edit_before_call">Edit number before call</string>
+    <string name="create_contact">Create new contact</string>
+    <string name="add_to_contact">Add to a contact</string>
+    <string name="view_contact">View contact</string>
+    <string name="no_app">No app can do that</string>
 
     <string name="state_incoming">Incoming call</string>
     <string name="state_calling">Calling…</string>
