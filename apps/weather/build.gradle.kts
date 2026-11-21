@@ -8,11 +8,14 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.weather"
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.4.0"
     }
 }
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.work.runtime)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

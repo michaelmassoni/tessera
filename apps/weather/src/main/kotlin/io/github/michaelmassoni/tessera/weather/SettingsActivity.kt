@@ -1,5 +1,9 @@
 package io.github.michaelmassoni.tessera.weather
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.selection.selectableGroup
@@ -7,17 +11,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.work.ExistingWorkPolicy
+import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
 import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
+import io.github.michaelmassoni.tessera.weather.background.WeatherJobs
 import io.github.michaelmassoni.tessera.weather.data.weatherSettings
 import io.github.michaelmassoni.tessera.weather.engine.PrecipitationUnit
 import io.github.michaelmassoni.tessera.weather.engine.TemperatureUnit
 import io.github.michaelmassoni.tessera.weather.engine.WindUnit
+import kotlinx.coroutines.launch
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon = weatherLauncherIcon
@@ -66,6 +76,40 @@ class SettingsActivity : TesseraSettingsActivity() {
             units = units.copy(precipitation = it)
             settings.units = units
         }
+
+        // Notifications: turning one on asks for the permission (Android 13+) and starts the background check.
+        var morning by remember { mutableStateOf(settings.morningForecast) }
+        var rain by remember { mutableStateOf(settings.rainAlerts) }
+        var warnings by remember { mutableStateOf(settings.warningAlerts) }
+        val scope = rememberCoroutineScope()
+        val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+        fun changed(
+            on: Boolean,
+            replaceMorning: Boolean = false,
+        ) {
+            if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+            scope.launch {
+                WeatherJobs.schedule(applicationContext, if (replaceMorning) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP)
+            }
+        }
+        SettingsHeader(stringResource(R.string.settings_notifications))
+        SwitchSetting(stringResource(R.string.setting_morning), morning, {
+            morning = it
+            settings.morningForecast = it
+            changed(it, replaceMorning = true)
+        }, summary = stringResource(R.string.setting_morning_summary))
+        SwitchSetting(stringResource(R.string.setting_rain), rain, {
+            rain = it
+            settings.rainAlerts = it
+            changed(it)
+        }, summary = stringResource(R.string.setting_rain_summary))
+        SwitchSetting(stringResource(R.string.setting_warnings), warnings, {
+            warnings = it
+            settings.warningAlerts = it
+            changed(it)
+        }, summary = stringResource(R.string.setting_warnings_summary))
+        InfoSetting(stringResource(R.string.setting_notify_place_title), stringResource(R.string.setting_notify_place))
     }
 }
 

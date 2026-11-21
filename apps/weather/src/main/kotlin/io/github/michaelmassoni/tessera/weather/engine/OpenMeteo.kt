@@ -38,7 +38,7 @@ object OpenMeteo {
         "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query.trim(), "UTF-8")}" +
             "&count=10&language=$language&format=json"
 
-    private fun round2(value: Double) = String.format(Locale.ROOT, "%.2f", value)
+    fun round2(value: Double): String = String.format(Locale.ROOT, "%.2f", value)
 
     fun parseForecast(body: String): Forecast {
         val r = json.decodeFromString<ForecastResponse>(body)
