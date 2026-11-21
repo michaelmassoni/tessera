@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +54,7 @@ import io.github.michaelmassoni.tessera.weather.R
 import io.github.michaelmassoni.tessera.weather.engine.Convert
 import io.github.michaelmassoni.tessera.weather.engine.Day
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
+import io.github.michaelmassoni.tessera.weather.engine.ForecastSource
 import io.github.michaelmassoni.tessera.weather.engine.Hour
 import io.github.michaelmassoni.tessera.weather.engine.Ranges
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
@@ -99,10 +101,11 @@ fun ForecastPage(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             item(key = "hero") { Hero(forecast, placeName, units) }
+            forecast.summary?.let { summary -> item(key = "summary") { Summary(summary) } }
             item(key = "hours") { Hours(Timeline.nextHours(forecast.hours, now), forecast.zone, units) }
             item(key = "days") { Days(forecast, units) }
             item(key = "details") { Details(forecast, units, now) }
-            item(key = "footer") { Footer(page.fetchedAt, now) }
+            item(key = "footer") { Footer(page.fetchedAt, now, forecast) }
         }
     }
 }
@@ -283,7 +286,7 @@ private fun Days(
     val locale = LocalConfiguration.current.locales[0]
     val bars = remember(forecast) { Ranges.bars(forecast.days) }
     val nowAt = remember(forecast) { Ranges.position(forecast.current.temperature, forecast.days) }
-    Card(stringResource(R.string.ten_days)) {
+    Card(pluralStringResource(R.plurals.forecast_days, forecast.days.size, forecast.days.size)) {
         forecast.days.forEachIndexed { i, day ->
             DayRow(
                 day = day,
@@ -564,6 +567,7 @@ private fun TileView(
 private fun Footer(
     fetchedAt: Long,
     now: Long,
+    forecast: Forecast,
 ) {
     Column(Modifier.padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (fetchedAt > 0) {
@@ -580,10 +584,32 @@ private fun Footer(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        // Credit whoever made this forecast (both sources ask for it).
         Text(
-            stringResource(R.string.credit),
+            stringResource(if (forecast.source == ForecastSource.Bom) R.string.credit_bom else R.string.credit),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        forecast.station?.let {
+            Text(
+                stringResource(R.string.observed_at, it),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The forecaster's own words for today (BOM). */
+@Composable
+private fun Summary(text: String) {
+    Card(stringResource(R.string.todays_forecast)) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 20.dp),
         )
     }
 }
