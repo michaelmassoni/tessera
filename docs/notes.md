@@ -37,6 +37,9 @@ and no network.
   - Enter adds an item, and Backspace on an empty item removes it.
   - Checked items move to a collapsible "Checked items" group at the bottom.
   - Converting between text and checklist keeps the lines.
+  - Items sit close together like a paper list: each row is the checkbox's 48dp touch target,
+    growing only when an item wraps (a plain text field, not a Material `TextField` with its 56dp
+    minimum and padding).
 - **Saving:** changes save automatically. They're debounced while typing and flushed when
   leaving the editor or the app. An empty new note is discarded.
 - **Undo and redo:** in the editor's top bar, per editing session.
