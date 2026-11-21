@@ -48,8 +48,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewModel.start()
         if (savedInstanceState == null) {
-            viewModel.start()
             if (followStore().load().teams.isNotEmpty() && sportsSettings().liveUpdates) LiveGames.kick(applicationContext)
         }
         val actions = Actions()
