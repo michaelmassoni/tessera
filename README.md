@@ -5,12 +5,12 @@
 Tessera
 ===
 
-[![10 apps][apps badge]](#the-apps)
+[![13 apps][apps badge]](#the-apps)
 [![Android 12+][android badge]][releases]
 [![Built with Kotlin][kotlin badge]][kotlin]
 [![License: GPL-3.0][license badge]][license]
 
-Free, open-source replacements for the apps that come with your phone. Ten apps that look and feel
+Free, open-source replacements for the apps that come with your phone. Thirteen apps that look and feel
 first-party on current Android, with no ads, no tracking and no Google Play Services.
 
 [<img src="docs/badges/badge_obtainium.png" alt="Get it on Obtainium" height="48">](#install)
@@ -27,10 +27,11 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 
 - **Feels built in.** Material 3 Expressive, colours from your wallpaper, dark mode, edge-to-edge,
   predictive back, and layouts for phones, foldables and tablets.
-- **Private by design.** No ads, trackers, analytics or crash reporters. No internet access unless
-  an app truly needs it: only Weather (forecasts from the Bureau of Meteorology in Australia,
-  Open-Meteo elsewhere) and Sports (scores from ESPN) do; no account or key, and nothing about you
-  is sent.
+- **Private by design.** No ads, trackers, analytics or crash reporters, and no internet access
+  unless an app needs it. Weather (Bureau of Meteorology in Australia, Open-Meteo elsewhere) and
+  Sports (scores from ESPN) fetch public data with no account or key. Music and Tasks talk only to a
+  server you add yourself (Subsonic or CalDAV), and Music looks up lyrics only if you turn that on.
+  Nothing about you is sent anywhere else.
 - **Works on de-Googled phones.** Nothing depends on Google Play Services, so the apps work the same
   on GrapheneOS, LineageOS or a stock phone.
 - **One theme for all of them.** Choose light, dark or system, wallpaper colours and pure black once,
@@ -41,17 +42,17 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 | | App | | Install |
 |:-:|---|---|:-:|
 | <img src="docs/icons/calculator.svg" width="48" alt=""/> | **Calculator**<br/>Basic and scientific, exact decimals, history. | [![calculator][v calculator]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calculator to Obtainium">][obtainium calculator] |
-| <img src="docs/icons/clock.svg" width="48" alt=""/> | **Clock**<br/>Alarms, timers, stopwatch and world clock. | [![clock][v clock]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Clock to Obtainium">][obtainium clock] |
-| <img src="docs/icons/files.svg" width="48" alt=""/> | **Files**<br/>Browse, search, copy and move, share, SD cards. | [![files][v files]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Files to Obtainium">][obtainium files] |
-| <img src="docs/icons/notes.svg" width="48" alt=""/> | **Notes**<br/>Text and checklist notes, labels, pins, archive and trash. | [![notes][v notes]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Notes to Obtainium">][obtainium notes] |
+| <img src="docs/icons/clock.svg" width="48" alt=""/> | **Clock**<br/>Alarms, timers, stopwatch, world clock and a widget. | [![clock][v clock]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Clock to Obtainium">][obtainium clock] |
+| <img src="docs/icons/files.svg" width="48" alt=""/> | **Files**<br/>Browse, search, copy and move, share, SD cards, trash. | [![files][v files]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Files to Obtainium">][obtainium files] |
+| <img src="docs/icons/notes.svg" width="48" alt=""/> | **Notes**<br/>Text and checklist notes, labels, pins, archive, trash and a widget. | [![notes][v notes]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Notes to Obtainium">][obtainium notes] |
 | <img src="docs/icons/contacts.svg" width="48" alt=""/> | **Contacts**<br/>Search, favourites, editor, vCard import and export. | [![contacts][v contacts]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Contacts to Obtainium">][obtainium contacts] |
-| <img src="docs/icons/gallery.svg" width="48" alt=""/> | **Gallery**<br/>Timeline and albums, zoom, video, a photo editor, favourites, trash. | [![gallery][v gallery]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Gallery to Obtainium">][obtainium gallery] |
-| <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month and schedule views, repeating events, reminders, ICS import. | [![calendar][v calendar]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calendar to Obtainium">][obtainium calendar] |
-| <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Songs, albums and artists, search, background playback. | [![music][v music]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Music to Obtainium">][obtainium music] |
-| <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, recents, keypad, and the call screen when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
-| <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive. | [![messages][v messages]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Messages to Obtainium">][obtainium messages] |
-| <img src="docs/icons/weather.svg" width="48" alt=""/> | **Weather**<br/>Forecasts from the Bureau of Meteorology in Australia (Open-Meteo elsewhere), for your location and saved places. | [![weather][v weather]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Weather to Obtainium">][obtainium weather] |
-| <img src="docs/icons/sports.svg" width="48" alt=""/> | **Sports**<br/>Your teams' scores, fixtures and standings, and Live Updates while they play. | [![sports][v sports]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Sports to Obtainium">][obtainium sports] |
+| <img src="docs/icons/gallery.svg" width="48" alt=""/> | **Gallery**<br/>Timeline and albums, zoom, video, a photo editor, move and copy, favourites, trash. | [![gallery][v gallery]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Gallery to Obtainium">][obtainium gallery] |
+| <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month, week, day and schedule views, repeating events, reminders, widgets, ICS import. | [![calendar][v calendar]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calendar to Obtainium">][obtainium calendar] |
+| <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Music on your phone or a Subsonic server (Navidrome and others), lyrics, playlists, Android Auto. | [![music][v music]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Music to Obtainium">][obtainium music] |
+| <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, call history, keypad with T9 search, blocking, caller location and spam labels, and the call screen when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
+| <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive, Android Auto. | [![messages][v messages]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Messages to Obtainium">][obtainium messages] |
+| <img src="docs/icons/weather.svg" width="48" alt=""/> | **Weather**<br/>Forecasts from the Bureau of Meteorology in Australia (Open-Meteo elsewhere), for your location and saved places, with warnings, air quality and a widget. | [![weather][v weather]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Weather to Obtainium">][obtainium weather] |
+| <img src="docs/icons/sports.svg" width="48" alt=""/> | **Sports**<br/>Your teams' scores, fixtures and standings, team pages, a spoiler-free mode, a widget, and Live Updates while they play. | [![sports][v sports]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Sports to Obtainium">][obtainium sports] |
 | <img src="docs/icons/tasks.svg" width="48" alt=""/> | **Tasks**<br/>Lists, repeating tasks with on-time reminders, a home-screen widget, CalDAV sync with your own server. | [![tasks][v tasks]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Tasks to Obtainium">][obtainium tasks] |
 
 Each app has a short spec in [docs/](docs) describing what it does and why it asks for each
@@ -74,6 +75,11 @@ permission.
 <td align="center"><img src="docs/screenshots/music-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/music-dark.png#gh-dark-mode-only" width="150"/><br/>Music</td>
 <td align="center"><img src="docs/screenshots/phone-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/phone-dark.png#gh-dark-mode-only" width="150"/><br/>Phone</td>
 <td align="center"><img src="docs/screenshots/messages-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/messages-dark.png#gh-dark-mode-only" width="150"/><br/>Messages</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/weather-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/weather-dark.png#gh-dark-mode-only" width="150"/><br/>Weather</td>
+<td align="center"><img src="docs/screenshots/sports-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/sports-dark.png#gh-dark-mode-only" width="150"/><br/>Sports</td>
+<td align="center"><img src="docs/screenshots/tasks-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/tasks-dark.png#gh-dark-mode-only" width="150"/><br/>Tasks</td>
 </tr>
 </table>
 </div>
@@ -103,6 +109,11 @@ Releases are signed with this certificate (SHA-256), if you want to check:
   (each app asks). Phone is experimental: it's safe to try, and you can switch back any time.
 - **Files** asks for "All files access", so it can browse and manage everything on your phone and
   SD card, like the built-in file manager. Nothing leaves your device.
+- **Tasks** asks to set exact alarms, so reminders (medications, say) arrive on the minute. It
+  works without, but Android may then deliver a reminder up to an hour late.
+- **Music and Tasks** can use your own server: Music any Subsonic-compatible server (Navidrome and
+  others), Tasks a CalDAV server with task lists (tested with Radicale, which OpenCloud uses). Plain `http://` is
+  only allowed on your home network or Tailscale.
 - **Lots of GitHub checks in Obtainium?** GitHub limits checks without a token. Add a fine-grained
   personal access token with no permissions (public repositories, read-only) in Obtainium's
   settings under GitHub.
@@ -132,7 +143,7 @@ Bug reports and ideas are welcome in [Issues](../../issues).
 
 [GNU GPL v3.0](LICENSE).
 
-[apps badge]: https://img.shields.io/badge/Apps-10-5B4B8A?style=for-the-badge
+[apps badge]: https://img.shields.io/badge/Apps-13-5B4B8A?style=for-the-badge
 [releases]: https://github.com/michaelmassoni/tessera/releases
 [android badge]: https://img.shields.io/badge/Android-12%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white
 [kotlin badge]: https://img.shields.io/badge/Built%20with-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white
