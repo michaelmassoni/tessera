@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tasks are in Tessera backups and, on a server, on the server; Android's own backups leave the
+     sync account (its password only decrypts on this phone) out. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="tasks.json" />
+        <include domain="sharedpref" path="settings.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="tasks.json" />
+        <include domain="sharedpref" path="settings.xml" />
+    </device-transfer>
+</data-extraction-rules>

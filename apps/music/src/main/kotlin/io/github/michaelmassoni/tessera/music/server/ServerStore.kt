@@ -1,17 +1,9 @@
 package io.github.michaelmassoni.tessera.music.server
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.util.Base64
 import androidx.core.content.edit
+import io.github.michaelmassoni.tessera.core.settings.SecretBox
 import io.github.michaelmassoni.tessera.music.engine.ServerAccount
-import java.security.GeneralSecurityException
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 
 /** Where the library comes from. */
 enum class MusicSource { Local, Server }
@@ -66,51 +58,22 @@ class ServerStore(
         get() = CacheSize.entries.firstOrNull { it.name == prefs.getString(KEY_CACHE, null) } ?: CacheSize.Medium
         set(value) = prefs.edit { putString(KEY_CACHE, value.name) }
 
+    private val box = SecretBox(ALIAS)
+
     /** The decrypted password, or null when there is none or it can't be read (a restored Keystore). */
-    fun password(): String? {
-        val stored = prefs.getString(KEY_PASSWORD, null) ?: return null
-        return try {
-            val bytes = Base64.decode(stored, Base64.NO_WRAP)
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes, 0, IV_SIZE))
-            String(cipher.doFinal(bytes, IV_SIZE, bytes.size - IV_SIZE))
-        } catch (_: GeneralSecurityException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
-        }
-    }
+    fun password(): String? = prefs.getString(KEY_PASSWORD, null)?.let(box::open)
 
     /** Saves a checked account and switches to it. */
     fun signIn(
         account: ServerAccount,
         password: String,
     ) {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key())
-        val sealed = cipher.iv + cipher.doFinal(password.toByteArray())
         prefs.edit {
             putString(KEY_ADDRESS, account.address)
             putString(KEY_USER, account.username)
-            putString(KEY_PASSWORD, Base64.encodeToString(sealed, Base64.NO_WRAP))
+            putString(KEY_PASSWORD, box.seal(password))
             putString(KEY_SOURCE, MusicSource.Server.name)
         }
-    }
-
-    private fun key(): SecretKey {
-        val store = KeyStore.getInstance(KEYSTORE).apply { load(null) }
-        (store.getKey(ALIAS, null) as? SecretKey)?.let { return it }
-        return KeyGenerator
-            .getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
-            .apply {
-                init(
-                    KeyGenParameterSpec
-                        .Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-                        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                        .build(),
-                )
-            }.generateKey()
     }
 
     companion object {
@@ -121,9 +84,6 @@ class ServerStore(
         private const val KEY_PASSWORD = "password"
         private const val KEY_QUALITY = "quality"
         private const val KEY_CACHE = "cache_size"
-        private const val KEYSTORE = "AndroidKeyStore"
         private const val ALIAS = "music_server_password"
-        private const val TRANSFORMATION = "AES/GCM/NoPadding"
-        private const val IV_SIZE = 12
     }
 }
