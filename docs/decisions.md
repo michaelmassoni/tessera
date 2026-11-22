@@ -4,6 +4,23 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Tasks app with its own CalDAV sync (Accepted)
+
+The maintainer asked for a Tasks app modelled on Google Tasks, for simple daily tasks and
+repeating medication reminders, used mostly from a home-screen widget. It syncs VTODOs over CalDAV
+itself ("option C"), not through DAVx5 and the OpenTasks provider, so it needs no other app and
+works the same with or without DAVx5. A list can also stay on the phone only.
+
+- **Network:** `INTERNET`, only to the server the person adds. Plain `http://` only for private
+  and Tailscale addresses. `ServerAddress` (that check) moved from Music into `core:settings`, and
+  `SecretBox` (the Keystore-encrypted password) with it, now that two apps need them.
+- **OkHttp** for WebDAV: `HttpURLConnection` can't send PROPFIND, REPORT or MKCALENDAR. It's
+  Apache-2.0 and on F-Droid.
+- **Exact alarms** (`SCHEDULE_EXACT_ALARM`, asked in setup) so medication reminders come on time.
+  Without it Android may deliver a reminder up to an hour late, and the list says so with a
+  button to allow it.
+- Tested against Radicale, which OpenCloud uses for CalDAV.
+
 ## 2026-11-22: Android Auto for Music and Messages only (Accepted)
 
 The maintainer asked for Android Auto where it makes sense. Android Auto accepts third-party

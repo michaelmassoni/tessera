@@ -79,7 +79,7 @@
     <string name="restore_newer">That backup is from a newer version. Update the app first.</string>
     <string name="restore_failed">Couldn\'t restore the backup</string>
     <string name="setup_welcome">Welcome to %1$s</string>
-    <string name="setup_welcome_text">A few quick steps to get it ready. Everything stays on this phone.</string>
+    <string name="setup_welcome_text">A few quick steps to get it ready.</string>
     <string name="setup_welcome_ready">It\'s ready to use. Everything stays on this phone.</string>
     <string name="setup_start">Get started</string>
     <string name="setup_allow">Allow</string>
