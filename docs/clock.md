@@ -216,3 +216,7 @@ Not requested: storage, location (cities are chosen by hand), network.
 - Spotify and other streaming sounds.
 - Analog clock faces.
 - Wear OS.
+
+## First run
+
+See [setup.md](setup.md) for what clock asks for the first time it opens.

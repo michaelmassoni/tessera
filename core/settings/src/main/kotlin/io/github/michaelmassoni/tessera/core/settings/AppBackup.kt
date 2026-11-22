@@ -66,7 +66,11 @@ class AppBackup(
             .restore(input, roots, File(app.cacheDir, "restore"), exclude) { m ->
                 if (m.app != app.packageName) throw RestoreRefused(RestoreRefused.Reason.OtherApp)
                 if (m.versionCode > versionCode) throw RestoreRefused(RestoreRefused.Reason.NewerVersion)
-            }.also { File(app.noBackupFilesDir, RESTORED).createNewFile() }
+            }.also {
+                File(app.noBackupFilesDir, RESTORED).createNewFile()
+                // Its first-run setup won't offer to restore again.
+                Setup.markRestored(app)
+            }
 
     companion object {
         const val META_EXCLUDE = "io.github.michaelmassoni.tessera.BACKUP_EXCLUDE"

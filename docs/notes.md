@@ -124,3 +124,7 @@ None.
 - Note colours.
 - Sync.
 - Locking notes.
+
+## First run
+
+See [setup.md](setup.md) for what notes asks for the first time it opens.

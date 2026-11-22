@@ -50,6 +50,7 @@ import io.github.michaelmassoni.tessera.contacts.ui.EditActions
 import io.github.michaelmassoni.tessera.contacts.ui.ListActions
 import io.github.michaelmassoni.tessera.contacts.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.core.design.clearAvatarCache
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -98,39 +99,41 @@ class MainActivity : ComponentActivity() {
         val detailActions = DetailActionsImpl()
         val editActions = EditActionsImpl()
         setTesseraContent {
-            val request =
-                rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-                    granted = hasPermission()
-                    denied = !granted && result.isNotEmpty()
-                    if (granted) onGranted()
+            SetupGate(contactsSetup) {
+                val request =
+                    rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+                        granted = hasPermission()
+                        denied = !granted && result.isNotEmpty()
+                        if (granted) onGranted()
+                    }
+                if (!granted) {
+                    PermissionScreen(
+                        denied = denied,
+                        onGrant = { request.launch(arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)) },
+                        onSettings = {
+                            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
+                        },
+                    )
+                } else {
+                    val list by viewModel.list.collectAsStateWithLifecycle()
+                    val openId by viewModel.openId.collectAsStateWithLifecycle()
+                    val detail by viewModel.detail.collectAsStateWithLifecycle()
+                    val editor by viewModel.editor.collectAsStateWithLifecycle()
+                    ContactsApp(
+                        list,
+                        openId,
+                        detail,
+                        editor,
+                        viewModel.events,
+                        listActions,
+                        detailActions,
+                        editActions,
+                        pickMode = pick != null,
+                    )
+                    val picking = pick
+                    val d = detail
+                    if (picking != null && picking != PickKind.Contact && d != null) PickValueDialog(picking, d)
                 }
-            if (!granted) {
-                PermissionScreen(
-                    denied = denied,
-                    onGrant = { request.launch(arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)) },
-                    onSettings = {
-                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
-                    },
-                )
-            } else {
-                val list by viewModel.list.collectAsStateWithLifecycle()
-                val openId by viewModel.openId.collectAsStateWithLifecycle()
-                val detail by viewModel.detail.collectAsStateWithLifecycle()
-                val editor by viewModel.editor.collectAsStateWithLifecycle()
-                ContactsApp(
-                    list,
-                    openId,
-                    detail,
-                    editor,
-                    viewModel.events,
-                    listActions,
-                    detailActions,
-                    editActions,
-                    pickMode = pick != null,
-                )
-                val picking = pick
-                val d = detail
-                if (picking != null && picking != PickKind.Contact && d != null) PickValueDialog(picking, d)
             }
         }
         if (granted) onGranted()

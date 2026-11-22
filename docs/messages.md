@@ -147,3 +147,7 @@ A clean SMS and MMS app over the system message database. It works in two modes:
 - Searching message text.
 - Spam detection.
 - Choosing the SIM on dual-SIM phones (the system default is used).
+
+## First run
+
+See [setup.md](setup.md) for what messages asks for the first time it opens.

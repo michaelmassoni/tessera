@@ -167,4 +167,6 @@
         <item quantity="one">%d day left</item>
         <item quantity="other">%d days left</item>
     </plurals>
+    <string name="setup_access_title">All files access</string>
+    <string name="setup_access_text">A file manager needs to see every file and folder, not just photos or music, so Android asks for broader access than other apps. Turn on \"Allow access to manage all files\" on the next screen. Nothing leaves this phone.</string>
 </resources>

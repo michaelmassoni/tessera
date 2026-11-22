@@ -147,3 +147,7 @@ No network or media permissions are requested; all-files access already covers m
 - Duplicate finder.
 - Acting as a SAF `DocumentsProvider`.
 - Tabs.
+
+## First run
+
+See [setup.md](setup.md) for what files asks for the first time it opens.

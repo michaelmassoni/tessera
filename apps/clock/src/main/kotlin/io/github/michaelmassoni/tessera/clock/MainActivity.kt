@@ -14,6 +14,7 @@ import io.github.michaelmassoni.tessera.clock.ringing.Ringing
 import io.github.michaelmassoni.tessera.clock.ringing.RingingService
 import io.github.michaelmassoni.tessera.clock.ui.ClockRoot
 import io.github.michaelmassoni.tessera.clock.ui.ClockViewModel
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import java.time.DayOfWeek
 import java.util.Calendar
@@ -27,7 +28,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null && handleIntent(intent)) return
         setTesseraContent {
-            ClockRoot(viewModel, initialTab = tab, onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) })
+            SetupGate(clockSetup) {
+                ClockRoot(viewModel, initialTab = tab, onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) })
+            }
         }
     }
 

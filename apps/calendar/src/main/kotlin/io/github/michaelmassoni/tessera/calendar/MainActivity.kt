@@ -40,6 +40,7 @@ import io.github.michaelmassoni.tessera.calendar.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.calendar.ui.firstDayOfWeek
 import io.github.michaelmassoni.tessera.calendar.widget.CalendarWidgets
 import io.github.michaelmassoni.tessera.calendar.widget.WidgetPreview
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -99,17 +100,23 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.Default) { WidgetPreview.publish(applicationContext) }
         val actions = Actions()
         setTesseraContent {
-            if (!granted) {
-                PermissionScreen(
-                    denied = denied,
-                    onGrant = ::askForAccess,
-                    onSettings = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())) },
-                )
-            } else {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                val detail by viewModel.detail.collectAsStateWithLifecycle()
-                val editor by viewModel.editor.collectAsStateWithLifecycle()
-                CalendarApp(state, detail, editor, viewModel.events, actions)
+            SetupGate(calendarSetup) {
+                if (!granted) {
+                    PermissionScreen(
+                        denied = denied,
+                        onGrant = ::askForAccess,
+                        onSettings = {
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()),
+                            )
+                        },
+                    )
+                } else {
+                    val state by viewModel.state.collectAsStateWithLifecycle()
+                    val detail by viewModel.detail.collectAsStateWithLifecycle()
+                    val editor by viewModel.editor.collectAsStateWithLifecycle()
+                    CalendarApp(state, detail, editor, viewModel.events, actions)
+                }
             }
         }
         if (granted) {

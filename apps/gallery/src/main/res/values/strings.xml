@@ -118,4 +118,6 @@
     <string name="move_not_allowed">Some items can\'t go in that album (Android keeps videos and photos in certain folders)</string>
     <string name="rotate_failed">Couldn\'t rotate this photo</string>
     <string name="action_cancel">Cancel</string>
+    <string name="setup_access_title">Your photos and videos</string>
+    <string name="setup_access_text">To show the photos and videos on this phone. You can allow all of them, or only the ones you pick. Nothing leaves this phone.</string>
 </resources>

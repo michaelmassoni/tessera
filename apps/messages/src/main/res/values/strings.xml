@@ -95,4 +95,10 @@
     <string name="add_more_hint">Long-press a contact or type a comma to add more people.</string>
     <string name="reply">Reply</string>
     <string name="channel_messages">Messages</string>
+    <string name="setup_default_title">Make Tessera your SMS app</string>
+    <string name="setup_default_text">Android only lets the default SMS app send texts, mark them read and receive picture messages. You can change it later in system Settings.</string>
+    <string name="setup_access_title">Texts and contacts</string>
+    <string name="setup_access_text">To show and send your texts, with your contacts\' names. Nothing leaves this phone except the texts you send.</string>
+    <string name="setup_notifications_title">Notifications</string>
+    <string name="setup_notifications_text">For new messages, with reply and mark-as-read.</string>
 </resources>

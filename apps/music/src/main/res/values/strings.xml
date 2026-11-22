@@ -56,4 +56,6 @@
     <string name="widget_description">What\'s playing, with play, pause and skip</string>
     <string name="widget_nothing_playing">Nothing playing</string>
     <string name="widget_tap_to_open">Tap to open Music</string>
+    <string name="setup_access_title">Your music</string>
+    <string name="setup_access_text">To find the songs on this phone. Music only reads audio files, and nothing leaves this phone.</string>
 </resources>

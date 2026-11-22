@@ -147,3 +147,7 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
   provider; and BOM's radar loops are images listed only on its web pages, so the app would
   have to scrape them. Revisit if BOM's app API exposes radar.
 - Wear OS.
+
+## First run
+
+See [setup.md](setup.md) for what weather asks for the first time it opens.

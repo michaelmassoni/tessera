@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.sports"
-        versionCode = 8
-        versionName = "0.3.1"
+        versionCode = 9
+        versionName = "0.4.0"
     }
 }
 

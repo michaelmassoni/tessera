@@ -176,3 +176,7 @@ published once per app version.
 - Tasks.
 - Exporting ICS.
 - Time zone picker.
+
+## First run
+
+See [setup.md](setup.md) for what calendar asks for the first time it opens.

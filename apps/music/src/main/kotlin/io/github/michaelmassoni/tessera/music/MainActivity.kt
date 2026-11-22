@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.engine.Library
@@ -70,16 +71,22 @@ class MainActivity : ComponentActivity() {
         val libraryActions = LibraryActionsImpl()
         val playerActions = PlayerActionsImpl()
         setTesseraContent {
-            if (!granted) {
-                PermissionScreen(
-                    denied = denied,
-                    onGrant = { request.launch(permission) },
-                    onSettings = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())) },
-                )
-            } else {
-                val playback by player.state.collectAsStateWithLifecycle()
-                val progress = player.progress.collectAsStateWithLifecycle()
-                MusicApp(library, playback, { progress.value }, libraryActions, playerActions)
+            SetupGate(musicSetup) {
+                if (!granted) {
+                    PermissionScreen(
+                        denied = denied,
+                        onGrant = { request.launch(permission) },
+                        onSettings = {
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()),
+                            )
+                        },
+                    )
+                } else {
+                    val playback by player.state.collectAsStateWithLifecycle()
+                    val progress = player.progress.collectAsStateWithLifecycle()
+                    MusicApp(library, playback, { progress.value }, libraryActions, playerActions)
+                }
             }
         }
         if (granted) onGranted()
