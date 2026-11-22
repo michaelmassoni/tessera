@@ -125,6 +125,17 @@ class MainActivity : ComponentActivity() {
         markOpenRead()
     }
 
+    // The provider observers run only while the app is visible: onResume reloads anyway, and in
+    // the background every incoming message would otherwise wake a reload nobody sees.
+    override fun onStop() {
+        if (observing) contentResolver.unregisterContentObserver(observer)
+        if (observingContacts) contentResolver.unregisterContentObserver(contactsObserver)
+        observing = false
+        observingContacts = false
+        handler.removeCallbacks(reloadSoon)
+        super.onStop()
+    }
+
     override fun onPause() {
         resumed = false
         Foreground.openThread = null
