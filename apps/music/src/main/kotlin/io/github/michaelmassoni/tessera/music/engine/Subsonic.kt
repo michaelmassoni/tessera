@@ -181,6 +181,60 @@ object Subsonic {
     /** The songs in a `getAlbum` reply. */
     fun albumSongs(response: JsonObject): List<Song> = (response["album"] as? JsonObject).array("song").mapNotNull(::song)
 
+    /** A playlist in a `getPlaylists` reply, without its songs: (server id, name, read-only). */
+    data class PlaylistInfo(
+        val id: String,
+        val name: String,
+        val readOnly: Boolean,
+    )
+
+    /**
+     * The playlists in a `getPlaylists` reply. Smart playlists (Navidrome marks them `readonly`) and
+     * other people's shared playlists can be played but not changed.
+     */
+    fun playlists(
+        response: JsonObject,
+        username: String,
+    ): List<PlaylistInfo> =
+        (response["playlists"] as? JsonObject).array("playlist").mapNotNull { e ->
+            val o = e as? JsonObject ?: return@mapNotNull null
+            val id = o.string("id") ?: return@mapNotNull null
+            val owner = o.string("owner")
+            PlaylistInfo(
+                id = id,
+                name = o.string("name").orEmpty(),
+                readOnly = o.string("readonly") == "true" || (owner != null && !owner.equals(username, ignoreCase = true)),
+            )
+        }
+
+    /** The songs of a `getPlaylist` reply, in order, as server song ids. */
+    fun playlistSongIds(response: JsonObject): List<String> =
+        (response["playlist"] as? JsonObject).array("entry").mapNotNull { (it as? JsonObject)?.string("id") }
+
+    /**
+     * Lyrics from an OpenSubsonic `getLyricsBySongId` reply (Navidrome reads them from the file's
+     * tags or a .lrc next to it): synced ones if there are any. A positive offset shows lines sooner.
+     */
+    fun structuredLyrics(response: JsonObject): Lyrics? {
+        val all = (response["lyricsList"] as? JsonObject).array("structuredLyrics").mapNotNull { it as? JsonObject }
+        val chosen = all.firstOrNull { it.string("synced") == "true" } ?: all.firstOrNull() ?: return null
+        val synced = chosen.string("synced") == "true"
+        val offset = chosen.long("offset") ?: 0
+        val lines =
+            chosen.array("line").mapNotNull { e ->
+                val o = e as? JsonObject ?: return@mapNotNull null
+                LyricLine(if (synced) ((o.long("start") ?: 0) - offset).coerceAtLeast(0) else null, o.string("value").orEmpty())
+            }
+        return lines.takeIf { l -> l.any { it.text.isNotBlank() } }?.let { Lyrics(it, LyricsSource.Server) }
+    }
+
+    /** Lyrics from the older `getLyrics` (by artist and title): plain text, or LRC. */
+    fun plainLyrics(response: JsonObject): Lyrics? =
+        (response["lyrics"] as? JsonObject)?.string("value")?.let { LyricsParser.parse(it, LyricsSource.Server) }
+
+    /** The id of the playlist a `createPlaylist` reply describes. */
+    fun createdPlaylistId(response: JsonObject): String? = (response["playlist"] as? JsonObject)?.string("id")
+
     /** One Subsonic `child` (a song) as a [Song], or null for a directory or something unplayable. */
     fun song(element: JsonElement): Song? {
         val o = element as? JsonObject ?: return null

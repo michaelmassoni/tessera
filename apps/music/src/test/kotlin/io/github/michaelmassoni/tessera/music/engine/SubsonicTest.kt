@@ -115,3 +115,33 @@ class SubsonicTest {
         assertNull(Subsonic.songId("content://media/external/audio/media/5"))
     }
 }
+
+class SubsonicPlaylistTest {
+    @Test
+    fun `smart and other people's playlists are read-only`() {
+        val reply =
+            Subsonic.response(
+                """
+                {"subsonic-response":{"status":"ok","playlists":{"playlist":[
+                  {"id":"p1","name":"All Juniper","owner":"tester","readonly":true},
+                  {"id":"p2","name":"Road trip","owner":"tester","readonly":false},
+                  {"id":"p3","name":"Shared","owner":"someone"},
+                  {"id":"p4","name":"Old server"}
+                ]}}}
+                """.trimIndent(),
+            )
+        val lists = Subsonic.playlists(reply, "Tester")
+        assertEquals(listOf("p1", "p2", "p3", "p4"), lists.map { it.id })
+        assertEquals(listOf(true, false, true, false), lists.map { it.readOnly })
+    }
+
+    @Test
+    fun `playlist entries keep their order`() {
+        val reply =
+            Subsonic.response(
+                """{"subsonic-response":{"status":"ok","playlist":{"id":"p","entry":[{"id":"b"},{"id":"a"},{"id":"b"}]}}}""",
+            )
+        assertEquals(listOf("b", "a", "b"), Subsonic.playlistSongIds(reply))
+        assertEquals("p", Subsonic.createdPlaylistId(reply))
+    }
+}

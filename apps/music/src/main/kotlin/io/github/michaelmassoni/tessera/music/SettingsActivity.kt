@@ -28,7 +28,10 @@ import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
 import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
+import io.github.michaelmassoni.tessera.music.data.LyricsRepository
+import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
 import io.github.michaelmassoni.tessera.music.server.CacheSize
 import io.github.michaelmassoni.tessera.music.server.MusicSource
@@ -144,6 +147,21 @@ class SettingsActivity : TesseraSettingsActivity() {
                 external = false,
             )
         }
+
+        SettingsHeader(stringResource(R.string.lyrics))
+        val settings = remember { MusicSettings(context) }
+        var online by remember { mutableStateOf(settings.onlineLyrics) }
+        SwitchSetting(
+            title = stringResource(R.string.look_up_lyrics),
+            checked = online,
+            onCheckedChange = { on ->
+                settings.onlineLyrics = on
+                online = on
+                // Songs found to have none are looked at again.
+                if (on) scope.launch(Dispatchers.IO) { LyricsRepository(context).forgetMisses() }
+            },
+            summary = stringResource(R.string.online_lyrics_summary),
+        )
 
         if (signingIn) {
             SignInDialog(

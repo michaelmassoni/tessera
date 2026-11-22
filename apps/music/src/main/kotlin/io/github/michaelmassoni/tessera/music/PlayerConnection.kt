@@ -9,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.Song
 import io.github.michaelmassoni.tessera.music.engine.Subsonic
@@ -22,8 +23,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class QueueItem(
+    /** The song's id (MediaItem.mediaId); a queue may hold a song twice. */
+    val id: String = "",
     val title: String,
     val artist: String,
+    val albumId: Long = 0,
 )
 
 /** Where the current track is. Separate from [PlaybackState] so the twice-a-second tick only redraws progress. */
@@ -37,6 +41,10 @@ data class Progress(
 /** What the UI shows about playback. */
 data class PlaybackState(
     val hasMedia: Boolean = false,
+    /** The song playing: its library id and where it plays from. */
+    val songId: Long = 0,
+    val uri: String = "",
+    val durationMs: Long = 0,
     val title: String = "",
     val artist: String = "",
     val album: String = "",
@@ -47,16 +55,19 @@ data class PlaybackState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queue: List<QueueItem> = emptyList(),
     val index: Int = 0,
+    /** Where the queue came from: an album, a playlist ... */
+    val from: PlayingFrom? = null,
     /** The song couldn't be played. */
     val failed: Boolean = false,
     /** ... and it's a server song: most likely offline and not cached. */
     val failedServer: Boolean = false,
 ) {
     override fun equals(other: Any?): Boolean =
-        other is PlaybackState && hasMedia == other.hasMedia && title == other.title && artist == other.artist && album == other.album &&
+        other is PlaybackState && hasMedia == other.hasMedia && songId == other.songId && uri == other.uri &&
+            durationMs == other.durationMs && title == other.title && artist == other.artist && album == other.album &&
             albumId == other.albumId && artwork.contentEquals(other.artwork) && isPlaying == other.isPlaying &&
             shuffle == other.shuffle && repeatMode == other.repeatMode && queue == other.queue &&
-            index == other.index && failed == other.failed && failedServer == other.failedServer
+            index == other.index && from == other.from && failed == other.failed && failedServer == other.failedServer
 
     override fun hashCode(): Int = listOf(title, artist, isPlaying, index).hashCode()
 }
@@ -108,13 +119,39 @@ class PlayerConnection(
         songs: List<Song>,
         index: Int,
         shuffle: Boolean = false,
+        from: PlayingFrom? = null,
     ) {
         val c = controller ?: return
-        c.shuffleModeEnabled = shuffle
-        c.setMediaItems(songs.map(::mediaItem), if (shuffle) (songs.indices).random() else index, 0)
+        // Shuffle stays on for the new queue (reshuffled around the song tapped); off first, so the old
+        // queue isn't what gets shuffled.
+        val shuffled = shuffle || c.shuffleModeEnabled
+        c.shuffleModeEnabled = false
+        c.setMediaItems(songs.map(::mediaItem), if (shuffle) songs.indices.random() else index, 0)
+        c.playlistMetadata = PlaybackService.playlistMetadata(from)
         c.prepare()
         c.play()
+        if (shuffled) c.shuffleModeEnabled = true
     }
+
+    /** Right after the song playing, or as the queue when nothing is queued. */
+    fun playNext(songs: List<Song>) {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0) return play(songs, 0)
+        c.addMediaItems(c.currentMediaItemIndex + 1, songs.map(::mediaItem))
+    }
+
+    fun addToQueue(songs: List<Song>) {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0) return play(songs, 0)
+        c.addMediaItems(songs.map(::mediaItem))
+    }
+
+    fun moveQueueItem(
+        from: Int,
+        to: Int,
+    ) = controller?.moveMediaItem(from, to)
+
+    fun removeQueueItem(index: Int) = controller?.removeMediaItem(index)
 
     fun togglePlay() {
         val c = controller ?: return
@@ -155,11 +192,19 @@ class PlayerConnection(
         val queue =
             (0 until player.mediaItemCount).map { i ->
                 val m = player.getMediaItemAt(i).mediaMetadata
-                QueueItem(m.title?.toString().orEmpty(), m.artist?.toString().orEmpty())
+                QueueItem(
+                    id = player.getMediaItemAt(i).mediaId,
+                    title = m.title?.toString().orEmpty(),
+                    artist = m.artist?.toString().orEmpty(),
+                    albumId = m.extras?.getLong(PlaybackService.EXTRA_ALBUM_ID) ?: 0,
+                )
             }
         _state.value =
             PlaybackState(
                 hasMedia = player.mediaItemCount > 0,
+                songId = player.currentMediaItem?.mediaId?.toLongOrNull() ?: 0,
+                uri = (player.currentMediaItem?.let { it.localConfiguration?.uri ?: it.requestMetadata.mediaUri })?.toString().orEmpty(),
+                durationMs = player.duration.coerceAtLeast(0),
                 title = meta.title?.toString().orEmpty(),
                 artist = meta.artist?.toString().orEmpty(),
                 album = meta.albumTitle?.toString().orEmpty(),
@@ -174,6 +219,7 @@ class PlayerConnection(
                 repeatMode = player.repeatMode,
                 queue = queue,
                 index = player.currentMediaItemIndex,
+                from = PlaybackService.playingFrom(player.playlistMetadata),
                 failed = player.playerError != null,
                 failedServer =
                     player.playerError != null &&

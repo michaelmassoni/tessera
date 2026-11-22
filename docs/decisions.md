@@ -4,6 +4,14 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Music looks up lyrics on LRCLIB, only if turned on (Accepted)
+
+The maintainer asked for lyrics like Spotify's. Lyrics come from their server first; most
+libraries have none, so Music can also ask LRCLIB, an open, keyless lyrics database. It's off by
+default and sends only the song's title, artist, album and length. Shuffle now reorders the queue
+itself (Media3 shuffle orders are invisible to the queue). The Reorderable library (Apache 2.0)
+is used for dragging songs in the queue.
+
 ## 2026-11-22: Music plays from Subsonic servers (Accepted)
 
 The maintainer keeps their music in Navidrome (HTTPS, reached over Tailscale), so Music 0.4 adds
