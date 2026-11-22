@@ -17,6 +17,10 @@ data class CallInfo(
     /** When the call became active (epoch ms), or 0. */
     val connectedAt: Long,
     val incoming: Boolean,
+    /** Where an unknown number is from ("Melbourne"), worked out on the phone. */
+    val location: String? = null,
+    /** Reported as spam on this phone. */
+    val spam: Boolean = false,
 ) {
     val ringing: Boolean get() = state == Call.STATE_RINGING
     val active: Boolean get() = state == Call.STATE_ACTIVE
@@ -51,6 +55,10 @@ object CallManager {
 
     internal var nameLookup: (String) -> Pair<String, String?>? = { null }
 
+    /** Location and spam report for a number, set by the service. */
+    internal var callerLookup: (String) -> Pair<String?, Boolean> = { null to false }
+    private val caller = mutableMapOf<String, Pair<String?, Boolean>>()
+
     private val connectedAt = mutableMapOf<String, Long>()
     private val info = mutableMapOf<String, Pair<String?, String?>>()
 
@@ -73,6 +81,7 @@ object CallManager {
         call.registerCallback(callback)
         val number = numberOf(call)
         info[id] = nameLookup(number)?.let { it.first to it.second } ?: (null to null)
+        caller[id] = callerLookup(number)
         publish()
     }
 
@@ -82,6 +91,7 @@ object CallManager {
         calls.remove(id)
         connectedAt.remove(id)
         info.remove(id)
+        caller.remove(id)
         publish()
     }
 
@@ -128,6 +138,7 @@ object CallManager {
                 val state = call.state
                 if (state == Call.STATE_ACTIVE && id !in connectedAt) connectedAt[id] = System.currentTimeMillis()
                 val (name, photo) = info[id] ?: (null to null)
+                val (location, spam) = caller[id] ?: (null to false)
                 CallInfo(
                     id = id,
                     number = numberOf(call),
@@ -136,6 +147,8 @@ object CallManager {
                     state = state,
                     connectedAt = connectedAt[id] ?: 0,
                     incoming = call.details.callDirection == Call.Details.DIRECTION_INCOMING,
+                    location = location.takeIf { name == null },
+                    spam = spam && name == null,
                 )
             }
     }
