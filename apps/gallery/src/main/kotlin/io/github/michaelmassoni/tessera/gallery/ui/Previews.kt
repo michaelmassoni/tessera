@@ -1,6 +1,9 @@
 package io.github.michaelmassoni.tessera.gallery.ui
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.gallery.Collection
@@ -46,6 +49,10 @@ private object NoGrid : GridActions {
 
     override fun trashSelection() = Unit
 
+    override fun moveSelection(relativePath: String) = Unit
+
+    override fun copySelection(relativePath: String) = Unit
+
     override fun restoreSelection() = Unit
 
     override fun deleteSelectionForever() = Unit
@@ -73,6 +80,8 @@ private object NoViewer : ViewerActions {
 
     override fun trash(item: MediaItem) = Unit
 
+    override fun rotate(item: MediaItem) = Unit
+
     override fun exif(item: MediaItem): ExifDetails? = null
 }
 
@@ -99,5 +108,14 @@ private fun SelectionPreview() {
 private fun GalleryPermissionPreview() {
     TesseraTheme(dynamicColor = false) {
         PermissionScreen(denied = false, onGrant = {}, onSettings = {})
+    }
+}
+
+// Move or copy to an album: New album, then each folder, in both themes.
+@TesseraPreviews
+@Composable
+private fun AlbumPickerPreview() {
+    TesseraTheme(dynamicColor = false) {
+        Surface(Modifier.fillMaxSize()) { AlbumPicker(sampleState.albums, "Move to album", onDismiss = {}, onPick = {}) }
     }
 }

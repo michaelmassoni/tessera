@@ -39,6 +39,7 @@ import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.gallery.data.EditorIO
 import io.github.michaelmassoni.tessera.gallery.data.ExifDetails
 import io.github.michaelmassoni.tessera.gallery.data.MediaRepository
+import io.github.michaelmassoni.tessera.gallery.engine.AlbumTarget
 import io.github.michaelmassoni.tessera.gallery.engine.DaySection
 import io.github.michaelmassoni.tessera.gallery.engine.EditState
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
@@ -255,6 +256,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Asks the system to let the app change [items] (one dialog for all), then runs [then]. */
+    private fun withWriteAccess(
+        items: List<MediaItem>,
+        then: () -> Unit,
+    ) {
+        pendingWrite = then
+        pendingWriteCancelled = null
+        writeRequest.launch(
+            IntentSenderRequest.Builder(MediaStore.createWriteRequest(contentResolver, items.map { it.uri.toUri() }).intentSender).build(),
+        )
+    }
+
+    private fun toastCount(
+        plural: Int,
+        count: Int,
+    ) = Toast.makeText(this, resources.getQuantityString(plural, count, count), Toast.LENGTH_SHORT).show()
+
     private fun launch(request: PendingIntent) = mediaRequest.launch(IntentSenderRequest.Builder(request.intentSender).build())
 
     private fun share(items: List<MediaItem>) {
@@ -312,6 +330,36 @@ class MainActivity : ComponentActivity() {
             }
             setResult(Activity.RESULT_OK, result)
             finish()
+        }
+
+        override fun moveSelection(relativePath: String) {
+            val selected = viewModel.selectedItems()
+            val items = AlbumTarget.toMove(selected, relativePath).filter { AlbumTarget.allowed(it, relativePath) }
+            if (items.size < AlbumTarget.toMove(selected, relativePath).size) {
+                Toast.makeText(this@MainActivity, R.string.move_not_allowed, Toast.LENGTH_LONG).show()
+            }
+            if (items.isEmpty()) return
+            withWriteAccess(items) {
+                lifecycleScope.launch {
+                    val moved = withContext(Dispatchers.IO) { repository.move(items, relativePath) }
+                    toastCount(R.plurals.moved_count, moved)
+                    viewModel.clearSelection()
+                    viewModel.refresh()
+                }
+            }
+        }
+
+        override fun copySelection(relativePath: String) {
+            val selected = viewModel.selectedItems()
+            val items = selected.filter { AlbumTarget.allowed(it, relativePath) }
+            if (items.size < selected.size) Toast.makeText(this@MainActivity, R.string.move_not_allowed, Toast.LENGTH_LONG).show()
+            if (items.isEmpty()) return
+            lifecycleScope.launch {
+                val copied = withContext(Dispatchers.IO) { repository.copy(items, relativePath) }
+                toastCount(R.plurals.copied_count, copied)
+                viewModel.clearSelection()
+                viewModel.refresh()
+            }
         }
 
         private fun trash(
@@ -373,6 +421,17 @@ class MainActivity : ComponentActivity() {
         override fun trash(item: MediaItem) {
             if (item.id < 0) return
             launch(MediaStore.createTrashRequest(contentResolver, listOf(item.uri.toUri()), true))
+        }
+
+        override fun rotate(item: MediaItem) {
+            if (item.id < 0 || !AlbumTarget.canRotate(item)) return
+            withWriteAccess(listOf(item)) {
+                lifecycleScope.launch {
+                    val ok = withContext(Dispatchers.IO) { repository.rotate(item) }
+                    if (!ok) Toast.makeText(this@MainActivity, R.string.rotate_failed, Toast.LENGTH_SHORT).show()
+                    viewModel.refresh()
+                }
+            }
         }
 
         override fun exif(item: MediaItem): ExifDetails? = repository.exif(item.uri.toUri())

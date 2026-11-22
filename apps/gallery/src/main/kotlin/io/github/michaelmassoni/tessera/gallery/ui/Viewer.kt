@@ -62,6 +62,7 @@ import androidx.media3.ui.compose.state.rememberProgressStateWithTickCount
 import coil3.request.ImageRequest
 import io.github.michaelmassoni.tessera.gallery.R
 import io.github.michaelmassoni.tessera.gallery.data.ExifDetails
+import io.github.michaelmassoni.tessera.gallery.engine.AlbumTarget
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
 import io.github.michaelmassoni.tessera.gallery.engine.formatDuration
 import kotlinx.coroutines.Dispatchers
@@ -89,6 +90,9 @@ interface ViewerActions {
     )
 
     fun trash(item: MediaItem)
+
+    /** Turns a photo 90° clockwise (its EXIF orientation; asks the system for permission first). */
+    fun rotate(item: MediaItem)
 
     fun exif(item: MediaItem): ExifDetails?
 }
@@ -195,6 +199,9 @@ fun Viewer(
                     ViewerButton(DesignR.drawable.ic_edit, stringResource(R.string.action_edit)) {
                         if (current.isVideo) actions.edit(current) else onEditPhoto(current)
                     }
+                }
+                if (AlbumTarget.canRotate(current)) {
+                    ViewerButton(DesignR.drawable.ic_rotate_right, stringResource(R.string.action_rotate)) { actions.rotate(current) }
                 }
                 if (!current.isVideo) {
                     ViewerButton(DesignR.drawable.ic_wallpaper, stringResource(R.string.action_wallpaper)) { wallpaper = true }
