@@ -40,6 +40,8 @@ object Espn {
 
     fun standingsUrl(league: League) = "$STANDINGS/${league.path}/standings"
 
+    fun rosterUrl(team: Team) = "$SITE/${League.byId(team.league)!!.path}/teams/${team.id}/roster"
+
     fun summaryUrl(game: Game) = "$SITE/${game.league.path}/summary?event=${game.id}"
 
     // ---- JSON helpers ----
@@ -200,6 +202,24 @@ object Espn {
         }
         walk(json.parseToJsonElement(body))
         return groups
+    }
+
+    // ---- Team ----
+
+    /**
+     * A team's roster and record. Players come as one list (basketball, baseball) or grouped by
+     * position (American football); some leagues (AFL, NRL) have none.
+     */
+    fun parseRoster(body: String): TeamInfo {
+        val root = json.parseToJsonElement(body)
+        val athletes = root["athletes"].arr.flatMap { if (it["items"] != null) it["items"].arr else listOf(it) }
+        val players =
+            athletes.mapNotNull { a ->
+                val name = (a["displayName"] ?: a["fullName"]).str() ?: return@mapNotNull null
+                Player(name, a["jersey"].str(), a["position"]["abbreviation"].str())
+            }
+        val team = root["team"]
+        return TeamInfo(team["recordSummary"].str(), team["standingSummary"].str(), players)
     }
 
     // ---- Game detail ----

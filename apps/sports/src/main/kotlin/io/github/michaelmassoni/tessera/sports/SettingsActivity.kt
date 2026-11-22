@@ -29,6 +29,18 @@ class SettingsActivity : io.github.michaelmassoni.tessera.core.settings.TesseraS
                 if (it) LiveGames.kick(applicationContext) else LiveGames.stop(applicationContext)
             },
         )
+        var hide by remember { mutableStateOf(settings.hideScores) }
+        SwitchSetting(
+            title = stringResource(R.string.settings_hide_scores),
+            summary = stringResource(R.string.settings_hide_scores_summary),
+            checked = hide,
+            onCheckedChange = {
+                hide = it
+                settings.hideScores = it
+                // Redraw a Live Update that's showing, with or without its score.
+                if (settings.liveUpdates) LiveGames.kick(applicationContext)
+            },
+        )
     }
 }
 
