@@ -24,6 +24,7 @@ class MessagesRepository(
 ) {
     private val resolver = context.contentResolver
     private val addressCache = mutableMapOf<String, String>()
+    private val senderCache get() = SENDERS
     private var contactNumbers: List<Pair<String, String>>? = null
     private val sentLog = SentLog(context)
 
@@ -234,8 +235,13 @@ class MessagesRepository(
         return ids.associateWith { MmsParts(text[it]?.toString().orEmpty(), attachments[it].orEmpty(), it in other) }
     }
 
-    /** Who sent each received MMS in [ids]. The provider only exposes addresses per message. */
-    private fun mmsSenders(ids: List<Long>): Map<Long, String> = ids.mapNotNull { id -> mmsSender(id)?.let { id to it } }.toMap()
+    /**
+     * Who sent each received MMS in [ids]. The provider only exposes addresses per message (one
+     * query each), and a message's sender never changes, so they're remembered for the process:
+     * reopening a busy group chat queries only messages it hasn't seen.
+     */
+    private fun mmsSenders(ids: List<Long>): Map<Long, String> =
+        ids.mapNotNull { id -> (senderCache[id] ?: mmsSender(id)?.also { senderCache[id] = it })?.let { id to it } }.toMap()
 
     private fun mmsSender(mmsId: Long): String? =
         resolver
@@ -351,3 +357,6 @@ class MessagesRepository(
         const val PARTS = 64
     }
 }
+
+/** MMS senders by message id, shared by every repository in the process. */
+private val SENDERS = java.util.concurrent.ConcurrentHashMap<Long, String>()

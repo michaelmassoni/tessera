@@ -1,5 +1,7 @@
 package io.github.michaelmassoni.tessera.core.settings
 
+import android.content.pm.ApplicationInfo
+import android.os.StrictMode
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -33,6 +35,32 @@ fun TesseraAppTheme(content: @Composable () -> Unit) {
 private val started = AtomicBoolean(false)
 
 /**
+ * Debug builds only: logs disk reads and writes, network use and slow calls on the main thread,
+ * and leaked closeables, so main-thread I/O shows up while developing (`adb logcat -s StrictMode`).
+ * Release builds are never affected.
+ */
+private fun strictMode() {
+    StrictMode.setThreadPolicy(
+        StrictMode.ThreadPolicy
+            .Builder()
+            .detectDiskReads()
+            .detectDiskWrites()
+            .detectNetwork()
+            .detectCustomSlowCalls()
+            .penaltyLog()
+            .build(),
+    )
+    StrictMode.setVmPolicy(
+        StrictMode.VmPolicy
+            .Builder()
+            .detectLeakedClosableObjects()
+            .detectLeakedRegistrationObjects()
+            .penaltyLog()
+            .build(),
+    )
+}
+
+/**
  * The standard start of a Tessera activity: edge-to-edge and the app theme. Once per process it
  * also picks up a shared theme from the other Tessera apps and arranges for a newly chosen
  * launcher icon to be switched in when the app goes to the background. Call from `onCreate`
@@ -42,6 +70,7 @@ fun ComponentActivity.setTesseraContent(content: @Composable () -> Unit) {
     enableEdgeToEdge()
     if (started.compareAndSet(false, true)) {
         val app = applicationContext
+        if (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) strictMode()
         val settings = TesseraSettings.get(app)
         thread(name = "tessera-settings-pull") {
             val version = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode }.getOrDefault(-1L)

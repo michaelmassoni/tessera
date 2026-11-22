@@ -78,9 +78,13 @@ A clean SMS and MMS app over the system message database. It works in two modes:
     (`Addresses.names`), and are read again when Contacts change. Numbers with no contact show a
     person icon.
   - Database changes are gathered into one reload 300 ms after the last (an incoming message
-    notifies several URIs).- **Conversation:**
+    notifies several URIs), and only while the app is visible: returning to it reloads (0.3.4).
+- **Conversation:**
   - Bubbles, day separators and a time under each run of messages.
   - In groups, the sender's name above each run.
+  - A received MMS's sender takes one provider query (there's no bulk address URI), so senders
+    are remembered by message id for the process: reopening a busy group chat queries only new
+    messages (0.3.4).
   - Pictures show inline (Coil). Tapping one opens it in another app through a private copy.
     Video and audio show as chips that open the same way.
   - Failed messages are marked "Not sent".
