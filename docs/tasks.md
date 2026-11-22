@@ -112,6 +112,12 @@ Welcome; Notifications (for reminders); Alarms & reminders (exact alarms); "Sync
 VTODO reader/writer, RRULE next-occurrence, task ordering and subtasks, sync merge
 (three-way field merge on conflict), WebDAV XML parsing (multistatus).
 
+## Sync settings (0.2)
+
+Sync every (manually, 15 min to once a day; default 4 hours), immediately on local changes, and
+only on Wi-Fi, shared with Calendar and Contacts through `core:dav` (docs/sync.md). 0.1 synced
+every 15 minutes, fixed.
+
 ## Out of scope for v0.1
 
 Locations, tags/labels, attachments, time estimates, sharing lists, DAVx5 or OpenTasks providers,

@@ -1,13 +1,7 @@
 package io.github.michaelmassoni.tessera.tasks
 
-import android.text.format.DateUtils
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -16,25 +10,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import io.github.michaelmassoni.tessera.core.dav.CollectionsDialog
+import io.github.michaelmassoni.tessera.core.dav.RemoteCollection
+import io.github.michaelmassoni.tessera.core.dav.SignInDialog
+import io.github.michaelmassoni.tessera.core.dav.SyncPrefs
+import io.github.michaelmassoni.tessera.core.dav.SyncSettings
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.tasks.data.AccountStore
 import io.github.michaelmassoni.tessera.tasks.data.Accounts
-import io.github.michaelmassoni.tessera.tasks.data.RemoteList
-import io.github.michaelmassoni.tessera.tasks.data.SignInProblem
 import io.github.michaelmassoni.tessera.tasks.sync.SyncWorker
-import io.github.michaelmassoni.tessera.tasks.ui.ListPicker
-import io.github.michaelmassoni.tessera.tasks.ui.SignInFields
-import io.github.michaelmassoni.tessera.tasks.ui.SignInForm
 import kotlinx.coroutines.launch
 
 class SettingsActivity : TesseraSettingsActivity() {
@@ -54,9 +48,13 @@ class SettingsActivity : TesseraSettingsActivity() {
         val scope = rememberCoroutineScope()
         val store = remember { AccountStore(context) }
         var account by remember { mutableStateOf(store.account) }
+        var prefs by remember { mutableStateOf(SyncPrefs.load(context)) }
         var signingIn by rememberSaveable { mutableStateOf(false) }
-        var picking by remember { mutableStateOf<List<RemoteList>?>(null) }
+        var picking by remember { mutableStateOf<List<RemoteCollection>?>(null) }
         var signingOut by remember { mutableStateOf(false) }
+        val work by remember { WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(SyncWorker.schedule.soonName) }
+            .collectAsStateWithLifecycle(emptyList())
+        val syncing = work.any { it.state == WorkInfo.State.RUNNING }
 
         SettingsHeader(stringResource(R.string.settings_sync))
         val a = account
@@ -66,16 +64,22 @@ class SettingsActivity : TesseraSettingsActivity() {
             }, external = false)
         } else {
             InfoSetting(stringResource(R.string.settings_server), stringResource(R.string.settings_server_summary, a.username, a.address))
-            val last = store.lastSync
-            InfoSetting(
-                stringResource(R.string.settings_sync_now),
-                if (last == 0L) "" else stringResource(R.string.settings_last_sync, DateUtils.getRelativeTimeSpanString(last).toString()),
-                onClick = { SyncWorker.soon(context, delaySeconds = 0) },
-                external = false,
-            )
             InfoSetting(stringResource(R.string.settings_lists), stringResource(R.string.settings_lists_summary), onClick = {
                 scope.launch { picking = runCatching { Accounts.remoteLists(context) }.getOrDefault(emptyList()) }
             }, external = false)
+            SyncSettings(
+                prefs = prefs,
+                onChange = {
+                    prefs = it
+                    SyncPrefs.save(context, it)
+                    SyncWorker.schedule.apply(context)
+                },
+                // Read again whenever a sync finishes (work changes).
+                lastSync = remember(work) { store.lastSync },
+                lastProblem = remember(work) { store.lastProblem },
+                syncing = syncing,
+                onSyncNow = { SyncWorker.schedule.soon(context, delaySeconds = 0) },
+            )
             InfoSetting(
                 stringResource(R.string.sign_out),
                 stringResource(R.string.sign_out_summary),
@@ -85,7 +89,11 @@ class SettingsActivity : TesseraSettingsActivity() {
         }
 
         if (signingIn) {
-            SignInDialog(onDismiss = { signingIn = false }) { lists ->
+            SignInDialog(
+                notFound = stringResource(R.string.problem_not_caldav),
+                signIn = { Accounts.signIn(context, it.address, it.username, it.password) },
+                onDismiss = { signingIn = false },
+            ) { lists ->
                 signingIn = false
                 account = store.account
                 picking = lists
@@ -94,28 +102,27 @@ class SettingsActivity : TesseraSettingsActivity() {
         picking?.let { lists ->
             val data by context.tasks.data.collectAsState()
             val synced = data.lists.mapNotNull { it.href }.toSet()
-            var chosen by remember(lists) { mutableStateOf(lists.map { it.href }.filter { it in synced || synced.isEmpty() }.toSet()) }
-            AlertDialog(
-                onDismissRequest = { picking = null },
-                title = { Text(stringResource(R.string.setup_pick_title)) },
-                text = { Column(Modifier.verticalScroll(rememberScrollState())) { ListPicker(lists, chosen, { chosen = it }) } },
-                confirmButton = {
-                    TextButton(onClick = {
-                        Accounts.useLists(context, lists.filter { it.href in chosen })
-                        // Lists unticked stop syncing and leave this phone.
-                        val dropped = lists.filter { it.href !in chosen }.map { it.href }.toSet()
-                        context.tasks.update { d ->
-                            val gone =
-                                d.lists
-                                    .filter { it.href in dropped }
-                                    .map { it.id }
-                                    .toSet()
-                            d.copy(lists = d.lists.filterNot { it.id in gone }, tasks = d.tasks.filterNot { it.listId in gone })
-                        }
-                        picking = null
-                    }) { Text(stringResource(R.string.use_lists)) }
+            CollectionsDialog(
+                title = stringResource(R.string.setup_pick_title),
+                collections = lists,
+                initiallyChosen = lists.map { it.href }.filter { it in synced || synced.isEmpty() }.toSet(),
+                empty = stringResource(R.string.no_server_lists),
+                confirm = stringResource(R.string.use_lists),
+                onConfirm = { chosen ->
+                    Accounts.useLists(context, lists.filter { it.href in chosen })
+                    // Lists unticked stop syncing and leave this phone.
+                    val dropped = lists.filter { it.href !in chosen }.map { it.href }.toSet()
+                    context.tasks.update { d ->
+                        val gone =
+                            d.lists
+                                .filter { it.href in dropped }
+                                .map { it.id }
+                                .toSet()
+                        d.copy(lists = d.lists.filterNot { it.id in gone }, tasks = d.tasks.filterNot { it.listId in gone })
+                    }
+                    picking = null
                 },
-                dismissButton = { TextButton(onClick = { picking = null }) { Text(stringResource(R.string.cancel)) } },
+                onDismiss = { picking = null },
             )
         }
         if (signingOut) {
@@ -134,50 +141,4 @@ class SettingsActivity : TesseraSettingsActivity() {
             )
         }
     }
-}
-
-private val FieldsSaver =
-    listSaver<SignInFields, String>(
-        save = { listOf(it.address, it.username, it.password) },
-        restore = { SignInFields(it[0], it[1], it[2]) },
-    )
-
-@Composable
-private fun SignInDialog(
-    onDismiss: () -> Unit,
-    onSignedIn: (List<RemoteList>) -> Unit,
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var fields by rememberSaveable(stateSaver = FieldsSaver) { mutableStateOf(SignInFields()) }
-    var problem by remember { mutableStateOf<SignInProblem?>(null) }
-    var working by remember { mutableStateOf(false) }
-
-    fun connect() {
-        if (working) return
-        working = true
-        problem = null
-        scope.launch {
-            Accounts
-                .signIn(context, fields.address, fields.username, fields.password)
-                .onSuccess(onSignedIn)
-                .onFailure { problem = (it as? Accounts.SignInError)?.problem ?: SignInProblem.Other }
-            working = false
-        }
-    }
-    AlertDialog(
-        onDismissRequest = { if (!working) onDismiss() },
-        title = { Text(stringResource(R.string.setup_server_title)) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                SignInForm(fields, { fields = it }, problem, enabled = !working, onDone = ::connect)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = ::connect, enabled = !working && fields.address.isNotBlank() && fields.username.isNotBlank()) {
-                if (working) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.connect))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !working) { Text(stringResource(R.string.cancel)) } },
-    )
 }

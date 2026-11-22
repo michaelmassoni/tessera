@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sign-in -->
+    <string name="server_address">Server address</string>
+    <string name="server_address_hint">cloud.example.com</string>
+    <string name="username">Username</string>
+    <string name="app_password">Password</string>
+    <string name="app_password_hint">An app password if your server has them (OpenCloud, Nextcloud)</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="problem_unreachable">Can\'t reach the server. Check the address and your connection.</string>
+    <string name="problem_wrong_login">Wrong username or password.</string>
+    <string name="problem_insecure">Use https:// for a server on the internet. http:// works only on your own network or Tailscale.</string>
+    <string name="problem_bad_address">That isn\'t a web address.</string>
+    <string name="problem_other">The server refused. Try again, or check its logs.</string>
+
+    <!-- Sync settings -->
+    <string name="sync_header">Sync</string>
+    <string name="sync_every">Sync every</string>
+    <string name="sync_manual">Manually only</string>
+    <string name="sync_15_min">15 minutes</string>
+    <string name="sync_30_min">30 minutes</string>
+    <string name="sync_1_hour">1 hour</string>
+    <string name="sync_2_hours">2 hours</string>
+    <string name="sync_4_hours">4 hours</string>
+    <string name="sync_day">Once a day</string>
+    <string name="sync_on_change">Sync immediately on local changes</string>
+    <string name="sync_on_change_summary">A few seconds after something changes on this phone</string>
+    <string name="sync_wifi_only">Only on Wi-Fi</string>
+    <string name="sync_wifi_only_summary">Waits for a network that isn\'t metered</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_never">Not synced yet</string>
+    <string name="sync_just_now">Last synced just now</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_last">Last synced %1$s</string>
+    <string name="sync_failed_unreachable">Last sync failed: couldn\'t reach the server. It tries again by itself.</string>
+    <string name="sync_failed_login">Last sync failed: the server refused the password. Sign in again.</string>
+    <string name="sync_failed_other">Last sync failed: the server refused. It tries again at the next sync.</string>
+    <string name="cancel">Cancel</string>
+    <string name="sign_in_title">Sign in to your server</string>
+    <string name="connect">Connect</string>
+    <string name="setup_sync_title">Sync with a server?</string>
+    <string name="setup_local_text">Nothing is sent anywhere</string>
+    <string name="setup_server_choice">Sync with a server</string>
+    <string name="setup_password_text">Your password stays on this phone, encrypted.</string>
+</resources>

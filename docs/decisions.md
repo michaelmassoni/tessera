@@ -4,6 +4,20 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-23: Calendar, Contacts and Tasks sync with your own server, without DAVx5 (Accepted)
+
+The maintainer asked for Tessera to replace DAVx5, with DAVx5's sync settings (they use "every 4
+hours, and immediately on local changes" for contacts, calendars and tasks), calendar colours with
+a picker and hex codes, and both of DAVx5's contact group methods. Spec: docs/sync.md.
+
+- **`core:dav`** holds what the three apps share: the WebDAV client, discovery, iCalendar and
+  vCard text, the sign-in form and setup page, the encrypted account and the Sync settings.
+- **Calendar and Contacts sync into Android's own databases** through an account and sync adapter
+  per app, as DAVx5 does, so every app sees the data and edits anywhere are picked up. Each app
+  signs in on its own: sharing one sign-in would mean passing a password between apps.
+- **Intervals as DAVx5's** (manual, 15 min to once a day; default 4 hours), immediately on local
+  changes (on by default) and Wi-Fi only, scheduled with WorkManager.
+
 ## 2026-11-23: Recorder app (Accepted)
 
 The maintainer asked for a voice recorder in the spirit of Pixel Recorder, as the next app after

@@ -13,6 +13,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import io.github.michaelmassoni.tessera.core.dav.DavClient
+import io.github.michaelmassoni.tessera.core.dav.SyncProblem
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.tasks.data.AccountStore
@@ -24,8 +26,6 @@ import io.github.michaelmassoni.tessera.tasks.engine.Task
 import io.github.michaelmassoni.tessera.tasks.engine.TaskList
 import io.github.michaelmassoni.tessera.tasks.engine.TaskOps
 import io.github.michaelmassoni.tessera.tasks.reminders.Reminders
-import io.github.michaelmassoni.tessera.tasks.sync.CalDavClient
-import io.github.michaelmassoni.tessera.tasks.sync.SyncProblem
 import io.github.michaelmassoni.tessera.tasks.sync.SyncWorker
 import io.github.michaelmassoni.tessera.tasks.ui.SyncNotice
 import io.github.michaelmassoni.tessera.tasks.ui.TasksActions
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         exactAlarms = getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
         // Opening the app brings the server's changes.
-        if (accounts.account != null) SyncWorker.soon(this, delaySeconds = 0)
+        if (accounts.account != null) SyncWorker.schedule.soon(this, delaySeconds = 0)
         Reminders.schedule(this)
     }
 
@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                 d.copy(lists = lists, tasks = d.tasks.filterNot { it.listId == id })
             }
             val href = list.href ?: return
-            onServer { client -> client.deleteList(href) }
+            onServer { client -> client.deleteCollection(href) }
         }
 
         override fun deleteCompleted(listId: String) =
@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
 
         override fun refresh() {
             notice = null
-            SyncWorker.soon(this@MainActivity, delaySeconds = 0)
+            SyncWorker.schedule.soon(this@MainActivity, delaySeconds = 0)
             lifecycleScope.launch {
                 // Say so if this sync fails.
                 kotlinx.coroutines.delay(SYNC_WAIT_MS)
@@ -234,13 +234,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /** A list change on the server, off the main thread; failures say so. */
-    private fun onServer(block: (CalDavClient) -> Unit) {
+    private fun onServer(block: (DavClient) -> Unit) {
         val account = accounts.account ?: return
         lifecycleScope.launch {
             val ok =
                 withContext(Dispatchers.IO) {
                     val password = accounts.password() ?: return@withContext false
-                    runCatching { block(CalDavClient(account.username, password)) }.isSuccess
+                    runCatching { block(DavClient(account.username, password)) }.isSuccess
                 }
             if (!ok) notice = SyncNotice.Failed
         }
