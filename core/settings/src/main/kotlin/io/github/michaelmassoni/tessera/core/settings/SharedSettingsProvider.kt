@@ -5,13 +5,19 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.os.Process
 import android.util.Log
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettings.Companion.toBundle
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettings.Companion.toSharedState
 import java.util.concurrent.Executors
+import kotlin.concurrent.thread
 
 /**
  * Lets Tessera apps read and share each other's appearance settings.
@@ -43,7 +49,59 @@ class SharedSettingsProvider : ContentProvider() {
                 null
             }
 
+            METHOD_RESTORE_STATUS -> {
+                val status = restoreStatus
+                Bundle().apply { putString(KEY_STATUS, status) }.also {
+                    // Reported: restart so the app reads its restored data (it's in the background).
+                    if (status ==
+                        STATUS_DONE
+                    ) {
+                        Handler(Looper.getMainLooper()).postDelayed({ Process.killProcess(Process.myPid()) }, KILL_DELAY_MS)
+                    }
+                }
+            }
+
             else -> {
+                null
+            }
+        }
+    }
+
+    /**
+     * Backups for "Back up all Tessera apps": `backup` streams this app's backup out, `restore`
+     * takes one in (reported through [METHOD_RESTORE_STATUS]). Same signature check as [call].
+     */
+    override fun openFile(
+        uri: Uri,
+        mode: String,
+    ): ParcelFileDescriptor? {
+        val context = context ?: return null
+        if (!callerIsTrusted(context)) throw SecurityException("Caller isn't signed like this app")
+        val backup = AppBackup(context)
+        val (read, write) = ParcelFileDescriptor.createReliablePipe()
+        return when (uri.lastPathSegment) {
+            "backup" -> {
+                thread(name = "tessera-backup") {
+                    runCatching { ParcelFileDescriptor.AutoCloseOutputStream(write).use(backup::write) }
+                        .onFailure { Log.w(TAG, "Backup failed", it) }
+                }
+                read
+            }
+
+            "restore" -> {
+                restoreStatus = STATUS_RUNNING
+                thread(name = "tessera-restore") {
+                    restoreStatus =
+                        runCatching { ParcelFileDescriptor.AutoCloseInputStream(read).use(backup::restore) }
+                            .onFailure { Log.w(TAG, "Restore failed", it) }
+                            .fold({ STATUS_DONE }, { STATUS_FAILED })
+                }
+                write
+            }
+
+            else -> {
+                read.close()
+                write.close()
                 null
             }
         }
@@ -87,6 +145,15 @@ class SharedSettingsProvider : ContentProvider() {
         const val ACTION = "io.github.michaelmassoni.tessera.action.SHARED_SETTINGS"
         const val METHOD_GET = "get"
         const val METHOD_PUT = "put"
+        const val METHOD_RESTORE_STATUS = "restore_status"
+        const val KEY_STATUS = "status"
+        const val STATUS_RUNNING = "running"
+        const val STATUS_DONE = "done"
+        const val STATUS_FAILED = "failed"
+        private const val KILL_DELAY_MS = 500L
+        private const val TAG = "TesseraBackup"
+
+        @Volatile private var restoreStatus: String? = null
     }
 }
 
@@ -96,13 +163,7 @@ internal class ProviderPeers(
 ) : TesseraSettings.Peers {
     private val background = Executors.newSingleThreadExecutor()
 
-    private fun authorities(): List<String> =
-        app.packageManager
-            .queryIntentContentProviders(Intent(SharedSettingsProvider.ACTION), 0)
-            .mapNotNull { it.providerInfo }
-            .filter { it.packageName != app.packageName }
-            .filter { app.packageManager.checkSignatures(it.packageName, app.packageName) == PackageManager.SIGNATURE_MATCH }
-            .map { it.authority }
+    private fun authorities(): List<String> = find(app).map { it.authority }
 
     override fun readAll(): List<SharedState> =
         authorities().mapNotNull { authority ->
@@ -133,7 +194,15 @@ internal class ProviderPeers(
             null
         }
 
-    private companion object {
-        const val TAG = "TesseraSettings"
+    companion object {
+        private const val TAG = "TesseraSettings"
+
+        /** The other Tessera apps signed like this one. */
+        fun find(app: Context): List<ProviderInfo> =
+            app.packageManager
+                .queryIntentContentProviders(Intent(SharedSettingsProvider.ACTION), 0)
+                .mapNotNull { it.providerInfo }
+                .filter { it.packageName != app.packageName }
+                .filter { app.packageManager.checkSignatures(it.packageName, app.packageName) == PackageManager.SIGNATURE_MATCH }
     }
 }

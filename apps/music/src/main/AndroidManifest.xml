@@ -15,6 +15,10 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Tessera">
+        <!-- Left out of Tessera backups: the queue (content URIs that only mean something on this phone). -->
+        <meta-data
+            android:name="io.github.michaelmassoni.tessera.BACKUP_EXCLUDE"
+            android:value="files/queue.json" />
         <!-- Launched through the aliases below and from the media notification. -->
         <activity
             android:name=".MainActivity"

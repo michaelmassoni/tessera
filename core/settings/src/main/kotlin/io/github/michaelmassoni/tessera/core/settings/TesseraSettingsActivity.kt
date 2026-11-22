@@ -5,9 +5,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -16,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -34,6 +38,79 @@ import kotlinx.coroutines.launch
  */
 abstract class TesseraSettingsActivity : ComponentActivity() {
     protected abstract val launcherIcon: LauncherIcon
+
+    // ---- Backup ----
+
+    private val backups by lazy { BackupFlows(this) }
+    private var pendingRestore by mutableStateOf<PendingRestore?>(null)
+    private var working by mutableStateOf(false)
+    private val messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+
+    private fun busy(block: suspend () -> Unit) {
+        working = true
+        lifecycleScope.launch {
+            try {
+                block()
+            } finally {
+                working = false
+            }
+        }
+    }
+
+    private val createBackup =
+        registerForActivityResult(ActivityResultContracts.CreateDocument(ZIP)) { uri ->
+            uri ?: return@registerForActivityResult
+            busy { messages.emit(getString(if (backups.backUp(uri)) R.string.backup_done else R.string.backup_failed)) }
+        }
+
+    private val createSuiteBackup =
+        registerForActivityResult(ActivityResultContracts.CreateDocument(ZIP)) { uri ->
+            uri ?: return@registerForActivityResult
+            busy {
+                val count = backups.backUpAll(uri)
+                messages.emit(
+                    if (count <
+                        0
+                    ) {
+                        getString(R.string.backup_failed)
+                    } else {
+                        resources.getQuantityString(R.plurals.backup_all_done, count, count)
+                    },
+                )
+            }
+        }
+
+    private val openBackup =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri ?: return@registerForActivityResult
+            busy {
+                runCatching { backups.inspect(uri) }
+                    .onSuccess { pendingRestore = it }
+                    .onFailure { messages.emit(backups.message(it)) }
+            }
+        }
+
+    private fun confirmRestore(pending: PendingRestore) {
+        pendingRestore = null
+        busy {
+            when (pending) {
+                is PendingRestore.One -> {
+                    runCatching { backups.restore(pending.uri) }
+                        .onSuccess { AppBackup.relaunch(applicationContext) }
+                        .onFailure { messages.emit(backups.message(it)) }
+                }
+
+                is PendingRestore.All -> {
+                    val (count, self) = backups.restoreAll(pending.uri)
+                    if (self) {
+                        AppBackup.relaunch(applicationContext)
+                    } else {
+                        messages.emit(resources.getQuantityString(R.plurals.restore_all_done, count, count))
+                    }
+                }
+            }
+        }
+    }
 
     /** The app's own settings, shown first. */
     @Composable
@@ -59,6 +136,14 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
             }
             val snackbar = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
+            LaunchedEffect(Unit) { messages.collect { snackbar.showSnackbar(it) } }
+            pendingRestore?.let { pending ->
+                RestoreDialog(pending, applicationInfo.loadLabel(packageManager).toString(), { confirmRestore(pending) }, {
+                    pendingRestore =
+                        null
+                })
+            }
+            if (working) WorkingDialog()
             val actions =
                 remember {
                     Actions(settings, icons, resolveIcon) { message -> scope.launch { snackbar.showSnackbar(getString(message)) } }
@@ -113,6 +198,14 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
             )
         }
 
+        override fun backUp() = createBackup.launch(backups.fileName(all = false))
+
+        override fun restore() = openBackup.launch(arrayOf(ZIP, "application/octet-stream"))
+
+        override fun backUpAll() = createSuiteBackup.launch(backups.fileName(all = true))
+
+        override fun restoreAll() = openBackup.launch(arrayOf(ZIP, "application/octet-stream"))
+
         override fun openSource() {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, SOURCE_URL.toUri()))
@@ -124,5 +217,6 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
 
     private companion object {
         const val SOURCE_URL = "https://github.com/michaelmassoni/tessera"
+        const val ZIP = "application/zip"
     }
 }
