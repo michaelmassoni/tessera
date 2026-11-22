@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.tasks.sync
 
+import io.github.michaelmassoni.tessera.core.dav.DavClient
 import io.github.michaelmassoni.tessera.tasks.data.TaskData
 import io.github.michaelmassoni.tessera.tasks.data.TaskStore
 import io.github.michaelmassoni.tessera.tasks.engine.Due
@@ -31,14 +32,14 @@ class RadicaleSyncTest {
     @Test
     fun `round trips with a real server`() {
         assumeTrue("RADICALE_URL not set", url != null)
-        val client = CalDavClient("tester", "sesame-test")
+        val client = DavClient("tester", "sesame-test")
         val home = client.findHome(url!!)
         assertTrue(home, home.endsWith("/tester/"))
 
         // A new list on the server, and another client's task in it.
         val id = UUID.randomUUID().toString()
-        val collection = client.makeList(home, id, "Integration")
-        assertTrue(client.taskCollections(home).any { it.href == collection && it.displayName == "Integration" })
+        val collection = client.makeCalendar(home, id, "Integration", "VTODO")
+        assertTrue(client.calendars(home, "VTODO").any { it.href == collection && it.displayName == "Integration" })
         val theirs = Task("their-task", "x", "From Tasks.org", due = Due("2026-11-23", "08:00"), repeat = Repeat(Repeat.Frequency.Daily))
         assertEquals(201, client.put("${collection}their-task.ics", VTodo.write(theirs, 0, zone), null).code)
 
@@ -73,7 +74,7 @@ class RadicaleSyncTest {
         assertEquals("Buy milk!", merged.title)
         assertEquals("Oat", merged.notes)
         assertFalse(merged.dirty)
-        val onServer = client.fetch(collection, listOf(merged.href!!)).single().calendarData!!
+        val onServer = client.fetch(collection, listOf(merged.href!!)).single().data!!
         assertTrue(onServer, onServer.contains("SUMMARY:Buy milk!") && onServer.contains("DESCRIPTION:Oat"))
 
         // Ticking the daily task here moves it on the server.
@@ -102,7 +103,7 @@ class RadicaleSyncTest {
                             .href!!,
                     ),
                 ).single()
-                .calendarData!!
+                .data!!
         assertTrue(moved, moved.contains("DUE:20261124T080000") && moved.contains("STATUS:NEEDS-ACTION"))
 
         // Deleted here: gone there. Deleted there: gone here.
@@ -117,7 +118,7 @@ class RadicaleSyncTest {
                 .isEmpty(),
         )
 
-        client.deleteList(collection)
+        client.deleteCollection(collection)
         file.delete()
     }
 }

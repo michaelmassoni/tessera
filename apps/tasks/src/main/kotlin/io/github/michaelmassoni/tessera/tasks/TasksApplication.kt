@@ -29,6 +29,8 @@ class TasksApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         Reminders.ensureChannel(this)
+        // Follows the Sync settings (0.1 synced every 15 minutes, fixed).
+        if (AccountStore(this).account != null) SyncWorker.schedule.apply(this)
         store.data
             .drop(1)
             .debounce(CHANGE_DELAY_MS)
@@ -41,7 +43,7 @@ class TasksApplication : Application() {
                         .map { it.id }
                         .toSet()
                 if (AccountStore(this).account != null && data.tasks.any { it.listId in synced && (it.dirty || it.deleted) }) {
-                    SyncWorker.soon(this)
+                    SyncWorker.schedule.afterLocalChange(this)
                 }
             }.launchIn(scope)
     }

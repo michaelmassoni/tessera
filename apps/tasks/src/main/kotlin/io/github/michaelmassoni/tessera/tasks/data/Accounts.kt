@@ -1,29 +1,21 @@
 package io.github.michaelmassoni.tessera.tasks.data
 
 import android.content.Context
-import io.github.michaelmassoni.tessera.core.settings.ServerAddress
-import io.github.michaelmassoni.tessera.tasks.engine.Dav
+import io.github.michaelmassoni.tessera.core.dav.Dav
+import io.github.michaelmassoni.tessera.core.dav.DavClient
+import io.github.michaelmassoni.tessera.core.dav.DavKind
+import io.github.michaelmassoni.tessera.core.dav.DavSignIn
+import io.github.michaelmassoni.tessera.core.dav.RemoteCollection
+import io.github.michaelmassoni.tessera.core.dav.SignInError
+import io.github.michaelmassoni.tessera.core.dav.SyncException
 import io.github.michaelmassoni.tessera.tasks.engine.TaskList
-import io.github.michaelmassoni.tessera.tasks.sync.CalDavClient
-import io.github.michaelmassoni.tessera.tasks.sync.SyncException
-import io.github.michaelmassoni.tessera.tasks.sync.SyncProblem
 import io.github.michaelmassoni.tessera.tasks.sync.SyncWorker
 import io.github.michaelmassoni.tessera.tasks.tasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/** A task list on the server, offered when signing in. */
-data class RemoteList(
-    val href: String,
-    val name: String,
-    val color: Int?,
-)
-
-/** What went wrong signing in, for the person. */
-enum class SignInProblem { BadAddress, Insecure, Unreachable, WrongLogin, NotCalDav, Other }
-
-/** Signing in to a CalDAV server, choosing its lists, and signing out. */
+/** Signing in to a CalDAV server, choosing its task lists, and signing out. */
 object Accounts {
     /**
      * Checks [address] and the login, finds the calendar home, saves the account and returns the
@@ -34,61 +26,33 @@ object Accounts {
         address: String,
         username: String,
         password: String,
-    ): Result<List<RemoteList>> =
+    ): Result<List<RemoteCollection>> =
         withContext(Dispatchers.IO) {
-            try {
-                val base = ServerAddress.normalize(address)
-                val client = CalDavClient(username.trim(), password)
-                val home = client.findHome(base)
+            DavSignIn.discover(address, username, password, DavKind.CalDav).mapCatching { account ->
                 val lists =
-                    client.taskCollections(home).map {
-                        RemoteList(
-                            it.href,
-                            it.displayName ?: it.href.trimEnd('/').substringAfterLast('/'),
-                            Dav.color(it.color),
-                        )
+                    try {
+                        taskLists(DavClient(account.username, password), account.home)
+                    } catch (e: SyncException) {
+                        throw SignInError(DavSignIn.problemOf(e.problem))
                     }
-                AccountStore(context).save(CalDavAccount(base, username.trim(), home), password)
-                Result.success(lists)
-            } catch (e: ServerAddress.Invalid) {
-                Result.failure(
-                    SignInError(
-                        if (e.problem ==
-                            ServerAddress.Problem.Insecure
-                        ) {
-                            SignInProblem.Insecure
-                        } else {
-                            SignInProblem.BadAddress
-                        },
-                    ),
-                )
-            } catch (e: SyncException) {
-                Result.failure(
-                    SignInError(
-                        when (e.problem) {
-                            SyncProblem.Unreachable -> SignInProblem.Unreachable
-                            SyncProblem.WrongLogin -> SignInProblem.WrongLogin
-                            SyncProblem.NotCalDav -> SignInProblem.NotCalDav
-                            SyncProblem.Other -> SignInProblem.Other
-                        },
-                    ),
-                )
+                AccountStore(context).save(account, password)
+                lists
             }
         }
 
-    class SignInError(
-        val problem: SignInProblem,
-    ) : Exception(problem.name)
+    private fun taskLists(
+        client: DavClient,
+        home: String,
+    ) = client.calendars(home, "VTODO").map {
+        RemoteCollection(it.href, it.displayName ?: it.href.trimEnd('/').substringAfterLast('/'), Dav.color(it.color), it.writable != false)
+    }
 
     /** The server's task lists now (for choosing more later). */
-    suspend fun remoteLists(context: Context): List<RemoteList> =
+    suspend fun remoteLists(context: Context): List<RemoteCollection> =
         withContext(Dispatchers.IO) {
             val store = AccountStore(context)
             val account = store.account ?: return@withContext emptyList()
-            val password = store.password() ?: return@withContext emptyList()
-            CalDavClient(account.username, password).taskCollections(account.home).map {
-                RemoteList(it.href, it.displayName ?: it.href.trimEnd('/').substringAfterLast('/'), Dav.color(it.color))
-            }
+            taskLists(store.client() ?: return@withContext emptyList(), account.home)
         }
 
     /**
@@ -97,7 +61,7 @@ object Accounts {
      */
     fun useLists(
         context: Context,
-        chosen: List<RemoteList>,
+        chosen: List<RemoteCollection>,
     ) {
         context.tasks.update { d ->
             val have = d.lists.mapNotNull { it.href }.toSet()
@@ -106,8 +70,8 @@ object Accounts {
             val keep = lists.filter { l -> l.synced || d.tasksOf(l.id).isNotEmpty() || lists.none { it.synced } }
             d.copy(lists = keep.mapIndexed { i, l -> l.copy(order = i) })
         }
-        SyncWorker.schedule(context)
-        SyncWorker.soon(context, delaySeconds = 0)
+        SyncWorker.schedule.apply(context)
+        SyncWorker.schedule.soon(context, delaySeconds = 0)
     }
 
     /** Makes a list on the server. */
@@ -118,18 +82,15 @@ object Accounts {
         withContext(Dispatchers.IO) {
             val store = AccountStore(context)
             val account = store.account ?: return@withContext null
-            val password = store.password() ?: return@withContext null
+            val client = store.client() ?: return@withContext null
             val id = UUID.randomUUID().toString()
-            runCatching {
-                val href = CalDavClient(account.username, password).makeList(account.home, id, name)
-                TaskList(id, name, href = href)
-            }.getOrNull()
+            runCatching { TaskList(id, name, href = client.makeCalendar(account.home, id, name, "VTODO")) }.getOrNull()
         }
 
     /** Signs out; the server's lists stay on this phone as phone-only lists. */
     fun signOut(context: Context) {
         AccountStore(context).signOut()
-        SyncWorker.cancel(context)
+        SyncWorker.schedule.cancel(context)
         context.tasks.update { d ->
             d.copy(
                 lists = d.lists.map { it.copy(href = null, syncToken = null) },

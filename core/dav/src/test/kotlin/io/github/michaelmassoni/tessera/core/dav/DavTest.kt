@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.tasks.engine
+package io.github.michaelmassoni.tessera.core.dav
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -67,7 +67,7 @@ class DavTest {
                 .parse(xml)
                 .responses
                 .single()
-                .calendarData!!
+                .data!!
                 .startsWith("BEGIN:VCALENDAR"),
         )
         assertEquals("https://cloud.example.com/dav/t/a.ics", Dav.resolve("https://cloud.example.com/dav/", "/dav/t/a.ics"))
@@ -75,24 +75,36 @@ class DavTest {
     }
 }
 
-class MergeTest {
-    private val base = Task("t", "l", "Buy milk", notes = "2L", starred = false, dirty = false)
-
+class DavCardTest {
     @Test
-    fun `each side keeps the fields it changed`() {
-        val local = base.copy(title = "Buy oat milk")
-        val remote = base.copy(notes = "1L", starred = true, etag = "\"new\"")
-        val m = Merge.merge(base, local, remote)
-        assertEquals("Buy oat milk", m.title)
-        assertEquals("1L", m.notes)
-        assertTrue(m.starred)
-        assertEquals("\"new\"", m.etag)
-        assertTrue(m.dirty)
+    fun `address books, privileges and address data`() {
+        val xml =
+            """<d:multistatus xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav"><d:response><d:href>/tester/contacts/</d:href>
+            <d:propstat><d:prop><d:resourcetype><d:collection/><card:addressbook/></d:resourcetype><d:displayname>Contacts</d:displayname>
+            <d:current-user-privilege-set><d:privilege><d:read/></d:privilege></d:current-user-privilege-set>
+            <card:addressbook-home-set><d:href>/tester/</d:href></card:addressbook-home-set></d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>
+            <d:response><d:href>/tester/contacts/a.vcf</d:href><d:propstat><d:prop><d:getetag>"v1"</d:getetag>
+            <card:address-data>BEGIN:VCARD&#13;
+            END:VCARD&#13;
+            </card:address-data><d:current-user-privilege-set><d:privilege><d:write/></d:privilege></d:current-user-privilege-set></d:prop>
+            <d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>"""
+        val r = Dav.parse(xml).responses
+        assertTrue(r[0].isAddressBook)
+        assertFalse(r[0].isCalendar)
+        assertEquals("/tester/", r[0].addressBookHome)
+        assertEquals(false, r[0].writable)
+        assertEquals(true, r[1].writable)
+        assertTrue(r[1].data!!.startsWith("BEGIN:VCARD"))
     }
 
     @Test
-    fun `nothing of ours left to send`() {
-        val m = Merge.merge(base, base.copy(title = "Same"), base.copy(title = "Same"))
-        assertFalse(m.dirty)
+    fun `bodies for each kind and colours`() {
+        assertTrue(Dav.homeSetBody(DavKind.CardDav).contains("addressbook-home-set"))
+        assertTrue(Dav.etagsBody(DavKind.CalDav, "VEVENT").contains("name=\"VEVENT\""))
+        assertTrue(Dav.multigetBody(listOf("/a.vcf"), DavKind.CardDav).contains("addressbook-multiget"))
+        assertTrue(Dav.mkcalendarBody("Work", "VEVENT", 0xFF1A73A8.toInt()).contains("#1A73A8FF"))
+        assertEquals("#2E7D32FF", Dav.colorHex(0xFF2E7D32.toInt()))
+        assertEquals(null, Dav.color("#12"))
     }
 }
