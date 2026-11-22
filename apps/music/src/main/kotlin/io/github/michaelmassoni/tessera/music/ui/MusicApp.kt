@@ -63,6 +63,8 @@ import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Lyrics
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
@@ -97,9 +99,19 @@ interface LibraryActions {
     fun play(
         songs: List<Song>,
         index: Int,
+        from: PlayingFrom,
     )
 
-    fun shuffle(songs: List<Song>)
+    fun shuffle(
+        songs: List<Song>,
+        from: PlayingFrom,
+    )
+
+    /** Puts songs right after the one playing. */
+    fun playNext(songs: List<Song>) {}
+
+    /** Puts songs at the end of the queue. */
+    fun addToQueue(songs: List<Song>) {}
 
     fun createPlaylist(
         name: String,
@@ -122,6 +134,12 @@ interface LibraryActions {
         id: Long,
         index: Int,
     )
+
+    /** Takes a song out of a playlist, wherever it is in it. */
+    fun removeSongFromPlaylist(
+        id: Long,
+        songId: Long,
+    ) {}
 
     fun openSettings()
 
@@ -161,6 +179,7 @@ fun MusicApp(
     libraryActions: LibraryActions,
     playerActions: PlayerActions,
     modifier: Modifier = Modifier,
+    lyrics: LyricsState = LyricsState.None(false),
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var page by remember { mutableStateOf<Page?>(null) }
@@ -169,7 +188,16 @@ fun MusicApp(
     BackHandler(!playerOpen && page != null) { page = null }
 
     if (playerOpen && playback.hasMedia) {
-        FullPlayer(playback, progress, playerActions, onClose = { playerOpen = false }, modifier = modifier)
+        FullPlayer(
+            playback,
+            progress,
+            playerActions,
+            onClose = { playerOpen = false },
+            modifier = modifier,
+            lyrics = lyrics,
+            playlists = library.playlists,
+            libraryActions = libraryActions,
+        )
         return
     }
     NavigationSuiteScaffold(
@@ -286,13 +314,14 @@ private fun LibraryScreen(
                         SongList(
                             remember(library.songs, query) { Library.search(library.songs, query) },
                             actions,
+                            PlayingFrom(PlayingFrom.Kind.Search, query),
                             showShuffle = false,
                             onLongClick = onLongClick,
                         )
                     }
 
                     tab == Tab.Songs -> {
-                        SongList(library.songs, actions, showShuffle = true, onLongClick = onLongClick)
+                        SongList(library.songs, actions, PlayingFrom(PlayingFrom.Kind.Songs), showShuffle = true, onLongClick = onLongClick)
                     }
 
                     tab == Tab.Playlists -> {
@@ -316,6 +345,7 @@ private fun LibraryScreen(
 internal fun SongList(
     songs: List<Song>,
     actions: LibraryActions,
+    from: PlayingFrom,
     showShuffle: Boolean,
     header: (LazyListScope.() -> Unit)? = null,
     showArt: Boolean = true,
@@ -325,7 +355,10 @@ internal fun SongList(
         header?.invoke(this)
         if (showShuffle && songs.isNotEmpty()) {
             item(key = "shuffle") {
-                FilledTonalButton(onClick = { actions.shuffle(songs) }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                FilledTonalButton(
+                    onClick = { actions.shuffle(songs, from) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
                     Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
                     Text(stringResource(R.string.shuffle_all), modifier = Modifier.padding(start = 8.dp))
                 }
@@ -335,7 +368,7 @@ internal fun SongList(
             val artist = song.artist.ifBlank { stringResource(R.string.unknown_artist) }
             val description = "${song.title}, $artist, ${formatDuration(song.durationMillis)}"
             ListItem(
-                onClick = { actions.play(songs, i) },
+                onClick = { actions.play(songs, i, from) },
                 onLongClick = onLongClick?.let { { it(i, song) } },
                 onLongClickLabel = onLongClick?.let { stringResource(R.string.song_options) },
                 leadingContent = if (showArt) ({ AlbumArt(song.albumId) }) else null,
@@ -413,26 +446,36 @@ private fun AlbumScreen(
 ) {
     Scaffold(topBar = { BackBar(album.title, onBack) }) { padding ->
         Box(Modifier.padding(padding)) {
-            SongList(album.songs, actions, showShuffle = false, showArt = false, header = {
-                item(key = "header") {
-                    Column(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AlbumArt(album.id, size = 200.dp)
-                        Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                        Text(
-                            listOfNotNull(album.artist.ifBlank { null }, album.year.takeIf { it > 0 }?.toString()).joinToString(" · "),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Button(onClick = { actions.play(album.songs, 0) }) {
-                            Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
-                            Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
+            SongList(
+                album.songs,
+                actions,
+                PlayingFrom(
+                    PlayingFrom.Kind.Album,
+                    album.title,
+                ),
+                showShuffle = false,
+                showArt = false,
+                header = {
+                    item(key = "header") {
+                        Column(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            AlbumArt(album.id, size = 200.dp)
+                            Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                            Text(
+                                listOfNotNull(album.artist.ifBlank { null }, album.year.takeIf { it > 0 }?.toString()).joinToString(" · "),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Button(onClick = { actions.play(album.songs, 0, PlayingFrom(PlayingFrom.Kind.Album, album.title)) }) {
+                                Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
+                                Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
+                            }
                         }
                     }
-                }
-            })
+                },
+            )
         }
     }
 }
@@ -447,7 +490,7 @@ private fun ArtistScreen(
 ) {
     Scaffold(topBar = { BackBar(artist.name, onBack) }) { padding ->
         Box(Modifier.padding(padding)) {
-            SongList(artist.songs, actions, showShuffle = true, header = {
+            SongList(artist.songs, actions, PlayingFrom(PlayingFrom.Kind.Artist, artist.name), showShuffle = true, header = {
                 item(key = "albums") {
                     Text(
                         stringResource(R.string.tab_albums),
@@ -576,4 +619,18 @@ private fun Notice(
             }
         }
     }
+}
+
+/** The lyrics of the song playing, as far as they're known. */
+sealed interface LyricsState {
+    data object Loading : LyricsState
+
+    data class Found(
+        val lyrics: Lyrics,
+    ) : LyricsState
+
+    /** None found; [canLookOnline] when looking them up online is off and could find some. */
+    data class None(
+        val canLookOnline: Boolean,
+    ) : LyricsState
 }

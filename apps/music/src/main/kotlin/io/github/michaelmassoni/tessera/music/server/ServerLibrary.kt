@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.music.server
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.ServerAccount
 import io.github.michaelmassoni.tessera.music.engine.Song
 import kotlinx.serialization.Serializable
@@ -25,6 +26,13 @@ object ServerLibrary {
         val address: String,
         val username: String,
         val songs: List<Song>,
+        val playlists: List<Playlist> = emptyList(),
+    )
+
+    /** What was saved: the songs and the server's playlists. */
+    data class Contents(
+        val songs: List<Song>,
+        val playlists: List<Playlist>,
     )
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -40,7 +48,7 @@ object ServerLibrary {
     fun load(
         context: Context,
         account: ServerAccount,
-    ): List<Song>? =
+    ): Contents? =
         try {
             val f = file(context)
             if (!f.exists()) {
@@ -49,8 +57,8 @@ object ServerLibrary {
                 json
                     .decodeFromString(Saved.serializer(), f.readText())
                     .takeIf { it.address == account.address && it.username == account.username }
-                    ?.songs
-                    ?.also(::index)
+                    ?.also { index(it.songs) }
+                    ?.let { Contents(it.songs, it.playlists) }
             }
         } catch (_: IOException) {
             null
@@ -64,12 +72,13 @@ object ServerLibrary {
         context: Context,
         account: ServerAccount,
         songs: List<Song>,
+        playlists: List<Playlist>,
     ) {
         index(songs)
         val f = file(context)
         val temp = File(f.path + ".tmp")
         try {
-            temp.writeText(json.encodeToString(Saved.serializer(), Saved(account.address, account.username, songs)))
+            temp.writeText(json.encodeToString(Saved.serializer(), Saved(account.address, account.username, songs, playlists)))
             temp.renameTo(f)
         } catch (_: IOException) {
             // The next fetch tries again.

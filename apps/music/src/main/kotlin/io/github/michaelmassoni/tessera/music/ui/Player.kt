@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.music.ui
 import android.graphics.ImageDecoder
 import android.util.LruCache
 import android.util.Size
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -26,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -62,6 +67,8 @@ import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
+import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
 import io.github.michaelmassoni.tessera.music.server.ServerLibrary
 import kotlinx.coroutines.Dispatchers
@@ -85,6 +92,17 @@ interface PlayerActions {
     fun cycleRepeat()
 
     fun skipTo(index: Int)
+
+    /** Moves a queued song from one place to another. */
+    fun moveQueueItem(
+        from: Int,
+        to: Int,
+    ) {}
+
+    fun removeQueueItem(index: Int) {}
+
+    /** Turns on looking up lyrics online (LRCLIB) and looks for this song's. */
+    fun lookUpLyricsOnline() {}
 }
 
 /**
@@ -223,105 +241,163 @@ fun FullPlayer(
     actions: PlayerActions,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    lyrics: LyricsState = LyricsState.None(false),
+    playlists: List<Playlist> = emptyList(),
+    libraryActions: LibraryActions? = null,
 ) {
     var queue by rememberSaveable { mutableStateOf(false) }
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(painterResource(DesignR.drawable.ic_expand_more), contentDescription = stringResource(R.string.close_player))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { queue = true }) {
-                        Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = stringResource(R.string.queue))
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            Column(
-                Modifier.widthIn(max = 520.dp).fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        state.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                SeekBar(progress, actions)
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
+    var showLyrics by rememberSaveable { mutableStateOf(false) }
+    var saving by rememberSaveable { mutableStateOf(false) }
+    BackHandler(showLyrics) { showLyrics = false }
+    Box(modifier) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { state.from?.let { PlayingFromTitle(it) } },
+                    navigationIcon = {
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                painterResource(DesignR.drawable.ic_expand_more),
+                                contentDescription = stringResource(R.string.close_player),
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { queue = true }) {
+                            Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = stringResource(R.string.queue))
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    Modifier
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    IconToggleButton(checked = state.shuffle, onCheckedChange = { actions.toggleShuffle() }) {
-                        Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = stringResource(R.string.shuffle))
+                    AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                state.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (libraryActions != null && state.songId != 0L) {
+                            val saved = playlists.any { !it.readOnly && state.songId in it.songIds }
+                            IconButton(onClick = { saving = true }) {
+                                Icon(
+                                    painterResource(
+                                        if (saved) DesignR.drawable.ic_playlist_add_check else DesignR.drawable.ic_playlist_add,
+                                    ),
+                                    contentDescription = stringResource(R.string.save_to_playlist),
+                                    tint = if (saved) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                                )
+                            }
+                        }
                     }
-                    IconButton(onClick = actions::previous) {
-                        Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = stringResource(R.string.previous))
-                    }
-                    PlayPause(state.isPlaying, actions::togglePlay, filled = true, size = 72.dp)
-                    IconButton(onClick = actions::next) {
-                        Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = stringResource(R.string.next))
-                    }
-                    IconToggleButton(checked = state.repeatMode != Player.REPEAT_MODE_OFF, onCheckedChange = { actions.cycleRepeat() }) {
-                        Icon(
-                            painterResource(
-                                if (state.repeatMode ==
-                                    Player.REPEAT_MODE_ONE
-                                ) {
-                                    DesignR.drawable.ic_repeat_one
-                                } else {
-                                    DesignR.drawable.ic_repeat
-                                },
-                            ),
-                            contentDescription =
-                                stringResource(
-                                    when (state.repeatMode) {
-                                        Player.REPEAT_MODE_ONE -> R.string.repeat_one
-                                        Player.REPEAT_MODE_ALL -> R.string.repeat_all
-                                        else -> R.string.repeat_off
-                                    },
-                                ),
-                        )
-                    }
+                    SeekBar(progress, actions)
+                    Controls(state, actions)
+                    LyricsCard(
+                        lyrics,
+                        progress,
+                        state.isPlaying,
+                        onOpen = { showLyrics = true },
+                        onLookOnline = actions::lookUpLyricsOnline,
+                    )
                 }
             }
         }
+        if (queue) QueueSheet(state.queue, state.index, actions, onDismiss = { queue = false })
+        if (saving && libraryActions != null) {
+            SaveToPlaylistSheet(state.songId, playlists, libraryActions, onDismiss = { saving = false })
+        }
+        if (showLyrics && lyrics is LyricsState.Found) {
+            LyricsScreen(lyrics.lyrics, state, progress, actions, onClose = { showLyrics = false })
+        }
     }
-    if (queue) {
-        ModalBottomSheet(onDismissRequest = { queue = false }) {
-            LazyColumn {
-                itemsIndexed(state.queue) { i, item ->
-                    ListItem(
-                        selected = i == state.index,
-                        onClick = {
-                            actions.skipTo(i)
-                            queue = false
+}
+
+/** "Playing from album" over the album's name. */
+@Composable
+private fun PlayingFromTitle(from: PlayingFrom) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            stringResource(
+                when (from.kind) {
+                    PlayingFrom.Kind.Album -> R.string.playing_from_album
+                    PlayingFrom.Kind.Artist -> R.string.playing_from_artist
+                    PlayingFrom.Kind.Playlist -> R.string.playing_from_playlist
+                    PlayingFrom.Kind.Search -> R.string.playing_from_search
+                    PlayingFrom.Kind.Songs -> R.string.playing_from_songs
+                },
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        val name = if (from.kind == PlayingFrom.Kind.Songs) stringResource(R.string.all_songs) else from.name
+        if (name.isNotBlank()) {
+            Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun Controls(
+    state: PlaybackState,
+    actions: PlayerActions,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconToggleButton(checked = state.shuffle, onCheckedChange = { actions.toggleShuffle() }) {
+            Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = stringResource(R.string.shuffle))
+        }
+        IconButton(onClick = actions::previous) {
+            Icon(painterResource(DesignR.drawable.ic_skip_previous), contentDescription = stringResource(R.string.previous))
+        }
+        PlayPause(state.isPlaying, actions::togglePlay, filled = true, size = 72.dp)
+        IconButton(onClick = actions::next) {
+            Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = stringResource(R.string.next))
+        }
+        IconToggleButton(checked = state.repeatMode != Player.REPEAT_MODE_OFF, onCheckedChange = { actions.cycleRepeat() }) {
+            Icon(
+                painterResource(
+                    if (state.repeatMode ==
+                        Player.REPEAT_MODE_ONE
+                    ) {
+                        DesignR.drawable.ic_repeat_one
+                    } else {
+                        DesignR.drawable.ic_repeat
+                    },
+                ),
+                contentDescription =
+                    stringResource(
+                        when (state.repeatMode) {
+                            Player.REPEAT_MODE_ONE -> R.string.repeat_one
+                            Player.REPEAT_MODE_ALL -> R.string.repeat_all
+                            else -> R.string.repeat_off
                         },
-                        supportingContent = { Text(item.artist, maxLines = 1) },
-                    ) { Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                }
-            }
+                    ),
+            )
         }
     }
 }

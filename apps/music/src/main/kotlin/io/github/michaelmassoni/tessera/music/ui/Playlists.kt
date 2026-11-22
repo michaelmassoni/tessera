@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.music.R
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
@@ -75,7 +77,10 @@ internal fun PlaylistList(
             ListItem(
                 onClick = { onOpen(p.id) },
                 leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
-                supportingContent = { Text(pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size)) },
+                supportingContent = {
+                    val count = pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size)
+                    Text(if (p.readOnly) stringResource(R.string.read_only_playlist, count) else count)
+                },
                 modifier = Modifier.padding(horizontal = 8.dp),
             ) { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
@@ -112,19 +117,22 @@ internal fun PlaylistScreen(
                     }
                 },
                 actions = {
-                    Box {
-                        IconButton(onClick = { menu = true }) {
-                            Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = {
-                                menu = false
-                                renaming = true
-                            })
-                            DropdownMenuItem(text = { Text(stringResource(R.string.delete_playlist)) }, onClick = {
-                                menu = false
-                                deleting = true
-                            })
+                    // A smart playlist (or someone else's) can be played, not changed.
+                    if (!playlist.readOnly) {
+                        Box {
+                            IconButton(onClick = { menu = true }) {
+                                Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
+                            }
+                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = {
+                                    menu = false
+                                    renaming = true
+                                })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.delete_playlist)) }, onClick = {
+                                    menu = false
+                                    deleting = true
+                                })
+                            }
                         }
                     }
                 },
@@ -132,7 +140,10 @@ internal fun PlaylistScreen(
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            SongList(songs, actions, showShuffle = false, onLongClick = { i, s -> options = i to s }, header = {
+            SongList(songs, actions, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name), showShuffle = false, onLongClick = { i, s ->
+                options =
+                    i to s
+            }, header = {
                 item(key = "header") {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -140,11 +151,16 @@ internal fun PlaylistScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = { actions.play(songs, 0) }, enabled = songs.isNotEmpty()) {
+                            Button(
+                                onClick = { actions.play(songs, 0, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name)) },
+                                enabled = songs.isNotEmpty(),
+                            ) {
                                 Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
                                 Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
                             }
-                            FilledTonalButton(onClick = { actions.shuffle(songs) }, enabled = songs.isNotEmpty()) {
+                            FilledTonalButton(onClick = {
+                                actions.shuffle(songs, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name))
+                            }, enabled = songs.isNotEmpty()) {
                                 Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
                                 Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 8.dp))
                             }
@@ -158,7 +174,9 @@ internal fun PlaylistScreen(
         }
     }
     options?.let { (index, song) ->
-        SongOptions(song, playlists, actions, onDismiss = { options = null }, onRemove = { actions.removeFromPlaylist(playlist.id, index) })
+        SongOptions(song, playlists, actions, onDismiss = {
+            options = null
+        }, onRemove = if (playlist.readOnly) null else ({ actions.removeFromPlaylist(playlist.id, index) }))
     }
     if (renaming) {
         NameDialog(R.string.rename, playlist.name, onDismiss = { renaming = false }) { name ->
@@ -219,7 +237,7 @@ internal fun SongOptions(
                                 leadingContent = { Icon(painterResource(DesignR.drawable.ic_add), contentDescription = null) },
                             ) { Text(stringResource(R.string.new_playlist)) }
                         }
-                        items(Playlists.sorted(playlists), key = { it.id }) { p ->
+                        items(Playlists.sorted(playlists.filterNot { it.readOnly }), key = { it.id }) { p ->
                             ListItem(
                                 onClick = {
                                     actions.addToPlaylist(p.id, listOf(song.id))
@@ -241,6 +259,20 @@ internal fun SongOptions(
                     ListItem(supportingContent = { Text(song.artist.ifBlank { stringResource(R.string.unknown_artist) }, maxLines = 1) }) {
                         Text(song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
+                    ListItem(
+                        onClick = {
+                            actions.playNext(listOf(song))
+                            onDismiss()
+                        },
+                        leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_play_next), contentDescription = null) },
+                    ) { Text(stringResource(R.string.play_next)) }
+                    ListItem(
+                        onClick = {
+                            actions.addToQueue(listOf(song))
+                            onDismiss()
+                        },
+                        leadingContent = { Icon(painterResource(DesignR.drawable.ic_add_to_queue), contentDescription = null) },
+                    ) { Text(stringResource(R.string.add_to_queue)) }
                     ListItem(
                         onClick = { picking = true },
                         leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
@@ -285,4 +317,48 @@ private fun NameDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+/**
+ * From the player: tick the playlists the song playing should be in. Ticking adds it at the end;
+ * unticking takes it out (everywhere in that playlist). Smart playlists aren't offered.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SaveToPlaylistSheet(
+    songId: Long,
+    playlists: List<Playlist>,
+    actions: LibraryActions,
+    onDismiss: () -> Unit,
+) {
+    var creating by remember { mutableStateOf(false) }
+    if (creating) {
+        NameDialog(R.string.new_playlist, "", onDismiss = { creating = false }) { name ->
+            creating = false
+            actions.createPlaylist(name, listOf(songId))
+        }
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            stringResource(R.string.save_to_playlist),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(start = 24.dp, bottom = 8.dp),
+        )
+        LazyColumn(Modifier.padding(bottom = 16.dp)) {
+            item(key = "new") {
+                ListItem(
+                    onClick = { creating = true },
+                    leadingContent = { Icon(painterResource(DesignR.drawable.ic_add), contentDescription = null) },
+                ) { Text(stringResource(R.string.new_playlist)) }
+            }
+            items(Playlists.sorted(playlists.filterNot { it.readOnly }), key = { it.id }) { p ->
+                val inIt = songId in p.songIds
+                ListItem(
+                    onClick = { if (inIt) actions.removeSongFromPlaylist(p.id, songId) else actions.addToPlaylist(p.id, listOf(songId)) },
+                    leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
+                    trailingContent = { Checkbox(checked = inIt, onCheckedChange = null) },
+                ) { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+        }
+    }
 }
