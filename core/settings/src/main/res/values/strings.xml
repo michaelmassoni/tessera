@@ -48,4 +48,34 @@
     <string name="settings_licence">Licence</string>
     <string name="settings_licence_summary">GNU General Public License v3.0</string>
     <string name="settings_no_browser">No app can open web links</string>
+    <string name="settings_backup">Backup</string>
+    <string name="backup_this">Back up</string>
+    <string name="backup_this_summary">Save this app\'s data to a file</string>
+    <string name="restore_this">Restore</string>
+    <string name="restore_this_summary">Replace this app\'s data with a backup</string>
+    <string name="backup_all">Back up all Tessera apps</string>
+    <string name="backup_all_summary">One file with the data of every Tessera app on this phone</string>
+    <string name="restore_all">Restore all Tessera apps</string>
+    <string name="restore_all_summary">From a file made by Back up all Tessera apps</string>
+    <string name="backup_working">Working…</string>
+    <string name="backup_done">Backed up</string>
+    <plurals name="backup_all_done">
+        <item quantity="one">Backed up %d Tessera app</item>
+        <item quantity="other">Backed up %d Tessera apps</item>
+    </plurals>
+    <string name="backup_failed">Couldn\'t write the backup</string>
+    <string name="restore_title">Restore %1$s?</string>
+    <string name="restore_text">%1$s\'s current data is replaced with the backup from %2$s, and the app restarts.</string>
+    <string name="restore_all_title">Restore Tessera apps?</string>
+    <string name="restore_all_text">The data of these apps is replaced with the backup from %1$s: %2$s. Apps that aren\'t installed, or are signed differently, are skipped.</string>
+    <string name="restore_action">Restore</string>
+    <string name="restore_cancel">Cancel</string>
+    <plurals name="restore_all_done">
+        <item quantity="one">Restored %d app</item>
+        <item quantity="other">Restored %d apps</item>
+    </plurals>
+    <string name="restore_not_tessera">That file isn\'t a Tessera backup</string>
+    <string name="restore_other_app">That backup is of another app. Restore it from that app, or use Restore all Tessera apps.</string>
+    <string name="restore_newer">That backup is from a newer version. Update the app first.</string>
+    <string name="restore_failed">Couldn\'t restore the backup</string>
 </resources>

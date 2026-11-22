@@ -68,6 +68,16 @@ interface SettingsActions {
     fun pinCustomIcon()
 
     fun openSource()
+
+    /** Saves this app's data to a file (the system file picker). */
+    fun backUp()
+
+    fun restore()
+
+    /** One file with every Tessera app's data. */
+    fun backUpAll()
+
+    fun restoreAll()
 }
 
 /** Version and other facts shown in the About section. */
@@ -120,6 +130,7 @@ fun SettingsScreen(
                 appSettings()
                 AppearanceSection(shared, actions)
                 AppIconSection(icon, launcherIcon, customPinned, actions)
+                BackupSection(actions)
                 AboutSection(about, actions)
             }
         }
@@ -177,12 +188,26 @@ fun InfoSetting(
     summary: String,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    /** Shows an "opens elsewhere" icon (a browser, another app); off for actions in place. */
+    external: Boolean = true,
 ) {
     if (onClick != null) {
         ListItem(
             onClick = onClick,
             supportingContent = { Text(summary) },
-            trailingContent = { Icon(painterResource(DesignR.drawable.ic_open_in_new), contentDescription = null) },
+            trailingContent =
+                if (external) {
+                    (
+                        {
+                            Icon(
+                                painterResource(DesignR.drawable.ic_open_in_new),
+                                contentDescription = null,
+                            )
+                        }
+                    )
+                } else {
+                    null
+                },
             modifier = modifier,
         ) { Text(title) }
     } else {
@@ -326,6 +351,37 @@ private fun IconStyle.label() =
     }
 
 @Composable
+private fun BackupSection(actions: SettingsActions) {
+    Column {
+        SettingsHeader(stringResource(R.string.settings_backup))
+        InfoSetting(
+            stringResource(R.string.backup_this),
+            stringResource(R.string.backup_this_summary),
+            onClick = actions::backUp,
+            external = false,
+        )
+        InfoSetting(
+            stringResource(R.string.restore_this),
+            stringResource(R.string.restore_this_summary),
+            onClick = actions::restore,
+            external = false,
+        )
+        InfoSetting(
+            stringResource(R.string.backup_all),
+            stringResource(R.string.backup_all_summary),
+            onClick = actions::backUpAll,
+            external = false,
+        )
+        InfoSetting(
+            stringResource(R.string.restore_all),
+            stringResource(R.string.restore_all_summary),
+            onClick = actions::restoreAll,
+            external = false,
+        )
+    }
+}
+
+@Composable
 private fun AboutSection(
     about: AboutInfo,
     actions: SettingsActions,
@@ -343,6 +399,14 @@ private fun AboutSection(
 }
 
 private object PreviewActions : SettingsActions {
+    override fun backUp() = Unit
+
+    override fun restore() = Unit
+
+    override fun backUpAll() = Unit
+
+    override fun restoreAll() = Unit
+
     override fun setTheme(theme: ThemeSettings) = Unit
 
     override fun setSyncAll(enabled: Boolean) = Unit
