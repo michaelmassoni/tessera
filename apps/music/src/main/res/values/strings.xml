@@ -121,4 +121,14 @@
     <string name="lyrics_from_server">Lyrics from your server</string>
     <string name="lyrics_from_lrclib">Lyrics from LRCLIB</string>
     <string name="online_lyrics_summary">When a song has none of its own, search LRCLIB (lrclib.net) with its title, artist, album and length</string>
+    <string name="sort_by">Sort by</string>
+    <string name="sort_name">A to Z</string>
+    <string name="sort_artist">Artist</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_year">Year</string>
+    <string name="sort_added">Recently added</string>
+    <string name="sort_played">Recently played</string>
+    <string name="show_as_list">Show as list</string>
+    <string name="show_as_grid">Show as grid</string>
+    <string name="album_artists">Album artists</string>
 </resources>

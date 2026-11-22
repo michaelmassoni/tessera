@@ -179,7 +179,9 @@ fun SetupGate(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    var done by rememberSaveable { mutableStateOf(Setup.isDone(context)) }
+    // Read from the marker each time, not restored from saved state: after a crash Android can
+    // restore state saved before setup finished, which put setup back on screen.
+    var done by remember { mutableStateOf(Setup.isDone(context)) }
     if (done || skip) {
         content()
     } else {

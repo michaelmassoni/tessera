@@ -26,6 +26,7 @@ import io.github.michaelmassoni.tessera.music.data.LyricsQuery
 import io.github.michaelmassoni.tessera.music.data.LyricsRepository
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
+import io.github.michaelmassoni.tessera.music.data.PlayHistory
 import io.github.michaelmassoni.tessera.music.engine.Library
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
@@ -47,6 +48,7 @@ import io.github.michaelmassoni.tessera.music.ui.PlayerActions
 import io.github.michaelmassoni.tessera.music.ui.ServerNotice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -111,6 +113,8 @@ class MainActivity : ComponentActivity() {
                     val playback by player.state.collectAsStateWithLifecycle()
                     val progress = player.progress.collectAsStateWithLifecycle()
                     LaunchedEffect(playback.uri) { loadLyrics(playback) }
+                    // A new song started: "Recently played" moves it up.
+                    LaunchedEffect(playback.songId) { refreshHistory() }
                     MusicApp(library, playback, { progress.value }, libraryActions, playerActions, lyrics = lyrics)
                 }
             }
@@ -189,7 +193,7 @@ class MainActivity : ComponentActivity() {
             val playlists = if (library.loaded) library.playlists else withContext(Dispatchers.IO) { readPlaylists() }
             library =
                 withContext(Dispatchers.Default) {
-                    LibraryState(true, Library.songs(songs), Library.albums(songs), Library.artists(songs), playlists)
+                    state(songs, playlists, fromServer = false)
                 }
         }
     }
@@ -231,6 +235,15 @@ class MainActivity : ComponentActivity() {
                 val notice = if (e.problem == ServerProblem.WrongLogin) ServerNotice.SignIn else ServerNotice.Unreachable
                 library = library.copy(loaded = true, notice = notice)
             }
+        }
+    }
+
+    private fun refreshHistory() {
+        lifecycleScope.launch {
+            // The service records the play a moment after the song starts.
+            delay(1_000)
+            val history = withContext(Dispatchers.IO) { PlayHistory.read(this@MainActivity) }
+            if (history != library.history) library = library.copy(history = history)
         }
     }
 
@@ -299,7 +312,16 @@ class MainActivity : ComponentActivity() {
         songs: List<Song>,
         playlists: List<Playlist>,
         fromServer: Boolean,
-    ) = LibraryState(true, Library.songs(songs), Library.albums(songs), Library.artists(songs), playlists, fromServer = fromServer)
+    ) = LibraryState(
+        loaded = true,
+        songs = Library.songs(songs),
+        albums = Library.albums(songs),
+        artists = Library.artists(songs),
+        playlists = playlists,
+        albumArtists = Library.albumArtists(songs),
+        history = PlayHistory.read(this),
+        fromServer = fromServer,
+    )
 
     private fun readPlaylists(): List<Playlist> =
         try {

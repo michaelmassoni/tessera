@@ -1,7 +1,6 @@
 package io.github.michaelmassoni.tessera.music.data
 
 import android.content.Context
-import androidx.core.content.edit
 import io.github.michaelmassoni.tessera.music.engine.LrcLib
 import io.github.michaelmassoni.tessera.music.engine.Lyrics
 import io.github.michaelmassoni.tessera.music.engine.ServerException
@@ -25,18 +24,6 @@ data class LyricsQuery(
     val album: String,
     val durationMs: Long,
 )
-
-/** Music's own settings (kept in `settings.xml`, which Android backs up). */
-class MusicSettings(
-    context: Context,
-) {
-    private val prefs = context.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    /** Look up lyrics on LRCLIB when the song has none of its own. Off until the person turns it on. */
-    var onlineLyrics: Boolean
-        get() = prefs.getBoolean("online_lyrics", false)
-        set(value) = prefs.edit { putBoolean("online_lyrics", value) }
-}
 
 /**
  * Lyrics for a song: the server's (for server songs), then LRCLIB if online lyrics are on. Kept in

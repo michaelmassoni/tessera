@@ -145,3 +145,21 @@ class SubsonicPlaylistTest {
         assertEquals("p", Subsonic.createdPlaylistId(reply))
     }
 }
+
+class SubsonicFieldsTest {
+    @Test
+    fun `album artist, added and played are read`() {
+        val s =
+            Subsonic.song(
+                Subsonic
+                    .response(
+                        """{"subsonic-response":{"status":"ok","song":{"id":"x","title":"T","displayAlbumArtist":"Juniper",
+                        "created":"2026-11-22T17:01:20.75194736+11:00","played":"2026-11-22T07:38:43Z"}}}""",
+                    )["song"]!!,
+            )!!
+        assertEquals("Juniper", s.albumArtist)
+        assertEquals(1795327280751L, s.addedAt)
+        assertEquals(1795333123000L, s.playedAt)
+        assertEquals(0L, Subsonic.time("not a date"))
+    }
+}

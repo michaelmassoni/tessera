@@ -204,6 +204,35 @@ Asked for by the maintainer after using 0.4 with their Navidrome library.
     later. Tapping a synced line plays from there. Says where the lyrics came from.
   - Not yet: lyrics embedded in local files (MediaStore doesn't expose them).
 
+## Browsing and motion (0.6)
+
+- **Opening albums and artists:** the page slides in a little and fades in; the album cover (or
+  artist picture) moves from where it was tapped to the page header (a shared element). Back
+  reverses it, and a predictive back gesture shrinks the page as the finger moves. Switching tabs
+  cross-fades. While the bigger cover loads, the one already shown stands in, so it never flashes
+  the placeholder.
+- **Sorting:** a chip above each page. Songs: A to Z, artist, album, recently added, recently
+  played. Albums: A to Z, artist, year, recently added, recently played. Artists: A to Z,
+  recently added, recently played. Playlists: A to Z, recently played. Remembered per page.
+  - Recently added: MediaStore `DATE_ADDED`, or the server's `created`.
+  - Recently played: the server's `played`, or this phone's own history (`files/plays.json`,
+    written by the playback service as each song starts), whichever is later.
+- **Grid or list:** Albums, Artists and Playlists each switch between a grid of covers and a list,
+  remembered per page. Playlists show their first song's cover.
+- **Album artists:** on by default, the Artists page lists album artists (each album once, under
+  the artist it's credited to: the album artist tag, else its most common track artist), so
+  featured artists and compilations don't each become an artist. A chip switches back to every
+  track artist. Album artists come from MediaStore `ALBUM_ARTIST` or the server's
+  `displayAlbumArtist`.
+- **Player sheet:** tapping the mini player slides the player up from the bottom. Dragging down
+  (from its top bar, or anywhere once its content is scrolled to the top) moves it with the
+  finger; let go past a quarter of the way or with a downward flick and it slides away, otherwise
+  it springs back. A predictive back gesture lowers it as the finger moves.
+- **Shuffle and repeat** show "on" as a filled circle, not just a tint, so it reads in dark theme.
+- **Shuffle is immediate:** the service reorders the queue with at most four changes (everything
+  but the song playing taken out and put back in the new order). One move per song had sent the
+  whole queue to the app for every move, which took seconds for a long queue.
+
 ## Out of scope for v0.1
 
 - Lyrics.

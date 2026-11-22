@@ -33,21 +33,4 @@ object QueueOrder {
         val rest = ids.indices.filter { it !in order.toSet() }
         return order + rest
     }
-
-    /**
-     * The moves (from, to), applied one after another, that rearrange a list into [order] (indices
-     * into the list as it was), so the player can reorder without stopping the song.
-     */
-    fun moves(order: List<Int>): List<Pair<Int, Int>> {
-        val current = order.indices.toMutableList()
-        val moves = mutableListOf<Pair<Int, Int>>()
-        order.forEachIndexed { target, item ->
-            val from = current.indexOf(item)
-            if (from != target) {
-                moves += from to target
-                current.add(target, current.removeAt(from))
-            }
-        }
-        return moves
-    }
 }
