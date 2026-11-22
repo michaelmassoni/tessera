@@ -151,3 +151,14 @@ A clean SMS and MMS app over the system message database. It works in two modes:
 ## First run
 
 See [setup.md](setup.md) for what messages asks for the first time it opens.
+
+## Android Auto (0.5)
+
+Messages declares itself to Android Auto as a messaging app (`automotive_app_desc.xml`,
+`<uses name="notification"/>`). Auto works from the notifications, which already had what it
+needs: MessagingStyle with each sender, a Reply action with a RemoteInput
+(`SEMANTIC_ACTION_REPLY`, mutable, opens nothing) and Mark as read
+(`SEMANTIC_ACTION_MARK_AS_READ`, opens nothing). New texts are read aloud and answered by voice.
+Both actions now have icons, which the car shows on its buttons. Like Music, a copy not installed
+from the Play Store needs Android Auto's "Unknown sources" developer setting. Not tried in a car
+or the Desktop Head Unit (no Android Auto on the AOSP emulator).

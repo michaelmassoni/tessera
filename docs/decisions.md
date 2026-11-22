@@ -4,6 +4,14 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Android Auto for Music and Messages only (Accepted)
+
+The maintainer asked for Android Auto where it makes sense. Android Auto accepts third-party
+media, messaging (through notifications), navigation, points of interest and a few other
+categories; calendars, tasks, notes and the rest aren't allowed. Phone calls already reach the
+car through Telecom whichever dialer is default. So: Music (a MediaLibraryService) and Messages
+(its existing MessagingStyle notifications). Neither needs a Google library.
+
 ## 2026-11-22: Music looks up lyrics on LRCLIB, only if turned on (Accepted)
 
 The maintainer asked for lyrics like Spotify's. Lyrics come from their server first; most

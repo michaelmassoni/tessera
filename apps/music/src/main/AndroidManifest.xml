@@ -24,11 +24,28 @@
         <meta-data
             android:name="io.github.michaelmassoni.tessera.BACKUP_EXCLUDE"
             android:value="files/queue.json,files/server-library.json,prefs/music_server.xml" />
+        <!-- Android Auto: Music is a media app; the car browses PlaybackService's library. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
         <!-- Launched through the aliases below and from the media notification. -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:launchMode="singleTop" />
+
+        <!-- "Play <something> on Music" from the Assistant: passes the words to PlaybackService. -->
+        <activity
+            android:name=".PlayFromSearchActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <!-- Media3 playback; exported so system UI, Bluetooth and other controllers can connect, as
              every media app must. MediaSession, not a permission, decides what a controller may do. -->
@@ -38,6 +55,7 @@
             android:foregroundServiceType="mediaPlayback"
             tools:ignore="ExportedService">
             <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="androidx.media3.session.MediaSessionService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>

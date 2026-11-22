@@ -110,7 +110,8 @@ class Notifier(
                 .addAction(
                     NotificationCompat.Action
                         .Builder(
-                            null,
+                            // Icons, as Android Auto shows actions as buttons.
+                            DesignR.drawable.ic_mark_chat_read,
                             context.getString(R.string.mark_read),
                             action(thread, NotificationActionReceiver.ACTION_MARK_READ, mutable = false),
                         ).setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_MARK_AS_READ)
@@ -149,8 +150,11 @@ class Notifier(
 
     private fun replyAction(thread: Long) =
         NotificationCompat.Action
-            .Builder(null, context.getString(R.string.reply), action(thread, NotificationActionReceiver.ACTION_REPLY, mutable = true))
-            .addRemoteInput(RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel(context.getString(R.string.reply)).build())
+            .Builder(
+                DesignR.drawable.ic_reply,
+                context.getString(R.string.reply),
+                action(thread, NotificationActionReceiver.ACTION_REPLY, mutable = true),
+            ).addRemoteInput(RemoteInput.Builder(NotificationActionReceiver.KEY_REPLY).setLabel(context.getString(R.string.reply)).build())
             .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
             .setShowsUserInterface(false)
             .setAllowGeneratedReplies(true)
