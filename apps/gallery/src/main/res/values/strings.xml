@@ -101,4 +101,21 @@
     <string name="info_camera">Camera</string>
     <string name="info_duration">Length</string>
     <string name="resolution">%1$d × %2$d</string>
+    <string name="action_move_to_album">Move to album</string>
+    <string name="action_copy_to_album">Copy to album</string>
+    <string name="new_album">New album</string>
+    <string name="album_name">Album name</string>
+    <string name="action_create">Create</string>
+    <string name="action_rotate">Rotate</string>
+    <plurals name="moved_count">
+        <item quantity="one">Moved %d item</item>
+        <item quantity="other">Moved %d items</item>
+    </plurals>
+    <plurals name="copied_count">
+        <item quantity="one">Copied %d item</item>
+        <item quantity="other">Copied %d items</item>
+    </plurals>
+    <string name="move_not_allowed">Some items can\'t go in that album (Android keeps videos and photos in certain folders)</string>
+    <string name="rotate_failed">Couldn\'t rotate this photo</string>
+    <string name="action_cancel">Cancel</string>
 </resources>

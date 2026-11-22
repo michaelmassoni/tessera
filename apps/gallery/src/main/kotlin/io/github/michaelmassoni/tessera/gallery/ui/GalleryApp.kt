@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,6 +84,12 @@ interface GridActions {
     fun restoreSelection()
 
     fun deleteSelectionForever()
+
+    /** Moves the selection into the folder [relativePath] (asks the system for permission first). */
+    fun moveSelection(relativePath: String)
+
+    /** Copies the selection into the folder [relativePath]. */
+    fun copySelection(relativePath: String)
 
     fun openSettings()
 
@@ -248,7 +256,7 @@ private fun CollectionScreen(
     Scaffold(
         topBar = {
             if (state.selection.isNotEmpty() && !pickMode) {
-                SelectionBar(state.selection.size, collection == Collection.Trash, actions)
+                SelectionBar(state.selection.size, collection == Collection.Trash, state.albums, actions)
             } else {
                 TopAppBar(
                     title = { Text(if (pickMode) stringResource(R.string.pick_title) else title) },
@@ -322,8 +330,12 @@ private fun CollectionScreen(
 private fun SelectionBar(
     count: Int,
     trash: Boolean,
+    albums: List<Album>,
     actions: GridActions,
 ) {
+    var menu by remember { mutableStateOf(false) }
+    // true = move, false = copy, while the album picker is open.
+    var picking by rememberSaveable { mutableStateOf<Boolean?>(null) }
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = actions::clearSelection) {
@@ -342,9 +354,34 @@ private fun SelectionBar(
                 action(DesignR.drawable.ic_share, R.string.action_share, actions::shareSelection)
                 action(DesignR.drawable.ic_favorite, R.string.action_favorite, actions::favoriteSelection)
                 action(DesignR.drawable.ic_delete, R.string.action_trash, actions::trashSelection)
+                Box {
+                    IconButton(onClick = { menu = true }) {
+                        Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
+                    }
+                    DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.action_move_to_album)) }, onClick = {
+                            menu = false
+                            picking = true
+                        })
+                        DropdownMenuItem(text = { Text(stringResource(R.string.action_copy_to_album)) }, onClick = {
+                            menu = false
+                            picking = false
+                        })
+                    }
+                }
             }
         },
     )
+    picking?.let { move ->
+        AlbumPicker(
+            albums,
+            title = stringResource(if (move) R.string.action_move_to_album else R.string.action_copy_to_album),
+            onDismiss = { picking = null },
+        ) { path ->
+            picking = null
+            if (move) actions.moveSelection(path) else actions.copySelection(path)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

@@ -2,11 +2,14 @@ package io.github.michaelmassoni.tessera.gallery.data
 
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.MediaStore.Files.FileColumns
+import androidx.core.net.toUri
 import androidx.exifinterface.media.ExifInterface
+import io.github.michaelmassoni.tessera.gallery.engine.AlbumTarget
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
 import io.github.michaelmassoni.tessera.gallery.engine.MediaOrder
 import java.io.IOException
@@ -125,4 +128,77 @@ class MediaRepository(
         }
 
     private fun exposure(seconds: Double): String = if (seconds >= 1) "%.1f s".format(seconds) else "1/%d s".format(Math.round(1 / seconds))
+
+    /**
+     * Moves [items] into the folder [relativePath] by changing their RELATIVE_PATH (MediaStore
+     * moves the files). Needs write access, granted by `createWriteRequest`. @return how many moved.
+     */
+    fun move(
+        items: List<MediaItem>,
+        relativePath: String,
+    ): Int =
+        items.count { item ->
+            runCatching {
+                resolver.update(
+                    item.uri.toUri(),
+                    ContentValues().apply { put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath) },
+                    null,
+                    null,
+                ) > 0
+            }.getOrDefault(false)
+        }
+
+    /**
+     * Copies [items] into [relativePath] as new files this app owns (no permission needed beyond
+     * reading). MediaStore renames a copy whose name is taken. @return how many were copied.
+     */
+    fun copy(
+        items: List<MediaItem>,
+        relativePath: String,
+    ): Int =
+        items.count { item ->
+            val target =
+                if (item.isVideo) {
+                    MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                } else {
+                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                }
+            val values =
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, item.name)
+                    put(MediaStore.MediaColumns.MIME_TYPE, item.mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                    if (item.date > 0) put(MediaStore.MediaColumns.DATE_TAKEN, item.date)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+            val uri = runCatching { resolver.insert(target, values) }.getOrNull() ?: return@count false
+            val ok =
+                runCatching {
+                    resolver.openInputStream(item.uri.toUri()).use { input ->
+                        resolver.openOutputStream(uri).use { output ->
+                            requireNotNull(input).copyTo(requireNotNull(output))
+                        }
+                    }
+                }.isSuccess
+            if (ok) {
+                resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+            } else {
+                runCatching { resolver.delete(uri, null, null) }
+            }
+            ok
+        }
+
+    /**
+     * Turns a photo 90° clockwise by changing its EXIF orientation: lossless and instant. Needs
+     * write access (`createWriteRequest`). @return whether it worked.
+     */
+    fun rotate(item: MediaItem): Boolean =
+        runCatching {
+            resolver.openFileDescriptor(item.uri.toUri(), "rw").use { fd ->
+                val exif = ExifInterface(requireNotNull(fd).fileDescriptor)
+                val now = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                exif.setAttribute(ExifInterface.TAG_ORIENTATION, AlbumTarget.rotateClockwise(now).toString())
+                exif.saveAttributes()
+            }
+        }.isSuccess
 }
