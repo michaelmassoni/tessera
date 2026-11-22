@@ -39,7 +39,14 @@ and needs no account.
   - New photos show up in place when the grid is at the top (a lazy grid would otherwise keep the
     old first photo in view and put them just above the screen).
 - **Selection:** long-press starts selection; tapping a day heading selects that day. The
-  contextual bar offers Share, Favourite and Move to trash.
+  contextual bar offers Share, Favourite and Move to trash, and in its overflow Move to album and
+  Copy to album (0.3).
+- **Move and copy to an album** (0.3): a dialog lists New album, then the folders. Moving changes
+  each item's `RELATIVE_PATH` after one system confirmation (`createWriteRequest`), so MediaStore
+  moves the files. Copying writes new files the app owns (no confirmation needed). A new album is
+  a folder under Pictures, which takes photos and videos; MediaStore keeps photos in DCIM,
+  Pictures or Download and videos in DCIM, Movies, Pictures or Download, so items that can't go
+  in the chosen folder are left where they are, with a message (`AlbumTarget`, unit tested).
 
 ### Albums
 
@@ -58,7 +65,8 @@ and needs no account.
 - **Order:** the viewer walks items in exactly the grid's order (`MediaOrder`: date taken, or date
   added when there's none, then id). MediaStore can't sort by that fallback itself, so the list is
   sorted in Kotlin.
-- **Actions:** Share, Favourite, Edit, Set as wallpaper, Info and Move to trash.
+- **Actions:** Share, Favourite, Edit, Rotate (0.3: a JPEG, PNG or WebP turns 90° clockwise
+  by changing its EXIF orientation, lossless and instant, after a system confirmation), Set as wallpaper, Info and Move to trash.
   - **Edit** (photos) opens the built-in editor (see Editor below). Its menu still offers
     **Open in another app** (`ACTION_EDIT` with read access only, so other editors save a copy),
     shown only when one is installed.
@@ -129,8 +137,6 @@ The viewer is always full-screen.
 ## Out of scope for v0.1
 
 - Search.
-- Moving between albums.
-- Creating albums.
 - Hidden or locked folders.
 - Map and people views.
 - Slideshows.
