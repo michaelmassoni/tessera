@@ -125,6 +125,30 @@ fun InCallScreen(
                 ) {
                     Text(call.number, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                call.location?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (call.spam) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(painterResource(DesignR.drawable.ic_report), contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text(
+                                stringResource(R.string.suspected_spam),
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(start = 6.dp),
+                            )
+                        }
+                    }
+                }
                 CallStatus(call)
                 Spacer(Modifier.weight(1f))
                 when {

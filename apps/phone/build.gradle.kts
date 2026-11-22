@@ -7,11 +7,12 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.phone"
-        versionCode = 11
-        versionName = "0.4.1"
+        versionCode = 12
+        versionName = "0.5.0"
     }
 }
 
 dependencies {
     implementation(libs.compose.material3.navigation.suite)
+    implementation(libs.libphonenumber.geocoder)
 }

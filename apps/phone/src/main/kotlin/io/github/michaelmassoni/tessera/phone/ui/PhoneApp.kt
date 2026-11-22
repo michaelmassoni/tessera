@@ -85,6 +85,7 @@ import io.github.michaelmassoni.tessera.phone.engine.ContactSections
 import io.github.michaelmassoni.tessera.phone.engine.Dialpad
 import io.github.michaelmassoni.tessera.phone.engine.DurationUnit
 import io.github.michaelmassoni.tessera.phone.engine.NumberMatch
+import io.github.michaelmassoni.tessera.phone.engine.SpamNumbers
 import io.github.michaelmassoni.tessera.phone.engine.T9
 import io.github.michaelmassoni.tessera.phone.engine.callDuration
 import kotlinx.coroutines.launch
@@ -102,7 +103,15 @@ data class PhoneState(
     val blocked: List<String> = emptyList(),
     /** Only the default phone app can block numbers. */
     val canBlock: Boolean = false,
+    /** Where unknown numbers are from ("Melbourne"), by number as the call log has it. */
+    val locations: Map<String, String> = emptyMap(),
+    /** Numbers reported as spam, in E.164. */
+    val reported: Set<String> = emptySet(),
+    /** The phone's country ("AU"), for matching numbers. */
+    val home: String = "",
 )
+
+fun PhoneState.isSpam(number: String) = SpamNumbers.isReported(number, reported, home)
 
 interface PhoneActions {
     fun call(number: String)
@@ -122,6 +131,12 @@ interface PhoneActions {
     fun block(number: String)
 
     fun unblock(number: String)
+
+    /** Labels [number] "Suspected spam" from now on (on this phone only), or stops. */
+    fun reportSpam(
+        number: String,
+        spam: Boolean,
+    )
 
     fun makeDefault()
 
@@ -310,6 +325,7 @@ private fun Recents(
                 contact,
                 actions,
                 blocked = if (state.canBlock) blocked else null,
+                spam = state.isSpam(call.number),
                 onEdit = onEdit,
                 onHistory = onHistory,
                 onBlock = { confirmBlock = it },
@@ -341,6 +357,7 @@ private fun Recents(
                 val display =
                     call.name ?: PhoneNumberUtils.formatNumber(call.number, country)
                         ?: call.number.ifBlank { stringResource(R.string.unknown_number) }
+                val spam = call.name == null && state.isSpam(call.number)
                 val missed = call.type == CallType.Missed || call.type == CallType.Rejected
                 ListItem(
                     leadingContent = { Avatar(call.name, call.number, null) },
@@ -360,8 +377,10 @@ private fun Recents(
                             )
                             val time = DateUtils.formatDateTime(context, call.date, DateUtils.FORMAT_SHOW_TIME)
                             val length = durationText(call.durationSeconds)
+                            val where = if (spam) stringResource(R.string.suspected_spam) else state.locations[call.number]
                             Text(
-                                if (length.isEmpty()) time else "$time · $length",
+                                listOfNotNull(where, time, length.ifEmpty { null }).joinToString(" · "),
+                                color = if (spam) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(start = 6.dp),
@@ -433,6 +452,7 @@ internal fun RecentOptions(
     onEdit: (String) -> Unit,
     onHistory: (String) -> Unit,
     onBlock: (String) -> Unit,
+    spam: Boolean = false,
     done: (() -> Unit) -> Unit,
 ) {
     val call = group.latest
@@ -477,6 +497,12 @@ internal fun RecentOptions(
             }
 
             null -> {}
+        }
+        if (contact == null) {
+            Option(
+                DesignR.drawable.ic_report,
+                if (spam) R.string.not_spam else R.string.report_spam,
+            ) { actions.reportSpam(call.number, !spam) }
         }
         Option(DesignR.drawable.ic_delete, R.string.delete_from_history) { actions.delete(group.ids) }
     }
@@ -757,6 +783,13 @@ internal fun CallHistory(
                         modifier = Modifier.padding(top = 12.dp),
                     )
                     if (name != null) Text(formatted, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (contact == null) {
+                        if (state.isSpam(number)) {
+                            Text(stringResource(R.string.suspected_spam), color = MaterialTheme.colorScheme.error)
+                        } else {
+                            state.locations[number]?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                    }
                     Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                         @Composable
                         fun Action(

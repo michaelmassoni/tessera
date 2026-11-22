@@ -19,9 +19,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.data.PhoneRepository
+import io.github.michaelmassoni.tessera.phone.data.SpamReports
 import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
 import io.github.michaelmassoni.tessera.phone.engine.AudioRoute
+import io.github.michaelmassoni.tessera.phone.engine.CallerLocation
 import io.github.michaelmassoni.tessera.phone.engine.Route
+import io.github.michaelmassoni.tessera.phone.engine.SpamNumbers
+import kotlin.concurrent.thread
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /**
@@ -38,6 +42,16 @@ class TesseraInCallService :
         super.onCreate()
         val repo = PhoneRepository(contentResolver)
         CallManager.nameLookup = { number -> runCatching { repo.nameFor(number) }.getOrNull() }
+        val home =
+            getSystemService(android.telephony.TelephonyManager::class.java)?.networkCountryIso?.uppercase()?.ifBlank { null }
+                ?: resources.configuration.locales[0].country
+        val spam = SpamReports(this)
+        val where = CallerLocation(home)
+        CallManager.callerLookup = { number ->
+            runCatching { where.describe(number) to SpamNumbers.isReported(number, spam.all(), home) }.getOrDefault(null to false)
+        }
+        // libphonenumber reads its data on first use: do that now, not when a call rings.
+        thread(name = "callerid-warmup") { runCatching { where.describe("+61390000000") } }
         CallManager.audioControl = this
         ensureChannel(this)
     }
@@ -193,6 +207,11 @@ class TesseraInCallService :
             } else {
                 NotificationCompat.CallStyle.forOngoingCall(person, action(ACTION_HANG_UP, call.id))
             }
+        // "Suspected spam", or where an unknown caller is from, on the notification too.
+        when {
+            call.spam -> style.setVerificationText(getString(R.string.suspected_spam))
+            call.location != null -> style.setVerificationText(call.location)
+        }
         val builder =
             NotificationCompat
                 .Builder(this, if (call.ringing) CHANNEL_INCOMING else CHANNEL_ONGOING)

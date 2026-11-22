@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.provider.BlockedNumberContract
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
+import android.telephony.TelephonyManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,7 +25,10 @@ import androidx.lifecycle.lifecycleScope
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.phone.data.ContactNumber
 import io.github.michaelmassoni.tessera.phone.data.PhoneRepository
+import io.github.michaelmassoni.tessera.phone.data.SpamReports
 import io.github.michaelmassoni.tessera.phone.engine.CallLogGrouping
+import io.github.michaelmassoni.tessera.phone.engine.CallerLocation
+import io.github.michaelmassoni.tessera.phone.engine.SpamNumbers
 import io.github.michaelmassoni.tessera.phone.ui.PhoneActions
 import io.github.michaelmassoni.tessera.phone.ui.PhoneApp
 import io.github.michaelmassoni.tessera.phone.ui.PhoneState
@@ -123,7 +127,30 @@ class MainActivity : ComponentActivity() {
                 async(Dispatchers.IO) { if (canBlock) runCatching { repo.blockedNumbers() }.getOrDefault(emptyList()) else emptyList() }
             val log = calls.await()
             val sections = withContext(Dispatchers.Default) { CallLogGrouping.sections(log, ZoneId.systemDefault()) }
-            state = PhoneState(true, sections, numbers.await(), isDefault, hasAll(), log, blocked.await(), canBlock)
+            // Where unknown callers are from, worked out on the phone (off the main thread: the data loads lazily).
+            val locations =
+                withContext(Dispatchers.Default) {
+                    log
+                        .filter { it.name == null && it.number.isNotBlank() }
+                        .map { it.number }
+                        .distinct()
+                        .mapNotNull { n -> callerLocation.describe(n)?.let { n to it } }
+                        .toMap()
+                }
+            state =
+                PhoneState(
+                    true,
+                    sections,
+                    numbers.await(),
+                    isDefault,
+                    hasAll(),
+                    log,
+                    blocked.await(),
+                    canBlock,
+                    locations = locations,
+                    reported = spamReports.all(),
+                    home = home,
+                )
         }
     }
 
@@ -134,7 +161,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val home by lazy {
+        getSystemService(TelephonyManager::class.java)?.networkCountryIso?.uppercase()?.ifBlank { null }
+            ?: resources.configuration.locales[0].country
+    }
+    private val callerLocation by lazy { CallerLocation(home) }
+    private val spamReports by lazy { SpamReports(this) }
+
     private inner class Actions : PhoneActions {
+        override fun reportSpam(
+            number: String,
+            spam: Boolean,
+        ) {
+            SpamNumbers.key(number, home)?.let { spamReports.set(it, spam) }
+            state = state.copy(reported = spamReports.all())
+        }
+
         override fun delete(ids: List<Long>) {
             if (granted(Manifest.permission.WRITE_CALL_LOG)) {
                 deleteCalls(ids)
