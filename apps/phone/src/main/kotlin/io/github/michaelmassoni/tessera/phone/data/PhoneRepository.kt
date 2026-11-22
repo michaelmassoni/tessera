@@ -7,6 +7,7 @@ import android.provider.BlockedNumberContract
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.ContactsContract.CommonDataKinds.Phone
+import androidx.core.content.edit
 import io.github.michaelmassoni.tessera.phone.engine.CallEntry
 import io.github.michaelmassoni.tessera.phone.engine.CallType
 
@@ -155,5 +156,29 @@ class PhoneRepository(
                     if (c.moveToFirst()) c.getString(0) to c.getString(1) else null
                 }
         }.getOrNull()
+    }
+}
+
+/**
+ * Numbers reported as spam (E.164), on this phone only: they're labelled "Suspected spam" in
+ * Recents and when they call, never blocked or silenced. Included in Tessera backups.
+ */
+class SpamReports(
+    context: android.content.Context,
+) {
+    private val prefs = context.getSharedPreferences("spam", android.content.Context.MODE_PRIVATE)
+
+    fun all(): Set<String> = prefs.getStringSet(KEY, emptySet()).orEmpty()
+
+    fun set(
+        key: String,
+        reported: Boolean,
+    ) {
+        val now = all().toMutableSet().apply { if (reported) add(key) else remove(key) }
+        prefs.edit { putStringSet(KEY, now) }
+    }
+
+    private companion object {
+        const val KEY = "reported"
     }
 }

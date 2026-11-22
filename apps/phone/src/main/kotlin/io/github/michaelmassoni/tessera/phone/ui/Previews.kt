@@ -30,6 +30,11 @@ private object NoPhoneActions : PhoneActions {
 
     override fun unblock(number: String) = Unit
 
+    override fun reportSpam(
+        number: String,
+        spam: Boolean,
+    ) = Unit
+
     override fun makeDefault() = Unit
 
     override fun grant() = Unit
@@ -61,7 +66,7 @@ private val recents =
             ),
         day2 to
             listOf(
-                CallGroup(entry(4, "131 450", null, CallType.Incoming, day2, 16, seconds = 42), 1),
+                CallGroup(entry(4, "0392000000", null, CallType.Incoming, day2, 16, seconds = 42), 1),
                 CallGroup(entry(5, "+61412345678", "Ada Lovelace", CallType.Rejected, day2, 11), 1),
             ),
     )
@@ -71,7 +76,17 @@ private val recents =
 @Composable
 private fun RecentsPreview() {
     TesseraTheme(dynamicColor = false) {
-        PhoneApp(PhoneState(loaded = true, recents = recents, isDefault = true), NoPhoneActions)
+        PhoneApp(
+            PhoneState(
+                loaded = true,
+                recents = recents,
+                isDefault = true,
+                locations = mapOf("0392000000" to "Melbourne"),
+                reported = setOf("+61455000111"),
+                home = "AU",
+            ),
+            NoPhoneActions,
+        )
     }
 }
 

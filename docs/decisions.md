@@ -4,6 +4,14 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Phone labels spam from your own reports; no community list yet (Accepted)
+
+The maintainer chose: a community spam list if a popular, trusted one exists; label only (never
+silence or reject); reports stay on the phone. No list met that bar (Yet Another Call Blocker's
+database is a proprietary app's service; no downloadable Australian list), so Phone 0.5 labels
+numbers the person reported, and caller location comes from libphonenumber's offline data. A
+list can be added later behind the same label.
+
 ## 2026-11-22: Backups are files, per app and for the whole suite (Accepted)
 
 The maintainer asked for backup and restore and left the design to Claude. Each app backs up its

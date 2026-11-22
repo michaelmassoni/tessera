@@ -103,6 +103,28 @@ covers the incoming-call screen.
 - **Second calls:** a second incoming call during a call shows Answer (which holds the first) and
   Decline. Conference merging is out of scope.
 
+## Caller ID and spam (0.5)
+
+- **Where unknown numbers are from**, worked out on the phone with libphonenumber's offline data
+  (Google's open-source library, Apache 2.0, about 2 MB): nothing is looked up online.
+  - A landline shows its area ("Melbourne"); a number from another country, its city and
+    country ("London, United Kingdom"), or just the country. A mobile or service number from
+    this country shows nothing (they aren't tied to a place), nor does an area the data only
+    knows as the country itself.
+  - Shown under unknown numbers in Recents ("Melbourne · 4:15 PM · 42 sec"), in call history,
+    on the in-call screen and on the call notification (CallStyle's verification line).
+  - The phone's country comes from the network (`TelephonyManager.networkCountryIso`), else the
+    locale.
+- **Suspected spam:** "Report as spam" (or "Not spam") in an unknown number's long-press sheet.
+  Reports stay on this phone (shared preferences, so they're in Tessera backups) and are
+  compared in E.164, however the number is written. A reported number is only labelled, as the
+  maintainer chose: "Suspected spam" in red in Recents and call history, a chip on the in-call
+  screen, and on the call notification. It still rings; Block is separate.
+- **No community spam list yet:** none met the bar of popular, trusted and usable. Yet Another
+  Call Blocker is open source but its database comes from a proprietary app's service (F-Droid
+  flags it as non-free) and hasn't been updated since 2021, and there's no downloadable
+  Australian list (2026-11-22). The labels work the same for whatever list is added later.
+
 ## Engine (pure Kotlin, unit tested)
 
 - `Dialpad`: key-to-letter map and appending or deleting digits; the long-press 0 gives +.

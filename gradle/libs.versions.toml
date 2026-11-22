@@ -1,6 +1,8 @@
 # Versions checked against Maven Central / Google Maven / Gradle Plugin Portal on 2026-11-19.
 # Latest stable only; any exception needs a comment here and an entry in docs/decisions.md.
 [versions]
+libphonenumber = "9.0.44"
+phonenumber-geocoder = "3.44"
 # Android SDK levels, read by the convention plugins in build-logic/.
 sdk-compile = "37"
 sdk-target = "37"
@@ -40,6 +42,8 @@ ktlint = "1.8.0"
 compose-lint-checks = "1.6.1"
 
 [libraries]
+libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
+libphonenumber-geocoder = { module = "com.googlecode.libphonenumber:geocoder", version.ref = "phonenumber-geocoder" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
