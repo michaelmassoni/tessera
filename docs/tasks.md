@@ -56,6 +56,8 @@ every client reads the same way.
   its next time) and **Snooze 10 min**. Opening shows the task. A high-importance channel, so it
   sounds and peeks like an alarm-lite.
 - Missed while the phone was off: shown on boot.
+- Without exact alarms Android may deliver a reminder up to an hour late. The list then shows a
+  banner saying so, with a button that opens the setting.
 
 ## Widget
 
