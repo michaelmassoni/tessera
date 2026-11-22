@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Recorder</string>
+    <!-- The first word of a new recording's name: "Recording 23 Nov 10:42". -->
+    <string name="recording_word">Recording</string>
+
+    <!-- List -->
+    <string name="record">Record</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search recordings</string>
+    <string name="close_search">Close search</string>
+    <string name="settings">Settings</string>
+    <string name="empty_title">No recordings yet</string>
+    <string name="empty_text">Tap the button to record</string>
+    <string name="no_matches">No recordings match</string>
+    <string name="clear_selection">Clear selection</string>
+    <string name="select">Select</string>
+    <plurals name="selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <plurals name="deleted">
+        <item quantity="one">Recording moved to the trash</item>
+        <item quantity="other">%d recordings moved to the trash</item>
+    </plurals>
+    <string name="undo">Undo</string>
+    <string name="delete_failed">Couldn\'t delete that recording</string>
+    <string name="bar_recording">Recording · %1$s</string>
+    <string name="bar_paused">Paused · %1$s</string>
+    <string name="saved">Recording saved</string>
+    <string name="lost_recording">A recording that was cut off couldn\'t be saved</string>
+
+    <!-- Recording -->
+    <string name="back">Back</string>
+    <string name="status_recording">Recording</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_silenced">A call is using the microphone</string>
+    <string name="live_waveform">Sound level</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="stop">Stop</string>
+    <string name="stop_and_save">Stop and save</string>
+    <string name="discard">Discard</string>
+    <string name="discard_title">Discard this recording?</string>
+    <string name="discard_text">It won\'t be saved.</string>
+    <string name="keep_recording">Keep recording</string>
+    <string name="error_microphone">Couldn\'t start recording. Another app may be using the microphone.</string>
+    <string name="error_storage">Couldn\'t create the recording. Check that there\'s space on the phone.</string>
+    <string name="stopped_low_storage">Recording stopped and saved: the phone is almost out of space</string>
+
+    <!-- Player -->
+    <string name="play">Play</string>
+    <string name="back_10">Back 10 seconds</string>
+    <string name="forward_10">Forward 10 seconds</string>
+    <string name="speed">Speed %1$s</string>
+    <string name="rename">Rename</string>
+    <string name="rename_failed">Couldn\'t rename the recording</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="waveform_description">Waveform, %1$s long, at %2$s. Tap to move.</string>
+
+    <!-- Notification, tile, shortcut -->
+    <string name="channel_recording">Recording</string>
+    <string name="channel_recording_description">Shown while recording, with Pause and Stop</string>
+    <string name="notification_recording">Recording · %1$s</string>
+    <string name="notification_paused">Paused · %1$s</string>
+    <string name="notification_silenced">A call is using the microphone</string>
+    <string name="tile_record">Record</string>
+    <string name="shortcut_record">New recording</string>
+
+    <!-- Settings -->
+    <string name="settings_quality">Recording quality</string>
+    <string name="quality_standard">Standard: for voice, about 1 MB a minute</string>
+    <string name="quality_high">High: stereo, for music, about 2 MB a minute</string>
+
+    <!-- First run -->
+    <string name="setup_microphone_title">Microphone</string>
+    <string name="setup_microphone_text">Recorder needs the microphone to record. It only listens while you\'re recording.</string>
+    <string name="setup_notifications_title">Notifications</string>
+    <string name="setup_notifications_text">Shows that a recording is running, with Pause and Stop, while you use other apps.</string>
+</resources>

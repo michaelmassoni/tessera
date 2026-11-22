@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Recordings are ordinary files in the shared Recordings folder; Android's own backups keep the
+     settings and the waveforms beside them. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="waves/" />
+        <include domain="sharedpref" path="settings.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="waves/" />
+        <include domain="sharedpref" path="settings.xml" />
+    </device-transfer>
+</data-extraction-rules>

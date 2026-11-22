@@ -123,5 +123,6 @@ gitignored.
 4. Phone, Messages (need a real device for testing)
 5. Weather, Sports (added 2026-11-21 at the maintainer's request)
 6. Tasks (added 2026-11-22 at the maintainer's request)
+7. Recorder (added 2026-11-23 at the maintainer's request)
 
 Out of scope: Keyboard, Launcher and Camera (dropped 2026-11-19, see docs/decisions.md), Maps, cloud Photos and Gmail-style services (no offline equivalent).
