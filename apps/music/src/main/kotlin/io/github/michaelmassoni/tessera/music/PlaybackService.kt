@@ -18,6 +18,7 @@ import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import io.github.michaelmassoni.tessera.music.data.PlayHistory
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.QueueOrder
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
@@ -107,6 +108,9 @@ class PlaybackService : MediaSessionService() {
                     }
                     if (events.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) reorderForShuffle(player)
                     if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) keepSavingPosition(player)
+                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) || events.contains(Player.EVENT_IS_PLAYING_CHANGED)) {
+                        recordPlay(player)
+                    }
                     if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) scrobbler.started(player)
                     if (events.containsAny(
                             Player.EVENT_MEDIA_METADATA_CHANGED,
@@ -142,6 +146,19 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
+    private var recorded: String? = null
+
+    /** Notes the song playing in this phone's play history, once each time it starts. */
+    private fun recordPlay(player: Player) {
+        val item = player.currentMediaItem ?: return
+        if (!player.isPlaying) return
+        val key = "${player.currentMediaItemIndex}:${item.mediaId}"
+        if (key == recorded) return
+        recorded = key
+        val id = item.mediaId.toLongOrNull() ?: return
+        scope.launch(Dispatchers.IO) { PlayHistory.played(applicationContext, id) }
+    }
+
     /** Whether the queue is in shuffled order now, and the order it had before. */
     private var shuffled = false
     private var unshuffled: List<String>? = null
@@ -162,7 +179,16 @@ class PlaybackService : MediaSessionService() {
             } else {
                 QueueOrder.restored(ids, unshuffled.orEmpty()).also { unshuffled = null }
             }
-        QueueOrder.moves(order).forEach { (from, to) -> player.moveMediaItem(from, to) }
+        // Everything but the song playing is taken out and put back in the new order: four changes
+        // however long the queue, where one move per song sent the whole queue to the app each time.
+        val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
+        val current = player.currentMediaItemIndex
+        val at = order.indexOf(current)
+        if (current < 0 || at < 0) return
+        player.removeMediaItems(current + 1, items.size)
+        player.removeMediaItems(0, current)
+        player.addMediaItems(0, order.subList(0, at).map(items::get))
+        player.addMediaItems(at + 1, order.subList(at + 1, order.size).map(items::get))
     }
 
     private var positionSaver: Job? = null

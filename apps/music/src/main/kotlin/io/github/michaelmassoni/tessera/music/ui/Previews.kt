@@ -32,6 +32,7 @@ private val playing =
         artist = "The Night Shift",
         album = "Overtime",
         isPlaying = true,
+        shuffle = true,
         queue = songs.map { QueueItem(it.id.toString(), it.title, it.artist) },
         from = PlayingFrom(PlayingFrom.Kind.Album, "Overtime"),
         index = 2,

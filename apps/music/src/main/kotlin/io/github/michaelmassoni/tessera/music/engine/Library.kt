@@ -19,6 +19,12 @@ data class Song(
     val year: Int = 0,
     /** A server song's cover art id (`getCoverArt`); null for local songs, whose art comes from MediaStore. */
     val art: String? = null,
+    /** The album's artist (blank when untagged: the album's most common track artist is used). */
+    val albumArtist: String = "",
+    /** When it was added to the library, ms since 1970 (0 if unknown). */
+    val addedAt: Long = 0,
+    /** When the server last saw it played, ms (0 if never or unknown). */
+    val playedAt: Long = 0,
 )
 
 data class Album(
@@ -27,6 +33,8 @@ data class Album(
     val artist: String,
     val year: Int,
     val songs: List<Song>,
+    /** The newest song's [Song.addedAt]. */
+    val addedAt: Long = 0,
 )
 
 data class Artist(
@@ -74,16 +82,46 @@ object Library {
         all
             .groupBy { it.albumId }
             .map { (id, songs) ->
-                // The album artist is the most common track artist ("Various artists" albums show the first).
+                // The tagged album artist; untagged, the most common track artist ("Various artists"
+                // albums show the first).
                 val artist =
-                    songs
-                        .groupingBy { it.artist }
-                        .eachCount()
-                        .maxByOrNull { it.value }
-                        ?.key
-                        .orEmpty()
-                Album(id, songs.first().album, artist, songs.maxOf { it.year }, albumOrder(songs))
+                    mostCommon(songs.map { it.albumArtist }.filter { it.isNotBlank() })
+                        ?: mostCommon(songs.map { it.artist }).orEmpty()
+                Album(id, songs.first().album, artist, songs.maxOf { it.year }, albumOrder(songs), songs.maxOf { it.addedAt })
             }.sortedWith(compareBy<Album> { sortKey(it.title) }.thenBy { sortKey(it.artist) })
+
+    private fun mostCommon(values: List<String>): String? =
+        values
+            .groupingBy { it }
+            .eachCount()
+            .maxByOrNull { it.value }
+            ?.key
+
+    /**
+     * Artists by album artist: each album once, under the artist it's credited to, so featured artists
+     * and compilations don't each become an artist of their own.
+     */
+    fun albumArtists(all: List<Song>): List<Artist> =
+        albums(all)
+            .groupBy { normalize(it.artist.trim()) }
+            .map { (key, albums) ->
+                Artist(
+                    id = albumArtistId(key),
+                    name = albums.first().artist,
+                    albums = albums.sortedByDescending { it.year },
+                    songs = songs(albums.flatMap { it.songs }),
+                )
+            }.sortedBy { sortKey(it.name) }
+
+    /** A stable id for an album artist (FNV-1a of the name), apart from track artists' ids. */
+    fun albumArtistId(name: String): Long {
+        var hash = -0x340d631b7bdddcdbL
+        for (b in "albumartist/$name".toByteArray()) {
+            hash = hash xor (b.toLong() and 0xff)
+            hash *= 0x100000001b3L
+        }
+        return (hash and Long.MAX_VALUE).coerceAtLeast(1)
+    }
 
     fun artists(all: List<Song>): List<Artist> {
         val albums = albums(all)

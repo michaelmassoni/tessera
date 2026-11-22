@@ -15,6 +15,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -95,15 +97,23 @@ internal fun QueueSheet(
                             actions.removeQueueItem(i)
                         },
                         backgroundContent = {
-                            Box(
-                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 24.dp),
-                                contentAlignment = Alignment.CenterEnd,
-                            ) {
-                                Icon(
-                                    painterResource(DesignR.drawable.ic_delete),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                )
+                            // Only while swiping, and rounded: drawn all the time, its corners showed around the
+                            // rounded highlight of the song playing.
+                            if (swipe.dismissDirection != SwipeToDismissBoxValue.Settled) {
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .clip(MaterialTheme.shapes.large)
+                                        .background(MaterialTheme.colorScheme.errorContainer)
+                                        .padding(horizontal = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd,
+                                ) {
+                                    Icon(
+                                        painterResource(DesignR.drawable.ic_delete),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
                             }
                         },
                     ) {

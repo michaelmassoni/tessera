@@ -1,6 +1,17 @@
 package io.github.michaelmassoni.tessera.music.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +29,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -39,8 +51,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +64,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -60,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
+import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
 import io.github.michaelmassoni.tessera.music.engine.Library
@@ -68,6 +87,7 @@ import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
+import io.github.michaelmassoni.tessera.music.engine.Sorts
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -77,6 +97,10 @@ data class LibraryState(
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
     val playlists: List<Playlist> = emptyList(),
+    /** Artists by album artist (see [Library.albumArtists]). */
+    val albumArtists: List<Artist> = emptyList(),
+    /** When songs were last played on this phone, for "Recently played". */
+    val history: Map<Long, Long> = emptyMap(),
     /** Songs from a server (an empty library says so). */
     val fromServer: Boolean = false,
     /** Something wrong with the server, shown above the library. */
@@ -171,6 +195,42 @@ private sealed interface Page {
     ) : Page
 }
 
+/** Where the library is: a tab, and the pages opened from it (album, artist, playlist). */
+private data class Screen(
+    val tab: Int,
+    val stack: List<Page> = emptyList(),
+)
+
+/**
+ * How the library pages are sorted and shown, remembered between visits. Changes are saved as
+ * they're made.
+ */
+@Stable
+private class LibraryView(
+    private val settings: MusicSettings,
+) {
+    var songSort by mutableStateOf(settings.sort("songs", Sorts.songs.first()))
+    var albumSort by mutableStateOf(settings.sort("albums", Sorts.albums.first()))
+    var artistSort by mutableStateOf(settings.sort("artists", Sorts.artists.first()))
+    var playlistSort by mutableStateOf(settings.sort("playlists", Sorts.playlists.first()))
+    var albumGrid by mutableStateOf(settings.grid("albums", true))
+    var artistGrid by mutableStateOf(settings.grid("artists", false))
+    var playlistGrid by mutableStateOf(settings.grid("playlists", false))
+    var albumArtists by mutableStateOf(settings.albumArtists)
+
+    fun save() {
+        settings.setSort("songs", songSort)
+        settings.setSort("albums", albumSort)
+        settings.setSort("artists", artistSort)
+        settings.setSort("playlists", playlistSort)
+        settings.setGrid("albums", albumGrid)
+        settings.setGrid("artists", artistGrid)
+        settings.setGrid("playlists", playlistGrid)
+        settings.albumArtists = albumArtists
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MusicApp(
     library: LibraryState,
@@ -181,88 +241,139 @@ fun MusicApp(
     modifier: Modifier = Modifier,
     lyrics: LyricsState = LyricsState.None(false),
 ) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var page by remember { mutableStateOf<Page?>(null) }
-    var playerOpen by rememberSaveable { mutableStateOf(false) }
-    BackHandler(playerOpen) { playerOpen = false }
-    BackHandler(!playerOpen && page != null) { page = null }
-
-    if (playerOpen && playback.hasMedia) {
-        FullPlayer(
-            playback,
-            progress,
-            playerActions,
-            onClose = { playerOpen = false },
-            modifier = modifier,
-            lyrics = lyrics,
-            playlists = library.playlists,
-            libraryActions = libraryActions,
-        )
-        return
+    val context = LocalContext.current
+    val view = remember { LibraryView(MusicSettings(context)) }
+    var screen by remember { mutableStateOf(Screen(0)) }
+    // How far a predictive back gesture has gone on a page, 0 to 1.
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    PredictiveBackHandler(enabled = screen.stack.isNotEmpty()) { events ->
+        try {
+            events.collect { backProgress = it.progress }
+            screen = screen.copy(stack = screen.stack.dropLast(1))
+        } finally {
+            backProgress = 0f
+        }
     }
-    NavigationSuiteScaffold(
+
+    fun open(page: Page) {
+        screen = screen.copy(stack = screen.stack + page)
+    }
+    val back: () -> Unit = { screen = screen.copy(stack = screen.stack.dropLast(1)) }
+
+    PlayerSheet(
+        hasMedia = playback.hasMedia,
         modifier = modifier,
-        navigationSuiteItems = {
-            Tab.entries.forEach { t ->
-                item(
-                    selected = tab == t.ordinal && page == null,
-                    onClick = {
-                        tab = t.ordinal
-                        page = null
-                    },
-                    icon = { Icon(painterResource(t.icon), contentDescription = null) },
-                    label = { Text(stringResource(t.label)) },
-                )
-            }
+        player = { onClose, sheetModifier ->
+            FullPlayer(
+                playback,
+                progress,
+                playerActions,
+                onClose = onClose,
+                modifier = sheetModifier,
+                lyrics = lyrics,
+                playlists = library.playlists,
+                libraryActions = libraryActions,
+            )
         },
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f)) {
-                when (val p = page) {
-                    is Page.AlbumPage -> {
-                        library.albums.firstOrNull { it.id == p.id }?.let { AlbumScreen(it, libraryActions) { page = null } }
-                    }
+    ) { openPlayer ->
+        NavigationSuiteScaffold(
+            navigationSuiteItems = {
+                Tab.entries.forEach { t ->
+                    item(
+                        selected = screen.tab == t.ordinal && screen.stack.isEmpty(),
+                        onClick = { screen = Screen(t.ordinal) },
+                        icon = { Icon(painterResource(t.icon), contentDescription = null) },
+                        label = { Text(stringResource(t.label)) },
+                    )
+                }
+            },
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                SharedTransitionLayout(Modifier.weight(1f)) {
+                    AnimatedContent(
+                        targetState = screen,
+                        transitionSpec = {
+                            val deeper = targetState.stack.size > initialState.stack.size
+                            val shallower = targetState.stack.size < initialState.stack.size
+                            when {
+                                // Opening a page: it slides in a little from the end and fades in.
+                                deeper -> {
+                                    (slideInHorizontally(tween(300)) { it / 5 } + fadeIn(tween(300))) togetherWith fadeOut(tween(150))
+                                }
 
-                    is Page.ArtistPage -> {
-                        library.artists.firstOrNull { it.id == p.id }?.let {
-                            ArtistScreen(it, libraryActions, { page = Page.AlbumPage(it) }) {
-                                page =
-                                    null
+                                // Back: the page slides away and the one under it fades back.
+                                shallower -> {
+                                    fadeIn(tween(250)) togetherWith (slideOutHorizontally(tween(250)) { it / 5 } + fadeOut(tween(200)))
+                                }
+
+                                // Another tab: a quick cross-fade.
+                                else -> {
+                                    fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(90))
+                                }
+                            }
+                        },
+                        label = "library",
+                        modifier =
+                            Modifier.fillMaxSize().graphicsLayer {
+                                // Predictive back: the page shrinks and moves with the gesture.
+                                val p = backProgress
+                                scaleX = 1f - 0.08f * p
+                                scaleY = 1f - 0.08f * p
+                                translationX = p * 32.dp.toPx()
+                            },
+                    ) { s ->
+                        CompositionLocalProvider(LocalSharedScope provides this@SharedTransitionLayout, LocalPageScope provides this) {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                                when (val p = s.stack.lastOrNull()) {
+                                    is Page.AlbumPage -> {
+                                        library.albums.firstOrNull { it.id == p.id }?.let { AlbumScreen(it, libraryActions, back) }
+                                    }
+
+                                    is Page.ArtistPage -> {
+                                        (library.albumArtists + library.artists).firstOrNull { it.id == p.id }?.let {
+                                            ArtistScreen(it, libraryActions, { id -> open(Page.AlbumPage(id)) }, back)
+                                        }
+                                    }
+
+                                    is Page.PlaylistPage -> {
+                                        library.playlists.firstOrNull { it.id == p.id }?.let { playlist ->
+                                            PlaylistScreen(
+                                                playlist,
+                                                Playlists.songs(playlist, library.byId),
+                                                library.playlists,
+                                                libraryActions,
+                                                back,
+                                            )
+                                        }
+                                    }
+
+                                    null -> {
+                                        LibraryScreen(
+                                            Tab.entries[s.tab],
+                                            library,
+                                            view,
+                                            libraryActions,
+                                            { open(Page.AlbumPage(it)) },
+                                            { open(Page.ArtistPage(it)) },
+                                            { open(Page.PlaylistPage(it)) },
+                                        )
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    is Page.PlaylistPage -> {
-                        library.playlists.firstOrNull { it.id == p.id }?.let { playlist ->
-                            PlaylistScreen(playlist, Playlists.songs(playlist, library.byId), library.playlists, libraryActions) {
-                                page =
-                                    null
-                            }
-                        }
-                    }
-
-                    null -> {
-                        LibraryScreen(
-                            Tab.entries[tab],
-                            library,
-                            libraryActions,
-                            { page = Page.AlbumPage(it) },
-                            { page = Page.ArtistPage(it) },
-                            { page = Page.PlaylistPage(it) },
-                        )
                     }
                 }
+                if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = openPlayer)
             }
-            if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = { playerOpen = true })
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryScreen(
     tab: Tab,
     library: LibraryState,
+    view: LibraryView,
     actions: LibraryActions,
     onAlbum: (Long) -> Unit,
     onArtist: (Long) -> Unit,
@@ -299,6 +410,42 @@ private fun LibraryScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             library.notice?.let { Notice(it, actions) }
+            val browsing = library.loaded && library.songs.isNotEmpty() && query.isBlank()
+            if (browsing) {
+                fun change(block: () -> Unit) {
+                    block()
+                    view.save()
+                }
+                when (tab) {
+                    Tab.Songs -> {
+                        SortBar(Sorts.songs, view.songSort, { change { view.songSort = it } })
+                    }
+
+                    Tab.Albums -> {
+                        SortBar(Sorts.albums, view.albumSort, { change { view.albumSort = it } }, grid = view.albumGrid, onGrid = {
+                            change { view.albumGrid = it }
+                        })
+                    }
+
+                    Tab.Artists -> {
+                        SortBar(
+                            Sorts.artists,
+                            view.artistSort,
+                            { change { view.artistSort = it } },
+                            grid = view.artistGrid,
+                            onGrid = { change { view.artistGrid = it } },
+                        ) { AlbumArtistsChip(view.albumArtists) { change { view.albumArtists = !view.albumArtists } } }
+                    }
+
+                    Tab.Playlists -> {
+                        SortBar(Sorts.playlists, view.playlistSort, {
+                            change { view.playlistSort = it }
+                        }, grid = view.playlistGrid, onGrid = {
+                            change { view.playlistGrid = it }
+                        })
+                    }
+                }
+            }
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when {
                     !library.loaded -> {
@@ -321,19 +468,38 @@ private fun LibraryScreen(
                     }
 
                     tab == Tab.Songs -> {
-                        SongList(library.songs, actions, PlayingFrom(PlayingFrom.Kind.Songs), showShuffle = true, onLongClick = onLongClick)
+                        val songs =
+                            remember(
+                                library.songs,
+                                view.songSort,
+                                library.history,
+                            ) { Sorts.songs(library.songs, view.songSort, library.history) }
+                        SongList(songs, actions, PlayingFrom(PlayingFrom.Kind.Songs), showShuffle = true, onLongClick = onLongClick)
                     }
 
                     tab == Tab.Playlists -> {
-                        PlaylistList(library.playlists, actions, onPlaylist)
+                        val playlists =
+                            remember(library.playlists, view.playlistSort, library.history) {
+                                Sorts.playlists(library.playlists, view.playlistSort, library.byId, library.history)
+                            }
+                        PlaylistList(playlists, library.byId, view.playlistGrid, actions, onPlaylist)
                     }
 
                     tab == Tab.Albums -> {
-                        AlbumGrid(library.albums, onAlbum)
+                        val albums =
+                            remember(
+                                library.albums,
+                                view.albumSort,
+                                library.history,
+                            ) { Sorts.albums(library.albums, view.albumSort, library.history) }
+                        if (view.albumGrid) AlbumGrid(albums, onAlbum) else AlbumList(albums, onAlbum)
                     }
 
                     else -> {
-                        ArtistList(library.artists, onArtist)
+                        val source = if (view.albumArtists) library.albumArtists else library.artists
+                        val artists =
+                            remember(source, view.artistSort, library.history) { Sorts.artists(source, view.artistSort, library.history) }
+                        if (view.artistGrid) ArtistGrid(artists, onArtist) else ArtistList(artists, onArtist)
                     }
                 }
             }
@@ -380,63 +546,6 @@ internal fun SongList(
     }
 }
 
-@Composable
-private fun AlbumGrid(
-    albums: List<Album>,
-    onAlbum: (Long) -> Unit,
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(150.dp),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        items(albums, key = { it.id }) { album ->
-            Surface(onClick = { onAlbum(album.id) }, shape = MaterialTheme.shapes.medium) {
-                Column {
-                    AlbumArt(album.id, size = 160.dp, modifier = Modifier.fillMaxWidth())
-                    Text(
-                        album.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Text(
-                        album.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ArtistList(
-    artists: List<Artist>,
-    onArtist: (Long) -> Unit,
-) {
-    LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-        itemsIndexed(artists, key = { _, a -> a.id }) { _, artist ->
-            ListItem(
-                onClick = { onArtist(artist.id) },
-                leadingContent = { AlbumArt(artist.albums.firstOrNull()?.id ?: 0) },
-                supportingContent = {
-                    Text(
-                        pluralStringResource(R.plurals.album_count, artist.albums.size, artist.albums.size) + " · " +
-                            pluralStringResource(R.plurals.song_count, artist.songs.size, artist.songs.size),
-                    )
-                },
-                modifier = Modifier.padding(horizontal = 8.dp),
-            ) { Text(artist.name.ifBlank { stringResource(R.string.unknown_artist) }) }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AlbumScreen(
@@ -462,7 +571,7 @@ private fun AlbumScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            AlbumArt(album.id, size = 200.dp)
+                            AlbumArt(album.id, size = 200.dp, modifier = Modifier.sharedArt("album-${album.id}"))
                             Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                             Text(
                                 listOfNotNull(album.artist.ifBlank { null }, album.year.takeIf { it > 0 }?.toString()).joinToString(" · "),
@@ -491,6 +600,24 @@ private fun ArtistScreen(
     Scaffold(topBar = { BackBar(artist.name, onBack) }) { padding ->
         Box(Modifier.padding(padding)) {
             SongList(artist.songs, actions, PlayingFrom(PlayingFrom.Kind.Artist, artist.name), showShuffle = true, header = {
+                item(key = "header") {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AlbumArt(
+                            artist.albums.firstOrNull()?.id ?: 0,
+                            size = 160.dp,
+                            modifier = Modifier.clip(CircleShape).sharedArt("artist-${artist.id}"),
+                        )
+                        Text(
+                            artist.name.ifBlank { stringResource(R.string.unknown_artist) },
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
                 item(key = "albums") {
                     Text(
                         stringResource(R.string.tab_albums),

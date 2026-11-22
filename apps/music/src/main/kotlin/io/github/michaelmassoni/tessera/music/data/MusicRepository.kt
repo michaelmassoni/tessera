@@ -25,6 +25,8 @@ class MusicRepository(
                     MediaStore.Audio.Media.DURATION,
                     MediaStore.Audio.Media.TRACK,
                     MediaStore.Audio.Media.YEAR,
+                    MediaStore.Audio.Media.ALBUM_ARTIST,
+                    MediaStore.Audio.Media.DATE_ADDED,
                 ),
                 "${MediaStore.Audio.Media.IS_MUSIC} != 0",
                 null,
@@ -44,6 +46,8 @@ class MusicRepository(
                             durationMillis = c.getLong(6),
                             track = c.getInt(7),
                             year = c.getInt(8),
+                            albumArtist = c.getString(9).orEmpty(),
+                            addedAt = c.getLong(10) * 1000,
                         )
                 }
             }
