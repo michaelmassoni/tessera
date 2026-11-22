@@ -4,6 +4,23 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-23: Recorder app (Accepted)
+
+The maintainer asked for a voice recorder in the spirit of Pixel Recorder, as the next app after
+Tasks (an authenticator was considered and deferred: the maintainer keeps 2FA in Bitwarden).
+
+- **Recordings are shared files** in `Recordings/Tessera` (MediaStore), not in the app's private
+  storage, so Files, other players and backup or sync tools see them. No storage permission is
+  needed for the app's own files. The cost: after a reinstall Android no longer counts the old
+  files as the app's, so v0.1 doesn't list them (they stay in the folder).
+- **AAC in .m4a** through MediaRecorder: every phone and computer plays it, and the media server
+  closes the file properly even if the app is killed.
+- **A foreground service of type microphone**, started only from the app's own screens (Android
+  14+ refuses one started from the background); the Quick Settings tile opens the app to record.
+- **No network permission.** Transcription is left out of v0.1: on-device speech models are large.
+- During a call Android silences other apps' microphones; the recording carries on (that stretch
+  is silent) rather than pausing itself, which could leave it paused for good.
+
 ## 2026-11-22: Tasks app with its own CalDAV sync (Accepted)
 
 The maintainer asked for a Tasks app modelled on Google Tasks, for simple daily tasks and
