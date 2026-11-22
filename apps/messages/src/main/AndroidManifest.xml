@@ -104,6 +104,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- Android Auto: conversations are read aloud and answered by voice from their notifications
+             (MessagingStyle, with reply and mark-as-read actions that open nothing). -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <!-- MMS PDUs going to and from Android's MMS service, and attachments opened in other apps. -->
         <provider
             android:name="androidx.core.content.FileProvider"

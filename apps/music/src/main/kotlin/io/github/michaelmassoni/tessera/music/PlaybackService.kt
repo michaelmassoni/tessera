@@ -13,19 +13,32 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.ShuffleOrder
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaConstants
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionError
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
+import io.github.michaelmassoni.tessera.music.data.LibraryLoader
+import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.data.PlayHistory
+import io.github.michaelmassoni.tessera.music.engine.BrowseTree
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.QueueOrder
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.SavedQueue
 import io.github.michaelmassoni.tessera.music.server.ArtProvider
+import io.github.michaelmassoni.tessera.music.server.MusicSource
 import io.github.michaelmassoni.tessera.music.server.Scrobbler
+import io.github.michaelmassoni.tessera.music.server.ServerLibrary
 import io.github.michaelmassoni.tessera.music.server.ServerPlayback
+import io.github.michaelmassoni.tessera.music.server.ServerStore
 import io.github.michaelmassoni.tessera.music.widget.NowPlaying
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,8 +48,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Background playback. Media3 gives the media notification, lock-screen and Bluetooth controls,
@@ -48,8 +63,8 @@ import java.io.IOException
  * (and the position on pause), and put back, paused, when the service starts again: after the
  * app was swiped away, the process died, or from Android's "resume playback" controls.
  */
-class PlaybackService : MediaSessionService() {
-    private var session: MediaSession? = null
+class PlaybackService : MediaLibraryService() {
+    private var session: MediaLibrarySession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val queueFile by lazy { File(filesDir, "queue.json") }
     private val scrobbler by lazy { Scrobbler(applicationContext, scope) }
@@ -75,9 +90,8 @@ class PlaybackService : MediaSessionService() {
         // Shuffle reorders the queue itself (see [reorderForShuffle]), so the player keeps to the queue order.
         player.setShuffleOrder(ShuffleOrder.UnshuffledShuffleOrder(0))
         session =
-            MediaSession
-                .Builder(this, player)
-                .setCallback(Callback())
+            MediaLibrarySession
+                .Builder(this, player, Callback())
                 .build()
         loadQueue()?.let { saved ->
             player.setMediaItems(saved.items.map(::mediaItem), saved.index, saved.positionMs)
@@ -126,7 +140,7 @@ class PlaybackService : MediaSessionService() {
         )
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
     /** Stop when the user swipes the app away while nothing is playing. */
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -261,7 +275,213 @@ class PlaybackService : MediaSessionService() {
             null
         }
 
-    private inner class Callback : MediaSession.Callback {
+    /** The library as browsers see it, built off the main thread and rebuilt when Android Auto reconnects. */
+    @Volatile private var tree: BrowseTree? = null
+
+    @Volatile private var serverSource = false
+
+    private suspend fun tree(refresh: Boolean = false): BrowseTree {
+        if (!refresh) tree?.let { return it }
+        return withContext(Dispatchers.IO) {
+            serverSource = ServerStore(applicationContext).source == MusicSource.Server
+            val (songs, playlists) = LibraryLoader.load(applicationContext)
+            BrowseTree(songs, playlists, MusicSettings(applicationContext).albumArtists).also { tree = it }
+        }
+    }
+
+    /** Runs [block] on the service's scope and hands its result to Media3 as a future. */
+    private fun <T : Any> later(block: suspend () -> T): ListenableFuture<T> {
+        val future = SettableFuture.create<T>()
+        scope.launch {
+            try {
+                future.set(block())
+            } catch (e: CancellationException) {
+                future.cancel(false)
+                throw e
+            } catch (e: Exception) {
+                future.setException(e)
+            }
+        }
+        return future
+    }
+
+    private fun sectionTitle(
+        id: String,
+        fallback: String,
+    ): String =
+        when (id) {
+            BrowseTree.PLAYLISTS -> getString(R.string.tab_playlists)
+            BrowseTree.ALBUMS -> getString(R.string.tab_albums)
+            BrowseTree.ARTISTS -> getString(R.string.tab_artists)
+            BrowseTree.SONGS -> getString(R.string.tab_songs)
+            else -> fallback
+        }
+
+    /**
+     * A browse entry as a MediaItem: title, subtitle, cover, and whether it opens or plays. The grid
+     * hint is unstable in Media3 1.x, but it's how Android Auto is told to show covers.
+     */
+    @OptIn(UnstableApi::class)
+    private fun browseItem(node: BrowseTree.Node): MediaItem {
+        val art =
+            if (serverSource) {
+                (node.song?.art ?: node.albumId.takeIf { it > 0 }?.let { ServerLibrary.artFor(this, it) })?.let(ArtProvider::uri)
+            } else {
+                node.albumId.takeIf { it > 0 }?.let(ArtProvider::localUri)
+            }
+        val title = if (node.id.startsWith(BrowseTree.SHUFFLE)) getString(R.string.shuffle) else sectionTitle(node.id, node.title)
+        return MediaItem
+            .Builder()
+            .setMediaId(node.id)
+            .setMediaMetadata(
+                MediaMetadata
+                    .Builder()
+                    .setTitle(title)
+                    .apply { if (node.subtitle.isNotBlank()) setSubtitle(node.subtitle).setArtist(node.subtitle) }
+                    .setArtworkUri(art)
+                    .setIsBrowsable(!node.playable)
+                    .setIsPlayable(node.playable)
+                    .setMediaType(if (node.playable) MediaMetadata.MEDIA_TYPE_MUSIC else MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                    .apply {
+                        // Albums show as a grid of covers; everything else as lists.
+                        if (node.grid && !node.playable) {
+                            setExtras(
+                                Bundle().apply {
+                                    putInt(
+                                        MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                                        MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
+                                    )
+                                },
+                            )
+                        }
+                    }.build(),
+            ).build()
+    }
+
+    /**
+     * A queue picked in a browser, ready for Media3. Shuffled ones are built shuffled (a random song
+     * first) and recorded as such, so turning shuffle on doesn't reorder anything; whatever queue
+     * was playing before isn't touched.
+     */
+    @OptIn(UnstableApi::class)
+    private fun queueItems(queue: BrowseTree.Queue): MediaItemsWithStartPosition {
+        val items = queue.songs.map { s -> mediaItem(SavedItem(s.id.toString(), s.uri, s.title, s.artist, s.album, s.albumId, s.art)) }
+        val player = session?.player
+        player?.playlistMetadata = playlistMetadata(queue.from)
+        if (queue.shuffle) {
+            val order = QueueOrder.shuffled(items.map { it.mediaId }, items.indices.random())
+            unshuffled = items.map { it.mediaId }
+            shuffled = true
+            player?.shuffleModeEnabled = true
+            return MediaItemsWithStartPosition(order.map(items::get), 0, 0)
+        }
+        unshuffled = null
+        shuffled = false
+        player?.shuffleModeEnabled = false
+        return MediaItemsWithStartPosition(items, queue.start, 0)
+    }
+
+    // Media3 1.x marks parts of the library API unstable (params extras, start positions); they're
+    // the documented way to serve Android Auto.
+    @OptIn(UnstableApi::class)
+    private inner class Callback : MediaLibrarySession.Callback {
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<MediaItem>> =
+            later {
+                // A browser connecting (the car starting) sees the library as it is now.
+                tree(refresh = true)
+                val root =
+                    MediaItem
+                        .Builder()
+                        .setMediaId(BrowseTree.ROOT)
+                        .setMediaMetadata(
+                            MediaMetadata
+                                .Builder()
+                                .setTitle(getString(R.string.app_name))
+                                .setIsBrowsable(true)
+                                .setIsPlayable(false)
+                                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                                .build(),
+                        ).build()
+                val extras = Bundle().apply { putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_PREV, true) }
+                LibraryResult.ofItem(root, LibraryParams.Builder().setExtras(extras).build())
+            }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
+            later {
+                val nodes = tree().children(parentId)
+                if (nodes == null) {
+                    LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+                } else {
+                    val from = (page.coerceAtLeast(0).toLong() * pageSize).coerceAtMost(nodes.size.toLong()).toInt()
+                    LibraryResult.ofItemList(ImmutableList.copyOf(nodes.drop(from).take(pageSize).map(::browseItem)), params)
+                }
+            }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<Void>> =
+            later {
+                session.notifySearchResultChanged(browser, query, tree().searchNodes(query).size, params)
+                LibraryResult.ofVoid()
+            }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
+            later {
+                val nodes = tree().searchNodes(query)
+                val from = (page.coerceAtLeast(0).toLong() * pageSize).coerceAtMost(nodes.size.toLong()).toInt()
+                LibraryResult.ofItemList(ImmutableList.copyOf(nodes.drop(from).take(pageSize).map(::browseItem)), params)
+            }
+
+        /**
+         * Something picked in a browser (a song, Shuffle) or asked for by voice ("play Juniper") becomes
+         * a whole queue: the album, playlist or artist it's in, starting there. The app's own queues
+         * already carry their files and go through unchanged.
+         */
+        @OptIn(UnstableApi::class)
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaItemsWithStartPosition> {
+            val single = mediaItems.singleOrNull()
+            val query = single?.requestMetadata?.searchQuery
+            val picked = single?.mediaId
+            val fromBrowser = picked != null && (picked.startsWith(BrowseTree.SONG) || picked.startsWith(BrowseTree.SHUFFLE))
+            if (query == null &&
+                !fromBrowser
+            ) {
+                return super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs)
+            }
+            return later {
+                val t = tree()
+                val queue = if (query != null) t.search(query) else t.queueFor(picked!!)
+                queue?.let(::queueItems) ?: throw UnsupportedOperationException("Nothing matches")
+            }
+        }
+
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,

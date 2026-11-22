@@ -6,12 +6,15 @@ import android.database.Cursor
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.util.Size
 import androidx.core.net.toUri
+import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 
 /**
- * Cover art of server songs as `content://…music.art/<art id>`, for the media notification, lock
+ * Cover art as `content://…music.art/<art id>` (server songs) or `…/local/<album id>` (the phone's), for the media notification, lock
  * screen, Bluetooth and other media controllers, which load the artwork URI themselves. Read-only
  * and images only: exported because those controllers are other apps, but all it can hand out is
  * album covers from the signed-in server (never an address or a token).
@@ -27,10 +30,24 @@ class ArtProvider : ContentProvider() {
     ): ParcelFileDescriptor {
         if (mode != "r") throw SecurityException("Read-only")
         val context = context ?: throw FileNotFoundException()
+        val segments = uri.pathSegments
+        val local = segments.size == 2 && segments[0] == LOCAL
         val art = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: throw FileNotFoundException()
-        val file = File(context.cacheDir, "art/provided-${art.hashCode().toUInt()}.jpg")
+        val name = if (local) "local-$art" else "provided-${art.hashCode().toUInt()}"
+        val file = File(context.cacheDir, "art/$name.jpg")
         if (!file.exists()) {
-            val bitmap = ServerLibrary.art(context, art, SIZE) ?: throw FileNotFoundException(art)
+            val bitmap =
+                if (local) {
+                    // Music on the phone: the system's album thumbnail, which Android Auto can't read itself.
+                    val albumId = art.toLongOrNull() ?: throw FileNotFoundException(art)
+                    try {
+                        context.contentResolver.loadThumbnail(MusicRepository.albumUri(albumId), Size(SIZE, SIZE), null)
+                    } catch (_: IOException) {
+                        throw FileNotFoundException(art)
+                    }
+                } else {
+                    ServerLibrary.art(context, art, SIZE) ?: throw FileNotFoundException(art)
+                }
             file.parentFile?.mkdirs()
             val temp = File(file.path + ".tmp")
             temp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
@@ -70,5 +87,10 @@ class ArtProvider : ContentProvider() {
         const val AUTHORITY = "io.github.michaelmassoni.tessera.music.art"
 
         fun uri(art: String): Uri = "content://$AUTHORITY/${Uri.encode(art)}".toUri()
+
+        private const val LOCAL = "local"
+
+        /** A phone album's cover. */
+        fun localUri(albumId: Long): Uri = "content://$AUTHORITY/$LOCAL/$albumId".toUri()
     }
 }
