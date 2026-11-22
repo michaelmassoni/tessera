@@ -11,6 +11,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.MediaSessionService
@@ -18,6 +19,9 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.SavedQueue
+import io.github.michaelmassoni.tessera.music.server.ArtProvider
+import io.github.michaelmassoni.tessera.music.server.Scrobbler
+import io.github.michaelmassoni.tessera.music.server.ServerPlayback
 import io.github.michaelmassoni.tessera.music.widget.NowPlaying
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +48,10 @@ class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val queueFile by lazy { File(filesDir, "queue.json") }
+    private val scrobbler by lazy { Scrobbler(applicationContext, scope) }
 
+    // The media source factory and bitmap loader are unstable in Media3 1.x, but the documented way to stream through a cache.
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         val player =
@@ -58,8 +65,14 @@ class PlaybackService : MediaSessionService() {
                         .build(),
                     true,
                 ).setHandleAudioBecomingNoisy(true)
+                // Server songs stream through the cache; local files play as before.
+                .setMediaSourceFactory(DefaultMediaSourceFactory(ServerPlayback.dataSourceFactory(this)))
                 .build()
-        session = MediaSession.Builder(this, player).setCallback(Callback()).build()
+        session =
+            MediaSession
+                .Builder(this, player)
+                .setCallback(Callback())
+                .build()
         loadQueue()?.let { saved ->
             player.setMediaItems(saved.items.map(::mediaItem), saved.index, saved.positionMs)
             player.shuffleModeEnabled = saved.shuffle
@@ -84,6 +97,7 @@ class PlaybackService : MediaSessionService() {
                         saveQueue(player)
                     }
                     if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) keepSavingPosition(player)
+                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) scrobbler.started(player)
                     if (events.containsAny(
                             Player.EVENT_MEDIA_METADATA_CHANGED,
                             Player.EVENT_IS_PLAYING_CHANGED,
@@ -129,6 +143,7 @@ class PlaybackService : MediaSessionService() {
                 while (isActive) {
                     delay(POSITION_SAVE_MS)
                     saveQueue(player)
+                    scrobbler.progress(player)
                 }
             }
     }
@@ -147,6 +162,7 @@ class PlaybackService : MediaSessionService() {
                     artist = m.artist?.toString().orEmpty(),
                     album = m.albumTitle?.toString().orEmpty(),
                     albumId = m.extras?.getLong(EXTRA_ALBUM_ID) ?: 0,
+                    art = m.extras?.getString(EXTRA_ART),
                 )
             }
         if (items.isEmpty()) return null
@@ -205,6 +221,7 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val EXTRA_ALBUM_ID = "album_id"
+        const val EXTRA_ART = "art"
         private const val POSITION_SAVE_MS = 10_000L
 
         fun mediaItem(item: SavedItem): MediaItem =
@@ -223,7 +240,12 @@ class PlaybackService : MediaSessionService() {
                         .setTitle(item.title)
                         .setArtist(item.artist)
                         .setAlbumTitle(item.album)
-                        .setExtras(Bundle().apply { putLong(EXTRA_ALBUM_ID, item.albumId) })
+                        .setExtras(
+                            Bundle().apply {
+                                putLong(EXTRA_ALBUM_ID, item.albumId)
+                                item.art?.let { putString(EXTRA_ART, it) }
+                            },
+                        ).apply { item.art?.let { setArtworkUri(ArtProvider.uri(it)) } }
                         .build(),
                 ).build()
     }

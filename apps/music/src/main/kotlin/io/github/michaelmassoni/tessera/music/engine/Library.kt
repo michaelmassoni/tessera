@@ -3,7 +3,8 @@ package io.github.michaelmassoni.tessera.music.engine
 import java.text.Normalizer
 import java.util.Locale
 
-/** One track from MediaStore.Audio. */
+/** One track: from MediaStore.Audio, or from a Subsonic server ([uri] says which). */
+@kotlinx.serialization.Serializable
 data class Song(
     val id: Long,
     val uri: String,
@@ -16,6 +17,8 @@ data class Song(
     /** MediaStore TRACK: disc × 1000 + track number, 0 if unknown. */
     val track: Int = 0,
     val year: Int = 0,
+    /** A server song's cover art id (`getCoverArt`); null for local songs, whose art comes from MediaStore. */
+    val art: String? = null,
 )
 
 data class Album(

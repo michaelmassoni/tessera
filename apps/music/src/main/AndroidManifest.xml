@@ -8,17 +8,22 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Only to reach the music server the person adds (docs/music.md). -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Tessera">
-        <!-- Left out of Tessera backups: the queue (content URIs that only mean something on this phone). -->
+        <!-- Left out of Tessera backups: the queue (content URIs that only mean something on this
+             phone), the server sign-in (its password only decrypts on this phone) and the saved
+             server library (fetched again). -->
         <meta-data
             android:name="io.github.michaelmassoni.tessera.BACKUP_EXCLUDE"
-            android:value="files/queue.json" />
+            android:value="files/queue.json,files/server-library.json,prefs/music_server.xml" />
         <!-- Launched through the aliases below and from the media notification. -->
         <activity
             android:name=".MainActivity"
@@ -46,6 +51,14 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+        <!-- Cover art of server songs for media controllers (notification, lock screen, Bluetooth),
+             which are other apps: read-only, images only (ArtProvider). -->
+        <provider
+            android:name=".server.ArtProvider"
+            android:authorities="io.github.michaelmassoni.tessera.music.art"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
 
         <!-- Now playing widget (Glance), redrawn by PlaybackService as playback changes. -->
         <receiver

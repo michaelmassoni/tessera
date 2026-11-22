@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -30,6 +34,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.rememberSearchBarState
@@ -70,8 +75,21 @@ data class LibraryState(
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
     val playlists: List<Playlist> = emptyList(),
+    /** Songs from a server (an empty library says so). */
+    val fromServer: Boolean = false,
+    /** Something wrong with the server, shown above the library. */
+    val notice: ServerNotice? = null,
 ) {
     val byId: Map<Long, Song> by lazy { songs.associateBy { it.id } }
+}
+
+/** Why the server library may be out of date. */
+enum class ServerNotice {
+    /** The password stopped working (or isn't on this phone): sign in again in Settings. */
+    SignIn,
+
+    /** No answer: the saved library and cached songs still play. */
+    Unreachable,
 }
 
 /** Library-level actions. */
@@ -106,6 +124,9 @@ interface LibraryActions {
     )
 
     fun openSettings()
+
+    /** Fetch the server library again. */
+    fun retry() {}
 }
 
 private enum class Tab(
@@ -248,37 +269,43 @@ private fun LibraryScreen(
             )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            when {
-                !library.loaded -> {}
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            library.notice?.let { Notice(it, actions) }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                when {
+                    !library.loaded -> {
+                        // Only a first server fetch takes long enough to see.
+                        if (library.fromServer) CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    }
 
-                library.songs.isEmpty() -> {
-                    Empty(stringResource(R.string.empty_library))
-                }
+                    library.songs.isEmpty() -> {
+                        Empty(stringResource(if (library.fromServer) R.string.empty_server else R.string.empty_library))
+                    }
 
-                query.isNotBlank() -> {
-                    SongList(
-                        remember(library.songs, query) { Library.search(library.songs, query) },
-                        actions,
-                        showShuffle = false,
-                        onLongClick = onLongClick,
-                    )
-                }
+                    query.isNotBlank() -> {
+                        SongList(
+                            remember(library.songs, query) { Library.search(library.songs, query) },
+                            actions,
+                            showShuffle = false,
+                            onLongClick = onLongClick,
+                        )
+                    }
 
-                tab == Tab.Songs -> {
-                    SongList(library.songs, actions, showShuffle = true, onLongClick = onLongClick)
-                }
+                    tab == Tab.Songs -> {
+                        SongList(library.songs, actions, showShuffle = true, onLongClick = onLongClick)
+                    }
 
-                tab == Tab.Playlists -> {
-                    PlaylistList(library.playlists, actions, onPlaylist)
-                }
+                    tab == Tab.Playlists -> {
+                        PlaylistList(library.playlists, actions, onPlaylist)
+                    }
 
-                tab == Tab.Albums -> {
-                    AlbumGrid(library.albums, onAlbum)
-                }
+                    tab == Tab.Albums -> {
+                        AlbumGrid(library.albums, onAlbum)
+                    }
 
-                else -> {
-                    ArtistList(library.artists, onArtist)
+                    else -> {
+                        ArtistList(library.artists, onArtist)
+                    }
                 }
             }
         }
@@ -523,6 +550,29 @@ fun PermissionScreen(
                 Button(onClick = if (denied) onSettings else onGrant) {
                     Text(stringResource(if (denied) R.string.permission_settings else R.string.permission_grant))
                 }
+            }
+        }
+    }
+}
+
+/** A server problem above the library, with what to do about it. */
+@Composable
+private fun Notice(
+    notice: ServerNotice,
+    actions: LibraryActions,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(if (notice == ServerNotice.SignIn) R.string.notice_sign_in else R.string.notice_unreachable),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = if (notice == ServerNotice.SignIn) actions::openSettings else actions::retry) {
+                Text(stringResource(if (notice == ServerNotice.SignIn) R.string.sign_in else R.string.retry))
             }
         }
     }
