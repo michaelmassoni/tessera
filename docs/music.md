@@ -113,7 +113,7 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
   don't allow an empty query. It's saved on the phone (`files/server-library.json`), shown at
   once when the app opens, and fetched again in the background each time it opens. Albums,
   artists, search and the app's own playlists work exactly as with local files. Server
-  playlists aren't shown yet.
+  playlists are shown since 0.5 (see below).
 - **IDs:** Subsonic ids are strings. Each becomes a stable 64-bit number (a hash, separate for
   songs, albums and artists), so playlists, the queue and the widget work unchanged; the string
   id is kept in the song's URI (`tessera-subsonic:song/<id>`).
@@ -158,6 +158,51 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
 | Permission | Why |
 |------------|-----|
 | `INTERNET` | Only to reach the server the person adds. Nothing else is contacted. |
+
+## Player, queue, playlists and lyrics (0.5)
+
+Asked for by the maintainer after using 0.4 with their Navidrome library.
+
+- **Playing from:** the player's top bar says where the queue came from: "Playing from album /
+  petal", playlist, artist, search, or "your library / All songs". It travels as the queue's
+  playlist metadata (`Player.playlistMetadata`), so it survives the app being closed.
+- **Shuffle reorders the queue:** turning shuffle on moves the song playing to the top and
+  shuffles the rest, in the queue itself, so the queue shows what plays next. Turning it off puts
+  back the order from before, with songs added meanwhile at the end. It works the same whichever
+  controller turns it on (the notification, Bluetooth). ExoPlayer is given an unshuffled shuffle
+  order, and the service reorders with moves so the song never stops (`QueueOrder`, unit tested).
+  Starting a new queue with shuffle on shuffles it around the song tapped.
+- **Queue:** drag a song by its handle to move it; swipe it away to remove it; tap to play it.
+  TalkBack has Move up, Move down and Remove actions. Songs' long-press menu adds **Play next**
+  and **Add to queue**.
+- **Save to playlist:** a button beside the song title (ticked when the song is in one of your
+  playlists) opens the playlists with checkboxes: tick to add, untick to remove, or make a new one.
+- **Server playlists:** with a server, the Playlists tab shows the server's playlists (`getPlaylists`
+  then `getPlaylist` for each, saved with the library). Creating, renaming, deleting, adding and
+  removing songs happen on the server (`createPlaylist`, `updatePlaylist`, `deletePlaylist`); the
+  change shows at once and the server's playlists are read back after. **Smart playlists**
+  (Navidrome's `.nsp`, marked `readonly`) and other people's shared playlists can be played but not
+  changed: they say "Can't be edited here", have no edit menu, and aren't offered when adding
+  songs. Playlists kept on the phone are for music on the phone.
+- **Lyrics:**
+  - **From the server first:** OpenSubsonic `getLyricsBySongId` (Navidrome reads lyrics from the
+    file's tags or a `.lrc` file next to it), then the older `getLyrics`. Synced lyrics are
+    preferred.
+  - **Online, if turned on:** LRCLIB (lrclib.net), an open lyrics database with no key or account.
+    Off until the person turns it on, from the lyrics card ("Look up lyrics online", which says
+    what's sent) or Settings > Lyrics. It's sent the song's title, artist, album and length, and
+    nothing else, with a User-Agent naming the app. The exact match (`/api/get`) is tried first,
+    then `/api/search`, taking a record within 5 seconds of the song's length (synced first).
+  - **Cached** in `cache/lyrics/`. Lyrics are kept; "none found" is kept for a week, and is
+    forgotten when online lyrics are turned on. A failure to reach anything isn't remembered.
+  - **On the player:** a Lyrics card under the controls shows the line being sung (bold) and the
+    next, or the first lines of unsynced lyrics. It follows the song without drawing every frame:
+    it waits until the next line is due, and corrects itself each time the player reports the
+    position (twice a second).
+  - **Full lyrics:** tapping the card opens every line. The line being sung is highlighted and
+    kept about a third of the way down; after the person scrolls, following resumes 4 seconds
+    later. Tapping a synced line plays from there. Says where the lyrics came from.
+  - Not yet: lyrics embedded in local files (MediaStore doesn't expose them).
 
 ## Out of scope for v0.1
 

@@ -11,6 +11,10 @@ data class Playlist(
     val id: Long,
     val name: String,
     val songIds: List<Long> = emptyList(),
+    /** The server's id, for a playlist on a Subsonic server. */
+    val serverId: String? = null,
+    /** A server playlist that can't be changed here: a smart playlist, or someone else's. */
+    val readOnly: Boolean = false,
 )
 
 /** Editing playlists. Pure: every change returns the new list. */
@@ -55,6 +59,13 @@ object Playlists {
         id: Long,
         songIds: List<Long>,
     ) = playlists.map { p -> if (p.id == id) p.copy(songIds = p.songIds + songIds.filterNot { it in p.songIds }.distinct()) else p }
+
+    /** Takes [songId] out of playlist [id] everywhere it appears. */
+    fun removeSong(
+        playlists: List<Playlist>,
+        id: Long,
+        songId: Long,
+    ) = playlists.map { p -> if (p.id == id) p.copy(songIds = p.songIds.filterNot { it == songId }) else p }
 
     fun remove(
         playlists: List<Playlist>,

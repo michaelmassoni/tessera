@@ -1,5 +1,7 @@
 package io.github.michaelmassoni.tessera.music.server
 
+import io.github.michaelmassoni.tessera.music.engine.Lyrics
+import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.ServerAccount
 import io.github.michaelmassoni.tessera.music.engine.ServerException
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
@@ -105,6 +107,68 @@ class SubsonicClient(
             offset += page.size
         }
         return ids.flatMap { Subsonic.albumSongs(call("getAlbum", listOf("id" to it))) }.distinctBy { it.id }
+    }
+
+    /**
+     * Every playlist on the server with its songs (as [Song.id]s). Smart playlists are worked out
+     * by the server each time they're fetched.
+     */
+    fun playlists(): List<Playlist> =
+        Subsonic.playlists(call("getPlaylists"), account.username).map { info ->
+            Playlist(
+                id = Subsonic.idOf("playlist", info.id),
+                name = info.name,
+                songIds = Subsonic.playlistSongIds(call("getPlaylist", listOf("id" to info.id))).map { Subsonic.idOf("song", it) },
+                serverId = info.id,
+                readOnly = info.readOnly,
+            )
+        }
+
+    /** Creates a playlist and returns its server id. */
+    fun createPlaylist(
+        name: String,
+        songIds: List<String>,
+    ): String =
+        Subsonic.createdPlaylistId(call("createPlaylist", listOf("name" to name) + songIds.map { "songId" to it }))
+            ?: throw ServerException(ServerProblem.Other)
+
+    /** Renames, adds songs at the end, and removes songs by position, in one request. */
+    fun updatePlaylist(
+        id: String,
+        name: String? = null,
+        add: List<String> = emptyList(),
+        removeAt: List<Int> = emptyList(),
+    ) {
+        call(
+            "updatePlaylist",
+            listOf("playlistId" to id) +
+                listOfNotNull(name?.let { "name" to it }) +
+                add.map { "songIdToAdd" to it } +
+                removeAt.map { "songIndexToRemove" to it.toString() },
+        )
+    }
+
+    fun deletePlaylist(id: String) {
+        call("deletePlaylist", listOf("id" to id))
+    }
+
+    /**
+     * A song's lyrics from the server: by id where it supports OpenSubsonic, else by artist and title.
+     * Null when it has none.
+     */
+    fun lyrics(
+        id: String,
+        artist: String,
+        title: String,
+    ): Lyrics? {
+        try {
+            Subsonic.structuredLyrics(call("getLyricsBySongId", listOf("id" to id)))?.let { return it }
+        } catch (e: ServerException) {
+            if (e.problem == ServerProblem.Unreachable) throw e
+            // Not an OpenSubsonic server: try the older call.
+        }
+        if (artist.isBlank() || title.isBlank()) return null
+        return Subsonic.plainLyrics(call("getLyrics", listOf("artist" to artist, "title" to title)))
     }
 
     /** Where to stream a song from, transcoded to at most [maxKbps] (0: the original file). */

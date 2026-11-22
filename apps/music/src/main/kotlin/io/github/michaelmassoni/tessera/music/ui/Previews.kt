@@ -7,6 +7,10 @@ import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.QueueItem
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.LyricLine
+import io.github.michaelmassoni.tessera.music.engine.Lyrics
+import io.github.michaelmassoni.tessera.music.engine.LyricsSource
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Song
 
@@ -28,7 +32,8 @@ private val playing =
         artist = "The Night Shift",
         album = "Overtime",
         isPlaying = true,
-        queue = songs.map { QueueItem(it.title, it.artist) },
+        queue = songs.map { QueueItem(it.id.toString(), it.title, it.artist) },
+        from = PlayingFrom(PlayingFrom.Kind.Album, "Overtime"),
         index = 2,
     )
 
@@ -38,9 +43,13 @@ private object NoLibrary : LibraryActions {
     override fun play(
         songs: List<Song>,
         index: Int,
+        from: PlayingFrom,
     ) = Unit
 
-    override fun shuffle(songs: List<Song>) = Unit
+    override fun shuffle(
+        songs: List<Song>,
+        from: PlayingFrom,
+    ) = Unit
 
     override fun createPlaylist(
         name: String,
@@ -100,7 +109,9 @@ private fun ServerLibraryPreview() {
 @TesseraPreviews
 @Composable
 private fun FullPlayerPreview() {
-    TesseraTheme(dynamicColor = false) { FullPlayer(playing, { progress }, NoPlayer, onClose = {}) }
+    TesseraTheme(
+        dynamicColor = false,
+    ) { FullPlayer(playing, { progress }, NoPlayer, onClose = {}, lyrics = LyricsState.Found(previewLyrics)) }
 }
 
 // A playlist's page: count, Play and Shuffle, and its songs, in both themes.
@@ -118,5 +129,32 @@ private fun PlaylistPreview() {
             NoLibrary,
             onBack = {},
         )
+    }
+}
+
+private val previewLyrics =
+    Lyrics(
+        listOf(
+            LyricLine(0, "Streetlights hum a quiet tune"),
+            LyricLine(30_000, "City wakes beneath the moon"),
+            LyricLine(60_000, "Every corner, every light"),
+            LyricLine(90_000, "Calling out across the night"),
+            LyricLine(120_000, ""),
+            LyricLine(150_000, "Hold the dawn a little while"),
+        ),
+        LyricsSource.Server,
+    )
+
+@TesseraPreviews
+@Composable
+private fun LyricsScreenPreview() {
+    TesseraTheme(dynamicColor = false) { LyricsScreen(previewLyrics, playing, { progress }, NoPlayer, onClose = {}) }
+}
+
+@TesseraPreviews
+@Composable
+private fun NoLyricsPlayerPreview() {
+    TesseraTheme(dynamicColor = false) {
+        FullPlayer(playing, { progress }, NoPlayer, onClose = {}, lyrics = LyricsState.None(canLookOnline = true))
     }
 }

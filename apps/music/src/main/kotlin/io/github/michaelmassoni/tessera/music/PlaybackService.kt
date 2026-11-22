@@ -12,11 +12,14 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ShuffleOrder
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
+import io.github.michaelmassoni.tessera.music.engine.QueueOrder
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.SavedQueue
 import io.github.michaelmassoni.tessera.music.server.ArtProvider
@@ -68,6 +71,8 @@ class PlaybackService : MediaSessionService() {
                 // Server songs stream through the cache; local files play as before.
                 .setMediaSourceFactory(DefaultMediaSourceFactory(ServerPlayback.dataSourceFactory(this)))
                 .build()
+        // Shuffle reorders the queue itself (see [reorderForShuffle]), so the player keeps to the queue order.
+        player.setShuffleOrder(ShuffleOrder.UnshuffledShuffleOrder(0))
         session =
             MediaSession
                 .Builder(this, player)
@@ -75,7 +80,10 @@ class PlaybackService : MediaSessionService() {
                 .build()
         loadQueue()?.let { saved ->
             player.setMediaItems(saved.items.map(::mediaItem), saved.index, saved.positionMs)
+            shuffled = saved.shuffle
+            unshuffled = saved.unshuffled
             player.shuffleModeEnabled = saved.shuffle
+            player.playlistMetadata = playlistMetadata(saved.from)
             player.repeatMode = saved.repeatMode
             player.prepare()
         }
@@ -90,12 +98,14 @@ class PlaybackService : MediaSessionService() {
                             Player.EVENT_MEDIA_ITEM_TRANSITION,
                             Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                             Player.EVENT_REPEAT_MODE_CHANGED,
+                            Player.EVENT_PLAYLIST_METADATA_CHANGED,
                             Player.EVENT_IS_PLAYING_CHANGED,
                             Player.EVENT_POSITION_DISCONTINUITY,
                         )
                     ) {
                         saveQueue(player)
                     }
+                    if (events.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) reorderForShuffle(player)
                     if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) keepSavingPosition(player)
                     if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) scrobbler.started(player)
                     if (events.containsAny(
@@ -132,6 +142,29 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
+    /** Whether the queue is in shuffled order now, and the order it had before. */
+    private var shuffled = false
+    private var unshuffled: List<String>? = null
+
+    /**
+     * Shuffle turned on (here, the notification, Bluetooth, anywhere): the queue itself is reordered,
+     * the song playing first, so what's shown is what plays. Turned off: the order before comes back.
+     * Moves, not a new list, so the song keeps playing.
+     */
+    private fun reorderForShuffle(player: Player) {
+        if (player.shuffleModeEnabled == shuffled) return
+        shuffled = player.shuffleModeEnabled
+        val ids = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+        val order =
+            if (shuffled) {
+                unshuffled = ids
+                QueueOrder.shuffled(ids, player.currentMediaItemIndex)
+            } else {
+                QueueOrder.restored(ids, unshuffled.orEmpty()).also { unshuffled = null }
+            }
+        QueueOrder.moves(order).forEach { (from, to) -> player.moveMediaItem(from, to) }
+    }
+
     private var positionSaver: Job? = null
 
     /** While playing, saves the position every few seconds, so a killed process resumes close to where it was. */
@@ -166,7 +199,15 @@ class PlaybackService : MediaSessionService() {
                 )
             }
         if (items.isEmpty()) return null
-        return SavedQueue(items, player.currentMediaItemIndex, player.currentPosition, player.shuffleModeEnabled, player.repeatMode)
+        return SavedQueue(
+            items,
+            player.currentMediaItemIndex,
+            player.currentPosition,
+            player.shuffleModeEnabled,
+            player.repeatMode,
+            unshuffled,
+            playingFrom(player.playlistMetadata),
+        )
     }
 
     /** Writes the queue off the main thread; an empty queue removes the file. */
@@ -223,6 +264,27 @@ class PlaybackService : MediaSessionService() {
         const val EXTRA_ALBUM_ID = "album_id"
         const val EXTRA_ART = "art"
         private const val POSITION_SAVE_MS = 10_000L
+
+        private const val EXTRA_FROM_KIND = "from_kind"
+
+        /** "Playing from" travels as the queue's (playlist) metadata, which every controller sees. */
+        fun playlistMetadata(from: PlayingFrom?): MediaMetadata =
+            if (from == null) {
+                MediaMetadata.EMPTY
+            } else {
+                MediaMetadata
+                    .Builder()
+                    .setTitle(from.name)
+                    .setExtras(Bundle().apply { putString(EXTRA_FROM_KIND, from.kind.name) })
+                    .build()
+            }
+
+        fun playingFrom(metadata: MediaMetadata): PlayingFrom? {
+            val kind = metadata.extras?.getString(EXTRA_FROM_KIND) ?: return null
+            return PlayingFrom.Kind.entries
+                .firstOrNull { it.name == kind }
+                ?.let { PlayingFrom(it, metadata.title?.toString().orEmpty()) }
+        }
 
         fun mediaItem(item: SavedItem): MediaItem =
             MediaItem

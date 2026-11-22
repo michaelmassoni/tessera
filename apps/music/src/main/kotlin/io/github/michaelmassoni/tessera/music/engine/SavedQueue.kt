@@ -25,6 +25,10 @@ data class SavedQueue(
     val positionMs: Long = 0,
     val shuffle: Boolean = false,
     val repeatMode: Int = 0,
+    /** With shuffle on: the queue's order before shuffling (song ids), to put back when it's turned off. */
+    val unshuffled: List<String>? = null,
+    /** Where the queue came from. */
+    val from: PlayingFrom? = null,
 ) {
     /** Index and position made safe for [items] (an empty queue is never saved). */
     fun clamped(): SavedQueue = copy(index = index.coerceIn(0, (items.size - 1).coerceAtLeast(0)), positionMs = positionMs.coerceAtLeast(0))

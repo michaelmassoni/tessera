@@ -22,24 +22,31 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.music.data.LyricsQuery
+import io.github.michaelmassoni.tessera.music.data.LyricsRepository
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
+import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.ServerException
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
 import io.github.michaelmassoni.tessera.music.engine.Song
+import io.github.michaelmassoni.tessera.music.engine.Subsonic
 import io.github.michaelmassoni.tessera.music.server.MusicSource
 import io.github.michaelmassoni.tessera.music.server.ServerLibrary
 import io.github.michaelmassoni.tessera.music.server.ServerStore
 import io.github.michaelmassoni.tessera.music.server.SubsonicClient
 import io.github.michaelmassoni.tessera.music.ui.LibraryActions
 import io.github.michaelmassoni.tessera.music.ui.LibraryState
+import io.github.michaelmassoni.tessera.music.ui.LyricsState
 import io.github.michaelmassoni.tessera.music.ui.MusicApp
 import io.github.michaelmassoni.tessera.music.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.music.ui.PlayerActions
 import io.github.michaelmassoni.tessera.music.ui.ServerNotice
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -50,6 +57,10 @@ class MainActivity : ComponentActivity() {
     private var granted by mutableStateOf(false)
     private var denied by mutableStateOf(false)
     private var library by mutableStateOf(LibraryState())
+    private var lyrics by mutableStateOf<LyricsState>(LyricsState.None(false))
+    private val lyricsRepository by lazy { LyricsRepository(applicationContext) }
+    private var lyricsJob: Job? = null
+    private var lyricsFor = ""
     private var observing = false
     private val store by lazy { ServerStore(this) }
     private var source by mutableStateOf(MusicSource.Local)
@@ -99,7 +110,8 @@ class MainActivity : ComponentActivity() {
                 } else {
                     val playback by player.state.collectAsStateWithLifecycle()
                     val progress = player.progress.collectAsStateWithLifecycle()
-                    MusicApp(library, playback, { progress.value }, libraryActions, playerActions)
+                    LaunchedEffect(playback.uri) { loadLyrics(playback) }
+                    MusicApp(library, playback, { progress.value }, libraryActions, playerActions, lyrics = lyrics)
                 }
             }
         }
@@ -191,29 +203,97 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val account = store.account
             val password = withContext(Dispatchers.IO) { store.password() }
-            val playlists = if (library.loaded) library.playlists else withContext(Dispatchers.IO) { readPlaylists() }
             if (account == null || password == null) {
-                library = LibraryState(loaded = true, fromServer = true, playlists = playlists, notice = ServerNotice.SignIn)
+                library = LibraryState(loaded = true, fromServer = true, notice = ServerNotice.SignIn)
                 return@launch
             }
             if (!library.loaded) {
-                withContext(Dispatchers.IO) { ServerLibrary.load(this@MainActivity, account) }?.let { saved ->
-                    library = withContext(Dispatchers.Default) { state(saved, playlists, fromServer = true) }
-                } ?: run { library = LibraryState(fromServer = true, playlists = playlists) }
+                val saved = withContext(Dispatchers.IO) { ServerLibrary.load(this@MainActivity, account) }
+                library =
+                    if (saved != null) {
+                        withContext(Dispatchers.Default) { state(saved.songs, saved.playlists, fromServer = true) }
+                    } else {
+                        LibraryState(fromServer = true)
+                    }
             }
             try {
-                val songs =
+                val (songs, playlists) =
                     withContext(Dispatchers.IO) {
-                        SubsonicClient(account, password).allSongs().also { ServerLibrary.save(this@MainActivity, account, it) }
+                        val client = SubsonicClient(account, password)
+                        val songs = client.allSongs()
+                        val playlists = client.playlists()
+                        ServerLibrary.save(this@MainActivity, account, songs, playlists)
+                        songs to playlists
                     }
                 if (store.source != MusicSource.Server) return@launch
-                library = withContext(Dispatchers.Default) { state(songs, library.playlists, fromServer = true) }
+                library = withContext(Dispatchers.Default) { state(songs, playlists, fromServer = true) }
             } catch (e: ServerException) {
                 val notice = if (e.problem == ServerProblem.WrongLogin) ServerNotice.SignIn else ServerNotice.Unreachable
                 library = library.copy(loaded = true, notice = notice)
             }
         }
     }
+
+    /** Fetches the playing song's lyrics (once per song) off the main thread. */
+    private fun loadLyrics(playback: PlaybackState) {
+        if (playback.uri.isEmpty() || playback.uri == lyricsFor) return
+        lyricsFor = playback.uri
+        lyricsJob?.cancel()
+        lyrics = LyricsState.Loading
+        val song = library.byId[playback.songId]
+        val query =
+            LyricsQuery(
+                uri = playback.uri,
+                artist = song?.artist ?: playback.artist,
+                title = song?.title ?: playback.title,
+                album = song?.album ?: playback.album,
+                durationMs = song?.durationMillis ?: playback.durationMs,
+            )
+        lyricsJob =
+            lifecycleScope.launch {
+                val found = withContext(Dispatchers.IO) { lyricsRepository.lyrics(query) }
+                lyrics =
+                    found?.let { LyricsState.Found(it) } ?: LyricsState.None(canLookOnline = !MusicSettings(this@MainActivity).onlineLyrics)
+            }
+    }
+
+    /** The server's ids of songs in the library. */
+    private fun serverIds(songIds: List<Long>) = songIds.mapNotNull { library.byId[it]?.uri?.let(Subsonic::songId) }
+
+    /**
+     * A playlist change on the server: shown at once, sent, then the server's playlists are read
+     * back so what's shown is exactly what's there. A failure says so and shows the server's version.
+     */
+    private fun editServerPlaylists(
+        change: (List<Playlist>) -> List<Playlist>,
+        send: SubsonicClient.() -> Unit,
+    ) {
+        library = library.copy(playlists = change(library.playlists))
+        lifecycleScope.launch {
+            val account = store.account ?: return@launch
+            val password = withContext(Dispatchers.IO) { store.password() } ?: return@launch
+            val playlists =
+                withContext(Dispatchers.IO) {
+                    val client = SubsonicClient(account, password)
+                    val sent = runCatching { client.send() }.isSuccess
+                    val fresh = runCatching { client.playlists() }.getOrNull()
+                    if (fresh != null) ServerLibrary.save(this@MainActivity, account, library.songs, fresh)
+                    if (sent) fresh else null
+                }
+            library =
+                if (playlists != null) {
+                    library.copy(playlists = playlists)
+                } else {
+                    library.copy(notice = ServerNotice.Unreachable)
+                }
+        }
+    }
+
+    private fun serverPlaylist(id: Long) =
+        library.playlists
+            .firstOrNull { it.id == id }
+            ?.takeUnless { it.readOnly }
+            ?.serverId
 
     private fun state(
         songs: List<Song>,
@@ -246,31 +326,102 @@ class MainActivity : ComponentActivity() {
         override fun play(
             songs: List<Song>,
             index: Int,
-        ) = player.play(songs, index)
+            from: PlayingFrom,
+        ) = player.play(songs, index, from = from)
 
-        override fun shuffle(songs: List<Song>) = player.play(songs, 0, shuffle = true)
+        override fun shuffle(
+            songs: List<Song>,
+            from: PlayingFrom,
+        ) = player.play(songs, 0, shuffle = true, from = from)
+
+        override fun playNext(songs: List<Song>) = player.playNext(songs)
+
+        override fun addToQueue(songs: List<Song>) = player.addToQueue(songs)
 
         override fun createPlaylist(
             name: String,
             songIds: List<Long>,
-        ) = editPlaylists { Playlists.create(it, name, songIds).first }
+        ) = if (source == MusicSource.Server) {
+            val ids = serverIds(songIds)
+            editServerPlaylists({ it }) { createPlaylist(name.trim(), ids) }
+        } else {
+            editPlaylists { Playlists.create(it, name, songIds).first }
+        }
 
         override fun renamePlaylist(
             id: Long,
             name: String,
-        ) = editPlaylists { Playlists.rename(it, id, name) }
+        ) = if (source == MusicSource.Server) {
+            serverPlaylist(id)?.let { sid ->
+                editServerPlaylists({ Playlists.rename(it, id, name) }) { updatePlaylist(sid, name = name.trim()) }
+            }
+                ?: Unit
+        } else {
+            editPlaylists { Playlists.rename(it, id, name) }
+        }
 
-        override fun deletePlaylist(id: Long) = editPlaylists { Playlists.delete(it, id) }
+        override fun deletePlaylist(id: Long) =
+            if (source == MusicSource.Server) {
+                serverPlaylist(id)?.let { sid -> editServerPlaylists({ Playlists.delete(it, id) }) { deletePlaylist(sid) } } ?: Unit
+            } else {
+                editPlaylists { Playlists.delete(it, id) }
+            }
 
         override fun addToPlaylist(
             id: Long,
             songIds: List<Long>,
-        ) = editPlaylists { Playlists.add(it, id, songIds) }
+        ) = if (source == MusicSource.Server) {
+            val sid = serverPlaylist(id)
+            // Only songs not already there, as on the phone.
+            val existing =
+                library.playlists
+                    .firstOrNull { it.id == id }
+                    ?.songIds
+                    .orEmpty()
+            val added = serverIds(songIds.filterNot { it in existing }.distinct())
+            if (sid != null &&
+                added.isNotEmpty()
+            ) {
+                editServerPlaylists({ Playlists.add(it, id, songIds) }) { updatePlaylist(sid, add = added) }
+            } else {
+                Unit
+            }
+        } else {
+            editPlaylists { Playlists.add(it, id, songIds) }
+        }
 
         override fun removeFromPlaylist(
             id: Long,
             index: Int,
-        ) = editPlaylists { Playlists.remove(it, id, index) }
+        ) = if (source == MusicSource.Server) {
+            serverPlaylist(id)?.let { sid ->
+                editServerPlaylists({ Playlists.remove(it, id, index) }) { updatePlaylist(sid, removeAt = listOf(index)) }
+            } ?: Unit
+        } else {
+            editPlaylists { Playlists.remove(it, id, index) }
+        }
+
+        override fun removeSongFromPlaylist(
+            id: Long,
+            songId: Long,
+        ) {
+            val positions =
+                library.playlists
+                    .firstOrNull {
+                        it.id == id
+                    }?.songIds
+                    ?.withIndex()
+                    ?.filter { it.value == songId }
+                    ?.map { it.index }
+                    .orEmpty()
+            if (positions.isEmpty()) return
+            val change: (List<Playlist>) -> List<Playlist> = { Playlists.removeSong(it, id, songId) }
+            if (source == MusicSource.Server) {
+                serverPlaylist(id)?.let { sid -> editServerPlaylists(change) { updatePlaylist(sid, removeAt = positions) } }
+            } else {
+                editPlaylists(change)
+            }
+        }
 
         override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
 
@@ -295,6 +446,27 @@ class MainActivity : ComponentActivity() {
         override fun toggleShuffle() = player.toggleShuffle()
 
         override fun cycleRepeat() = player.cycleRepeat()
+
+        override fun lookUpLyricsOnline() {
+            MusicSettings(this@MainActivity).onlineLyrics = true
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { lyricsRepository.forgetMisses() }
+                val now = player.state.value
+                lyricsFor = ""
+                loadLyrics(now)
+            }
+        }
+
+        override fun moveQueueItem(
+            from: Int,
+            to: Int,
+        ) {
+            player.moveQueueItem(from, to)
+        }
+
+        override fun removeQueueItem(index: Int) {
+            player.removeQueueItem(index)
+        }
 
         override fun skipTo(index: Int) {
             player.skipTo(index)
