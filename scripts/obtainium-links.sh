@@ -10,7 +10,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 repo=https://github.com/michaelmassoni/tessera
 apps=("$@")
-[ ${#apps[@]} -gt 0 ] || mapfile -t apps < <(ls apps)
+# App modules only: apps/ can also hold build output left by dropped apps.
+[ ${#apps[@]} -gt 0 ] || mapfile -t apps < <(ls apps/*/build.gradle.kts | cut -d/ -f2)
 
 entry() {
   local app=$1 title

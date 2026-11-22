@@ -95,6 +95,14 @@
       "name": "Tessera Sports",
       "preferredApkIndex": 0,
       "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Sports \",\"apkFilterRegEx\":\"^tessera-sports-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Sports\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.tasks",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Tasks",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Tasks \",\"apkFilterRegEx\":\"^tessera-tasks-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Tasks\"}"
     }
   ]
 }
