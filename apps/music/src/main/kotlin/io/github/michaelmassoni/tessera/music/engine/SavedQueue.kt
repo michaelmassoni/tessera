@@ -13,6 +13,8 @@ data class SavedItem(
     val artist: String = "",
     val album: String = "",
     val albumId: Long = 0,
+    /** A server song's cover art id. */
+    val art: String? = null,
 )
 
 /** The queue and where playback was, kept across the app being closed. */

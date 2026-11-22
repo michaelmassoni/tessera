@@ -63,6 +63,7 @@ import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
+import io.github.michaelmassoni.tessera.music.server.ServerLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -117,11 +118,16 @@ fun AlbumArt(
                             }.asImageBitmap()
                     }.getOrNull()
                 } else if (albumId > 0) {
+                    // A server album's art comes from the server (cached on disk); a local one's from MediaStore.
+                    val server = ServerLibrary.artFor(context, albumId)
                     try {
-                        context.contentResolver
-                            .loadThumbnail(MusicRepository.albumUri(albumId), Size(px, px), null)
-                            .asImageBitmap()
-                            .also { bitmap -> key?.let { ArtCache.put(it, bitmap) } }
+                        if (server != null) {
+                            ServerLibrary.art(context, server, px)?.asImageBitmap()
+                        } else {
+                            context.contentResolver
+                                .loadThumbnail(MusicRepository.albumUri(albumId), Size(px, px), null)
+                                .asImageBitmap()
+                        }?.also { bitmap -> key?.let { ArtCache.put(it, bitmap) } }
                     } catch (_: IOException) {
                         null
                     }
@@ -169,9 +175,13 @@ fun MiniPlayer(
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                     Text(state.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        state.artist.ifBlank { stringResource(R.string.unknown_artist) },
+                        if (state.failed) {
+                            stringResource(if (state.failedServer) R.string.cant_play else R.string.cant_play_file)
+                        } else {
+                            state.artist.ifBlank { stringResource(R.string.unknown_artist) }
+                        },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (state.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -11,6 +11,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.Song
+import io.github.michaelmassoni.tessera.music.engine.Subsonic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -46,12 +47,16 @@ data class PlaybackState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queue: List<QueueItem> = emptyList(),
     val index: Int = 0,
+    /** The song couldn't be played. */
+    val failed: Boolean = false,
+    /** ... and it's a server song: most likely offline and not cached. */
+    val failedServer: Boolean = false,
 ) {
     override fun equals(other: Any?): Boolean =
         other is PlaybackState && hasMedia == other.hasMedia && title == other.title && artist == other.artist && album == other.album &&
             albumId == other.albumId && artwork.contentEquals(other.artwork) && isPlaying == other.isPlaying &&
             shuffle == other.shuffle && repeatMode == other.repeatMode && queue == other.queue &&
-            index == other.index
+            index == other.index && failed == other.failed && failedServer == other.failedServer
 
     override fun hashCode(): Int = listOf(title, artist, isPlaying, index).hashCode()
 }
@@ -113,7 +118,13 @@ class PlayerConnection(
 
     fun togglePlay() {
         val c = controller ?: return
-        if (c.isPlaying) c.pause() else c.play()
+        if (c.isPlaying) {
+            c.pause()
+        } else {
+            // After an error (offline), playing again tries again.
+            if (c.playerError != null) c.prepare()
+            c.play()
+        }
     }
 
     fun next() = controller?.seekToNext()
@@ -163,6 +174,14 @@ class PlayerConnection(
                 repeatMode = player.repeatMode,
                 queue = queue,
                 index = player.currentMediaItemIndex,
+                failed = player.playerError != null,
+                failedServer =
+                    player.playerError != null &&
+                        player.currentMediaItem
+                            ?.requestMetadata
+                            ?.mediaUri
+                            ?.toString()
+                            ?.let(Subsonic::isServerUri) == true,
             )
         _progress.value = Progress(player.currentPosition, player.duration.coerceAtLeast(0))
         // Position changes continuously while playing; poll it twice a second for the progress UI.
@@ -179,5 +198,5 @@ class PlayerConnection(
     }
 
     private fun mediaItem(song: Song): MediaItem =
-        PlaybackService.mediaItem(SavedItem(song.id.toString(), song.uri, song.title, song.artist, song.album, song.albumId))
+        PlaybackService.mediaItem(SavedItem(song.id.toString(), song.uri, song.title, song.artist, song.album, song.albumId, song.art))
 }

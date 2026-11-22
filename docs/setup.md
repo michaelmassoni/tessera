@@ -45,7 +45,7 @@ screen (Allow, or the app's settings). Phone and Messages now use the shared
 | Contacts | Your contacts | No (contacts live in the phone's accounts) |
 | Calendar | Your calendars; *Notifications* (reminders) | No (settings only) |
 | Gallery | Your photos and videos (all, or selected ones) | No |
-| Music | Your music | Yes |
+| Music | Where the music is (this phone or a server); then Your music (phone) or Sign in to your server | Yes |
 | Files | All files access | No |
 | Weather | Welcome only; Weather's own "use my location or add a place" follows | Yes |
 | Sports | Welcome only; the team picker follows | Yes |

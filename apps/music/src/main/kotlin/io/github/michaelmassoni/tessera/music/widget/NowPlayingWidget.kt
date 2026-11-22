@@ -48,6 +48,7 @@ import androidx.media3.session.MediaButtonReceiver
 import io.github.michaelmassoni.tessera.music.MainActivity
 import io.github.michaelmassoni.tessera.music.PlaybackService
 import io.github.michaelmassoni.tessera.music.R
+import io.github.michaelmassoni.tessera.music.server.ServerLibrary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -112,6 +113,7 @@ class NowPlayingWidget : GlanceAppWidget() {
         albumId: Long,
     ): Bitmap? =
         runCatching {
+            ServerLibrary.artFor(context, albumId)?.let { return ServerLibrary.art(context, it, ART_PX) }
             context.contentResolver.loadThumbnail(
                 ContentUris.withAppendedId(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI, albumId),
                 Size(ART_PX, ART_PX),
