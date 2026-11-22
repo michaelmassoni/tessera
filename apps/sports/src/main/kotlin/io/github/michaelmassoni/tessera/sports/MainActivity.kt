@@ -36,7 +36,7 @@ import java.time.ZoneId
 class MainActivity : ComponentActivity() {
     private val viewModel: SportsViewModel by viewModels {
         viewModelFactory {
-            initializer { SportsViewModel(EspnSource(), followStore(), Dispatchers.IO) }
+            initializer { SportsViewModel(EspnSource(), followStore(), Dispatchers.IO, hideScores = { sportsSettings().hideScores }) }
         }
     }
 
@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        viewModel.reloadSettings()
         viewModel.startPolling()
     }
 
@@ -134,5 +135,11 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+
+        override fun reveal(game: Game) = viewModel.reveal(game)
+
+        override fun openTeam(team: Team) = viewModel.openTeam(team)
+
+        override fun closeTeam() = viewModel.closeTeam()
     }
 }

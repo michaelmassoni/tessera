@@ -66,6 +66,18 @@
             </intent-filter>
         </activity>
 
+        <!-- My team widget (Glance): fetched every 30 minutes, and by Live Updates during a game. -->
+        <receiver
+            android:name=".widget.SportsWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sports_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

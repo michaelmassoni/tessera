@@ -48,7 +48,21 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
 - **Game** (a sheet): the score card, the line score by period, and each team's leaders. The
   sheet opens once the details are in (a loading indicator shows over the list meanwhile, until
   the sheet has finished rising over it, then fades; Back cancels), so it comes up at its final height instead of growing and jumping.
-- **Settings**: Live Updates on or off.
+- **Settings**: Live Updates on or off; Hide scores (0.3).
+- **Team** (0.3, a screen): from the team chips under a game's score in its sheet, or a row in the
+  standings. The logo, record and standing as ESPN words them ("14-3 · 1st in Atlantic
+  Division"), the next five games, the last ten results (newest first) and the roster (number,
+  name, position) where ESPN has one: US leagues do, the AFL and NRL don't. A star in the top bar
+  follows or unfollows the team.
+- **Spoiler-free** (0.3, Settings → Hide scores, off by default): live and final games show a
+  dash for each score and no winner dimming; tapping a card shows that game's score (for this
+  session), and opening a game shows it too. Live Updates then show the teams and clock only
+  ("Rockets at Nuggets", "3:20 - 4th", a "Live" chip), and so does the widget.
+- **Widget** (0.3, "My team", Glance, 4×1, home and lock screen): a followed team's live game,
+  else its next game in the coming week, else its latest result from the last three days
+  (`WidgetPick`, unit tested): logos, abbreviations, scores (or records before the game) and the
+  clock or start time. It fetches when drawn (every 30 minutes) and Live Updates redraw it with
+  each score.
 
 ## Live Updates
 
@@ -89,5 +103,5 @@ notification permission is asked when teams are picked.
 
 ## Out of scope for v0.1
 
-WNBL (needs a source), team pages, spoiler-free mode, betting odds, news, video, fantasy, player
-profiles, widgets, Wear OS.
+WNBL (needs a source; ESPN doesn't carry it), betting odds, news, video, fantasy, player profiles,
+Wear OS.

@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -120,6 +122,13 @@ interface SportsActions {
     /** Leaving the team picker (asks for notifications if Live Updates can be used). */
     fun doneFollowing()
 
+    /** Spoiler-free: shows one game's score. */
+    fun reveal(game: Game)
+
+    fun openTeam(team: Team)
+
+    fun closeTeam()
+
     fun openSettings()
 }
 
@@ -154,6 +163,11 @@ fun SportsApp(
                 canGoBack = state.follows.leagues.isNotEmpty(),
                 modifier = modifier,
             )
+        }
+
+        state.teamOpen != null -> {
+            BackHandler(onBack = actions::closeTeam)
+            TeamScreen(state.teamOpen, state.team, state, actions, now, zone, modifier)
         }
 
         else -> {
@@ -285,7 +299,16 @@ private fun ScoresPage(
                             day.games[i - 1].state != GameState.Scheduled
                     if (laterStarts) item(key = "later") { SectionHeading(stringResource(R.string.later_today)) }
                     item(key = "${game.league.id}:${game.id}") {
-                        GameCard(game, now, zone, onClick = { actions.open(game) }, followed = followed, showDay = false)
+                        val hidden = state.hideScores && game.id !in state.revealed
+                        GameCard(
+                            game,
+                            now,
+                            zone,
+                            onClick = { if (hidden && game.state != GameState.Scheduled) actions.reveal(game) else actions.open(game) },
+                            followed = followed,
+                            showDay = false,
+                            hidden = hidden,
+                        )
                     }
                 }
             }
@@ -354,7 +377,7 @@ private fun Section.label(): Int =
     }
 
 @Composable
-private fun SectionHeading(text: String) {
+internal fun SectionHeading(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,
@@ -369,7 +392,7 @@ private fun SectionHeading(text: String) {
 }
 
 @Composable
-private fun Message(text: String) {
+internal fun Message(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodyLarge,
@@ -381,7 +404,7 @@ private fun Message(text: String) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun <T> LoadView(
+internal fun <T> LoadView(
     load: Load<T>?,
     onRetry: () -> Unit,
     content: @Composable (T) -> Unit,
@@ -433,7 +456,7 @@ private fun LeagueTab(
             item(key = "standings") {
                 LoadView(state.standings[league], onRetry = { actions.loadLeague(league, force = true) }) { groups ->
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        groups.forEach { StandingsTable(league, it, state.follows.teamKeys) }
+                        groups.forEach { StandingsTable(league, it, state.follows.teamKeys, actions::openTeam) }
                     }
                 }
             }
@@ -446,7 +469,23 @@ private fun LeagueTab(
                         sections.forEach { section ->
                             SectionHeading(stringResource(section.section.label()))
                             section.games.forEach { game ->
-                                GameCard(game, now, zone, onClick = { actions.open(game) }, followed = state.follows.teamKeys)
+                                val hidden = state.hideScores && game.id !in state.revealed
+                                GameCard(
+                                    game,
+                                    now,
+                                    zone,
+                                    onClick = {
+                                        if (hidden &&
+                                            game.state != GameState.Scheduled
+                                        ) {
+                                            actions.reveal(game)
+                                        } else {
+                                            actions.open(game)
+                                        }
+                                    },
+                                    followed = state.follows.teamKeys,
+                                    hidden = hidden,
+                                )
                             }
                         }
                     }
@@ -462,6 +501,7 @@ private fun StandingsTable(
     league: League,
     group: StandingsGroup,
     followed: Set<String>,
+    onTeam: (Team) -> Unit,
 ) {
     SectionCard(group.name.ifBlank { null }) {
         val scroll = rememberScrollState()
@@ -489,6 +529,7 @@ private fun StandingsTable(
                 Row(
                     Modifier
                         .background(if (mine) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer)
+                        .clickable { onTeam(row.team) }
                         .heightIn(min = 40.dp)
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -652,6 +693,21 @@ private fun GameSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ((load as? Load.Ready)?.value?.game ?: opened)?.let { GameCard(it, now, zone, onClick = {}, followed = state.follows.teamKeys) }
+            // Each team's page.
+            ((load as? Load.Ready)?.value?.game ?: opened)?.let { game ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                    listOf(game.away.team, game.home.team).forEach { team ->
+                        AssistChip(
+                            onClick = {
+                                actions.closeDetail()
+                                actions.openTeam(team)
+                            },
+                            label = { Text(team.shortName) },
+                            leadingIcon = { TeamLogo(team, 18.dp) },
+                        )
+                    }
+                }
+            }
             when (load) {
                 Load.Loading, Load.Failed -> {
                     // Loading never gets here (the sheet waits for the details).
