@@ -23,7 +23,7 @@ section).
 | Voicemail | P2 | Long-press 1 to call voicemail (`TelephonyManager.voiceMailNumber`). Visual voicemail depends on the carrier and is out of scope. |
 | Dual SIM | P2 | Ask which SIM to use, or use a per-contact default, through `PhoneAccountHandle`. |
 | Quick reply on decline | P2 | "Can't talk now…" texts, which need `RESPOND_VIA_MESSAGE` handling. |
-| Recents: delete, search, filter missed calls | P2 | Delete needs `WRITE_CALL_LOG`. |
+| Recents: ~~delete~~ (Phone 0.4), search, filter missed calls | P2 | Delete needs `WRITE_CALL_LOG`. |
 | Swap and merge calls | P3 | Swap is close to free once hold works; merge needs conference support. |
 | Speed dial | P3 | |
 | Avatar for unknown numbers | P3 | Shows "#"; Messages shows the first digit. Use the same person icon in both. |
@@ -51,8 +51,8 @@ section).
 | Gap | Priority | Notes |
 |-----|----------|-------|
 | ~~Basic editor: crop, rotate, straighten~~ | Done in Gallery 0.2 | Also flip, brightness, contrast, saturation, warmth and Auto. |
-| Move or copy to an album, create an album | P2 | Through MediaStore `RELATIVE_PATH` updates (with user confirmation). |
-| Rotate in the viewer | P2 | Writes the EXIF orientation. |
+| ~~Move or copy to an album, create an album~~ | Done in Gallery 0.3 | Through MediaStore `RELATIVE_PATH` updates (with user confirmation). |
+| ~~Rotate in the viewer~~ | Done in Gallery 0.3 | Writes the EXIF orientation. |
 | Search | P2 | By file name, folder and date; no on-device AI. |
 | Slideshow, sort options, hidden albums | P3 | |
 | Motion photos, video trimming | P3 | |
@@ -63,8 +63,8 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Week and day views | **P1** | Only month and schedule views exist. |
-| Edit or delete one instance of a repeating event | **P1** | Today a change applies to the whole series, which surprises people. |
+| ~~Week and day views~~ | Done in Calendar 0.6 | Only month and schedule views exist. |
+| ~~Edit or delete one instance of a repeating event~~ | Done in Calendar 0.6 | Today a change applies to the whole series, which surprises people. |
 | Search events | P2 | |
 | ~~Widget (agenda or month)~~ | Done in Calendar 0.2 | Agenda, month and date widgets, with picker previews. |
 | Time zone picker, event colours | P3 | |
@@ -74,24 +74,24 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Playlists (read MediaStore and `.m3u` playlists, create, edit) | **P1** | |
-| Restore the queue and position after the app is closed | **P1** | Today closing the app loses what was playing. |
+| ~~Playlists (read MediaStore and `.m3u` playlists, create, edit)~~ | Done in Music 0.2 (app playlists; MediaStore and .m3u not read) | |
+| ~~Restore the queue and position after the app is closed~~ | Done in Music 0.2 | Today closing the app loses what was playing. |
 | Folders view | P2 | Common in open-source players; useful for audiobooks and podcasts. |
 | Sleep timer | P2 | |
 | Equaliser | P2 | Open the system equaliser through `AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL`. |
 | Reorder and remove in the queue | P2 | The queue sheet can only jump to a track. |
 | Lyrics (`.lrc` files), Android Auto | P3 | |
-| Album art in the song list | P2 | Lists show a note icon for every song; art only appears in the player. Use `loadThumbnail` on the album URI. |
+| ~~Album art in the song list~~ | Done in Music 0.1 | Lists show a note icon for every song; art only appears in the player. Use `loadThumbnail` on the album URI. |
 | Genres and Folders tabs | P2 | Gramophone and Auxio both have them. |
 
 ## Clock
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| "Upcoming alarm" notification with Dismiss now | P2 | Pixel shows it 2 hours before. |
+| ~~"Upcoming alarm" notification with Dismiss now~~ | Done in Clock 0.3 | Pixel shows it 2 hours before. |
 | Gradually increasing volume | P2 | |
-| Skip the next occurrence of a repeating alarm | P2 | |
-| Widgets (digital, analog, next alarm) | P2 | |
+| ~~Skip the next occurrence of a repeating alarm~~ | Done in Clock 0.3 | |
+| ~~Widgets (digital, analog, next alarm)~~ | Done in Clock 0.3 (digital with next alarm) | |
 | Bedtime | P3 | |
 | "Timer starter" widget | P3 | One-tap preset timers. Google Clock was reported to add one in July 2026. |
 
@@ -99,7 +99,7 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Trash (undo delete) | **P1** | Deleting is permanent today. A `.trash` folder per volume with 30-day expiry. |
+| ~~Trash (undo delete)~~ | Done in Files 0.3 | Deleting is permanent today. A `.trash` folder per volume with 30-day expiry. |
 | Zip: extract and compress | P2 | Pure-Java `java.util.zip`. |
 | Recent files and categories (Images, Videos, Audio, Documents, Downloads) | P2 | MediaStore queries. |
 | Bookmarked folders | P2 | |
@@ -111,7 +111,7 @@ section).
 | Gap | Priority | Notes |
 |-----|----------|-------|
 | Tappable links, phone numbers and emails | P2 | |
-| Checklists: drag to reorder, move ticked items to the bottom | P2 | |
+| ~~Checklists: drag to reorder, move ticked items to the bottom~~ | Done in Notes 0.2 | |
 | Note colours | P2 | |
 | Reminders | P2 | Could reuse Clock's approach to exact alarms. |
 | Lock notes, images | P3 | |
@@ -140,7 +140,7 @@ section).
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Home screen widgets | **P1** | Calendar has agenda, month and date widgets (0.2); no other app has one yet. The ones people expect: Clock (time and next alarm), Calendar (agenda), Notes (a note, and quick add), Music (now playing). Jetpack Glance is open source and Compose-based. |
+| Home screen widgets | Mostly done | Calendar (0.2), Clock (0.3), Notes (0.2), Music (0.2), Weather (0.4) and Sports (0.3) have widgets. The ones people expect: Clock (time and next alarm), Calendar (agenda), Notes (a note, and quick add), Music (now playing). Jetpack Glance is open source and Compose-based. |
 | Launcher shortcuts (long-press the icon) | P2 | Only Messages and Notes have them. Clock: New alarm, Timer, Stopwatch. Calendar: New event. Contacts: New contact. Phone: favourites. |
 | Quick Settings tiles | P3 | Clock: start the stopwatch or a timer. Notes: new note. Calculator: open it. |
 
@@ -171,9 +171,9 @@ Clock's ringing screen uses `TesseraAppTheme` on purpose (it shows before unlock
 | Finding | Priority | Notes |
 |---------|----------|-------|
 | ~~Gallery decodes full photos and video frames for thumbnails~~ | Done in Gallery 0.1.4 | Coil decodes each original file (and extracts a video frame with `VideoFrameDecoder`) for every grid cell. MediaStore already keeps thumbnails: a small Coil fetcher using `ContentResolver.loadThumbnail` for `content://media` URIs would make scrolling a large library much smoother. This is the biggest win in the suite. |
-| Theme sync wakes every Tessera app on each cold start | P2 | `setTesseraContent` calls `pullFromPeers()` once per process, which calls every other Tessera app's settings provider and starts up to nine processes. Changes are already pushed to every app when they happen, so pull only on first launch (when nothing is stored yet). |
-| Messages reloads up to three times per incoming message | P2 | It observes `mms-sms`, `sms` and `mms`, and each callback reloads the conversation list and the open thread. Debounce them into one reload (about 300 ms). Gallery, Calendar and Contacts observers would also benefit, since a camera burst or a sync fires many changes. |
-| Messages looks up each conversation's contact name separately | P2 | One `PhoneLookup` query per address on first load: hundreds with a long history. The cache never refreshes, so a contact added later shows as a number until the app restarts. Read all numbers in one query (as Phone's `numbers()` does), match them with `Addresses`, and refresh on Contacts changes. |
+| ~~Theme sync wakes every Tessera app on each cold start~~ | Done in core:settings (pulls only after an app update) | `setTesseraContent` calls `pullFromPeers()` once per process, which calls every other Tessera app's settings provider and starts up to nine processes. Changes are already pushed to every app when they happen, so pull only on first launch (when nothing is stored yet). |
+| ~~Messages reloads up to three times per incoming message~~ | Done in Messages 0.3, and Gallery, Calendar and Contacts on 2026-11-22 | It observes `mms-sms`, `sms` and `mms`, and each callback reloads the conversation list and the open thread. Debounce them into one reload (about 300 ms). Gallery, Calendar and Contacts observers would also benefit, since a camera burst or a sync fires many changes. |
+| ~~Messages looks up each conversation's contact name separately~~ | Done in Messages 0.3 | One `PhoneLookup` query per address on first load: hundreds with a long history. The cache never refreshes, so a contact added later shows as a number until the app restarts. Read all numbers in one query (as Phone's `numbers()` does), match them with `Addresses`, and refresh on Contacts changes. |
 | No app Baseline Profiles | P3 | The bundled library profiles are installed (`profileinstaller` is present), but Tessera's own startup and scrolling code isn't covered. A baseline profile per app usually gives a noticeably faster first launch. Generating them needs an emulator in CI. |
 | Lazy lists without stable keys | P3 | Music queue (reordering will need keys), Messages contact suggestions and draft attachments, Files breadcrumbs. |
 
