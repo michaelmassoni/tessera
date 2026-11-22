@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.tasks.ui
+package io.github.michaelmassoni.tessera.core.dav
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,9 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import io.github.michaelmassoni.tessera.tasks.R
-import io.github.michaelmassoni.tessera.tasks.data.RemoteList
-import io.github.michaelmassoni.tessera.tasks.data.SignInProblem
+import io.github.michaelmassoni.tessera.core.dav.R
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** What the sign-in form holds. */
@@ -44,7 +42,10 @@ data class SignInFields(
     val password: String = "",
 )
 
-/** Server address, username and password, and what went wrong last time. */
+/**
+ * Server address, username and password, and what went wrong last time. [notFound] says what
+ * the server lacks when it isn't the service wanted ("…doesn't offer CalDAV task lists…").
+ */
 @Composable
 fun SignInForm(
     fields: SignInFields,
@@ -52,6 +53,7 @@ fun SignInForm(
     problem: SignInProblem?,
     enabled: Boolean,
     onDone: () -> Unit,
+    notFound: String,
     modifier: Modifier = Modifier,
 ) {
     var show by rememberSaveable { mutableStateOf(false) }
@@ -99,16 +101,14 @@ fun SignInForm(
         )
         if (problem != null) {
             Text(
-                stringResource(
-                    when (problem) {
-                        SignInProblem.BadAddress -> R.string.problem_bad_address
-                        SignInProblem.Insecure -> R.string.problem_insecure
-                        SignInProblem.Unreachable -> R.string.problem_unreachable
-                        SignInProblem.WrongLogin -> R.string.problem_wrong_login
-                        SignInProblem.NotCalDav -> R.string.problem_not_caldav
-                        SignInProblem.Other -> R.string.problem_other
-                    },
-                ),
+                when (problem) {
+                    SignInProblem.BadAddress -> stringResource(R.string.problem_bad_address)
+                    SignInProblem.Insecure -> stringResource(R.string.problem_insecure)
+                    SignInProblem.Unreachable -> stringResource(R.string.problem_unreachable)
+                    SignInProblem.WrongLogin -> stringResource(R.string.problem_wrong_login)
+                    SignInProblem.NotCalDav -> notFound
+                    SignInProblem.Other -> stringResource(R.string.problem_other)
+                },
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
@@ -117,26 +117,35 @@ fun SignInForm(
     }
 }
 
-/** The server's task lists, ticked to sync. */
+/** A calendar, address book or task list on the server, offered for syncing. */
+data class RemoteCollection(
+    val href: String,
+    val name: String,
+    val color: Int? = null,
+    val writable: Boolean = true,
+)
+
+/** The server's collections, ticked to sync; [empty] when there are none. */
 @Composable
-fun ListPicker(
-    lists: List<RemoteList>,
+fun CollectionPicker(
+    collections: List<RemoteCollection>,
     chosen: Set<String>,
     onChange: (Set<String>) -> Unit,
+    empty: String,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth()) {
-        if (lists.isEmpty()) Text(stringResource(R.string.no_server_lists), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        lists.forEach { l ->
-            val on = l.href in chosen
+        if (collections.isEmpty()) Text(empty, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        collections.forEach { c ->
+            val on = c.href in chosen
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .toggleable(on, role = Role.Checkbox) { onChange(if (it) chosen + l.href else chosen - l.href) },
+                    .toggleable(on, role = Role.Checkbox) { onChange(if (it) chosen + c.href else chosen - c.href) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(checked = on, onCheckedChange = null, modifier = Modifier.size(48.dp))
-                Text(l.name, style = MaterialTheme.typography.bodyLarge)
+                Text(c.name, style = MaterialTheme.typography.bodyLarge)
             }
         }
     }

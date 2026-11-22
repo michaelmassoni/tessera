@@ -1,8 +1,11 @@
 package io.github.michaelmassoni.tessera.tasks.sync
 
+import io.github.michaelmassoni.tessera.core.dav.DavClient
+import io.github.michaelmassoni.tessera.core.dav.DavResponse
+import io.github.michaelmassoni.tessera.core.dav.SyncException
+import io.github.michaelmassoni.tessera.core.dav.SyncProblem
 import io.github.michaelmassoni.tessera.tasks.data.TaskData
 import io.github.michaelmassoni.tessera.tasks.data.TaskStore
-import io.github.michaelmassoni.tessera.tasks.engine.DavResponse
 import io.github.michaelmassoni.tessera.tasks.engine.Merge
 import io.github.michaelmassoni.tessera.tasks.engine.Task
 import io.github.michaelmassoni.tessera.tasks.engine.VTodo
@@ -15,7 +18,7 @@ import java.time.ZoneId
  */
 class Syncer(
     private val store: TaskStore,
-    private val client: CalDavClient,
+    private val client: DavClient,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
@@ -114,7 +117,7 @@ class Syncer(
         store.update { d ->
             var tasks = d.tasks
             for (r in fetched) {
-                val text = r.calendarData ?: continue
+                val text = r.data ?: continue
                 val remote = VTodo.read(text, listId, zone())?.copy(href = r.href, etag = r.etag) ?: continue
                 val local = tasks.firstOrNull { it.href == r.href } ?: tasks.firstOrNull { it.id == remote.id && it.listId == listId }
                 tasks =

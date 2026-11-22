@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.tasks.engine
+package io.github.michaelmassoni.tessera.core.dav
 
 /** One content line: `NAME;PARAM=value:VALUE`. */
 data class Property(
