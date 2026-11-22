@@ -233,6 +233,30 @@ Asked for by the maintainer after using 0.4 with their Navidrome library.
   but the song playing taken out and put back in the new order). One move per song had sent the
   whole queue to the app for every move, which took seconds for a long queue.
 
+## Android Auto (0.7)
+
+Music is an Android Auto media app (`automotive_app_desc.xml`, `<uses name="media"/>`); no Google
+library is involved. `PlaybackService` is a Media3 `MediaLibraryService`, so the car browses it:
+
+- **Browse:** Playlists, Albums (a grid of covers), Artists (album artists unless turned off) and
+  Songs, down to songs; playlists, artists and Songs start with Shuffle. The tree is `BrowseTree`
+  (pure, unit tested), built from the server's saved library or the phone's music, and rebuilt
+  when the car connects.
+- **Picking a song** plays its album, playlist or artist from there, with "Playing from" set.
+  Shuffle entries queue the list already shuffled.
+- **Voice:** "play <album>" plays the album; "play <artist>" shuffles the artist; anything else
+  plays the matching songs; just "play music" shuffles everything. The car's search screen lists
+  matching songs.
+- **Covers** reach the car through `ArtProvider`, which serves server covers and, for music on
+  the phone, the system's album thumbnails (`…/local/<album id>`), since the car can't read
+  MediaStore itself.
+- **Installing outside the Play Store:** Android Auto hides such apps until you allow them: in the
+  Android Auto app, tap the version number in Settings ten times to unlock developer settings,
+  then turn on "Unknown sources".
+- Checked on the emulator by browsing the service with a Media3 `MediaBrowser` as a car does
+  (sections, grid hint, covers readable by another app, picking a song, voice search, shuffle).
+  Not run in a car or the Desktop Head Unit: Android Auto isn't on the AOSP emulator.
+
 ## Out of scope for v0.1
 
 - Lyrics.
@@ -240,7 +264,6 @@ Asked for by the maintainer after using 0.4 with their Navidrome library.
 - Gapless tuning.
 - Folders view.
 - Tag editing.
-- Android Auto.
 
 ## First run
 
