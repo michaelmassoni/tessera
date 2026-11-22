@@ -1,0 +1,245 @@
+package io.github.michaelmassoni.tessera.music.engine
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
+import java.net.URI
+import java.net.URISyntaxException
+import java.net.URLEncoder
+import java.security.MessageDigest
+
+/** Where a server is, and who signs in. The password is kept separately, encrypted. */
+data class ServerAccount(
+    val address: String,
+    val username: String,
+)
+
+/** Why a server request failed, in terms the person can act on. */
+enum class ServerProblem {
+    /** No answer: offline, wrong address, server down. */
+    Unreachable,
+
+    /** Error 40 (or 41 for token auth): wrong username or password. */
+    WrongLogin,
+
+    /** It answered, but not as a Subsonic server. */
+    NotSubsonic,
+
+    /** Error 30: the server is older than the client protocol. */
+    TooOld,
+
+    /** `http://` to an address on the internet. */
+    Insecure,
+
+    /** Not an address at all. */
+    BadAddress,
+
+    /** Any other Subsonic error. */
+    Other,
+}
+
+class ServerException(
+    val problem: ServerProblem,
+    message: String? = null,
+) : Exception(message ?: problem.name)
+
+/**
+ * The Subsonic REST protocol, without the network: addresses, authentication, and reading
+ * responses into [Song]s. Pure, so it's unit tested.
+ */
+object Subsonic {
+    const val API_VERSION = "1.16.1"
+    const val CLIENT = "Tessera"
+    const val SCHEME = "tessera-subsonic"
+    const val PAGE = 500
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /**
+     * Tidies what the person typed: adds `https://` when no scheme is given, drops a trailing
+     * slash and a pasted `/rest/...`. Fails for anything that isn't an http(s) address, and for
+     * `http://` outside a private network.
+     */
+    fun normalizeAddress(typed: String): String {
+        var text = typed.trim()
+        if (text.isEmpty()) throw ServerException(ServerProblem.BadAddress)
+        if (!text.contains("://")) text = "https://$text"
+        val uri =
+            try {
+                URI(text)
+            } catch (_: URISyntaxException) {
+                throw ServerException(ServerProblem.BadAddress)
+            }
+        val scheme = uri.scheme?.lowercase()
+        val host = uri.host
+        if (scheme !in setOf("http", "https") || host.isNullOrEmpty()) throw ServerException(ServerProblem.BadAddress)
+        if (scheme == "http" && !isPrivateHost(host)) throw ServerException(ServerProblem.Insecure)
+        val path = (uri.rawPath ?: "").substringBefore("/rest/").removeSuffix("/rest").trimEnd('/')
+        val port = if (uri.port >= 0) ":${uri.port}" else ""
+        val hostPart = if (host.contains(':') && !host.startsWith("[")) "[$host]" else host
+        return "$scheme://${hostPart.lowercase()}$port$path"
+    }
+
+    /**
+     * Addresses where unencrypted HTTP stays on a network the person controls: private and
+     * Tailscale (CGNAT) ranges, loopback, link-local, and local names.
+     */
+    fun isPrivateHost(host: String): Boolean {
+        val h = host.lowercase().removePrefix("[").removeSuffix("]")
+        if (h == "localhost") return true
+        if (listOf(".local", ".lan", ".home.arpa", ".ts.net", ".internal").any { h.endsWith(it) }) return true
+        ipv4(h)?.let { (a, b) ->
+            return a == 10 ||
+                a == 127 ||
+                (a == 172 && b in 16..31) ||
+                (a == 192 && b == 168) ||
+                (a == 169 && b == 254) ||
+                (a == 100 && b in 64..127)
+        }
+        if (h.contains(':')) {
+            return h == "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe8") ||
+                h.startsWith("fe9") || h.startsWith("fea") || h.startsWith("feb")
+        }
+        // A single word ("nas") only resolves on the local network.
+        return !h.contains('.')
+    }
+
+    private fun ipv4(host: String): Pair<Int, Int>? {
+        val parts = host.split('.')
+        if (parts.size != 4) return null
+        val n = parts.map { it.toIntOrNull()?.takeIf { v -> v in 0..255 } ?: return null }
+        return n[0] to n[1]
+    }
+
+    /** Subsonic token auth: md5(password + salt), lower-case hex. */
+    fun token(
+        password: String,
+        salt: String,
+    ): String =
+        MessageDigest
+            .getInstance("MD5")
+            .digest((password + salt).toByteArray())
+            .joinToString("") { "%02x".format(it) }
+
+    /** `<address>/rest/<method>?u=…&t=…&s=…&v=…&c=…&f=json&<params>`. */
+    fun url(
+        account: ServerAccount,
+        password: String,
+        salt: String,
+        method: String,
+        params: List<Pair<String, String>> = emptyList(),
+    ): String {
+        val auth =
+            listOf(
+                "u" to account.username,
+                "t" to token(password, salt),
+                "s" to salt,
+                "v" to API_VERSION,
+                "c" to CLIENT,
+                "f" to "json",
+            )
+        val query = (auth + params).joinToString("&") { (k, v) -> "$k=${URLEncoder.encode(v, "UTF-8")}" }
+        return "${account.address}/rest/$method?$query"
+    }
+
+    /**
+     * The `subsonic-response` object of a reply, or the problem it reports. Anything that isn't
+     * a Subsonic reply (a login page, a proxy error) is [ServerProblem.NotSubsonic].
+     */
+    fun response(body: String): JsonObject {
+        val root =
+            try {
+                json.parseToJsonElement(body) as? JsonObject
+            } catch (_: IllegalArgumentException) {
+                null
+            } ?: throw ServerException(ServerProblem.NotSubsonic)
+        val response = root["subsonic-response"] as? JsonObject ?: throw ServerException(ServerProblem.NotSubsonic)
+        if (response.string("status") == "ok") return response
+        val error = response["error"] as? JsonObject
+        val code = error?.int("code")
+        val problem =
+            when (code) {
+                40, 41, 44 -> ServerProblem.WrongLogin
+                30 -> ServerProblem.TooOld
+                else -> ServerProblem.Other
+            }
+        throw ServerException(problem, error?.string("message"))
+    }
+
+    /** The songs in a `search3` reply. */
+    fun searchSongs(response: JsonObject): List<Song> = (response["searchResult3"] as? JsonObject).array("song").mapNotNull(::song)
+
+    /** Album ids in a `getAlbumList2` reply. */
+    fun albumIds(response: JsonObject): List<String> =
+        (response["albumList2"] as? JsonObject).array("album").mapNotNull { (it as? JsonObject)?.string("id") }
+
+    /** The songs in a `getAlbum` reply. */
+    fun albumSongs(response: JsonObject): List<Song> = (response["album"] as? JsonObject).array("song").mapNotNull(::song)
+
+    /** One Subsonic `child` (a song) as a [Song], or null for a directory or something unplayable. */
+    fun song(element: JsonElement): Song? {
+        val o = element as? JsonObject ?: return null
+        if (o.string("isDir") == "true") return null
+        val id = o.string("id") ?: return null
+        val albumKey = o.string("albumId") ?: o.string("album") ?: o.string("parent") ?: ""
+        val artistKey = o.string("artistId") ?: o.string("artist") ?: ""
+        val disc = o.int("discNumber") ?: 0
+        val track = o.int("track") ?: 0
+        return Song(
+            id = idOf("song", id),
+            uri = songUri(id),
+            title = o.string("title") ?: o.string("path")?.substringAfterLast('/') ?: "",
+            artist = o.string("artist").orEmpty(),
+            artistId = idOf("artist", artistKey),
+            album = o.string("album").orEmpty(),
+            albumId = idOf("album", albumKey),
+            durationMillis = (o.long("duration") ?: 0) * 1000,
+            track = if (track > 0) disc.coerceAtLeast(0) * 1000 + track else 0,
+            year = o.int("year") ?: 0,
+            art = o.string("coverArt"),
+        )
+    }
+
+    fun songUri(id: String) = "$SCHEME:song/$id"
+
+    /** The server's id of a song from its [songUri], or null for a local song. */
+    fun songId(uri: String): String? = uri.removePrefix("$SCHEME:song/").takeIf { it != uri && it.isNotEmpty() }
+
+    fun isServerUri(uri: String) = uri.startsWith("$SCHEME:")
+
+    /**
+     * A stable positive number for a server id (FNV-1a, 64 bits), separate per [kind]. Numbers
+     * are what playlists, the queue and the widget keep; collisions in a library of any real
+     * size are vanishingly unlikely.
+     */
+    fun idOf(
+        kind: String,
+        id: String,
+    ): Long {
+        var hash = -0x340d631b7bdddcdbL
+        for (b in "$kind/$id".toByteArray()) {
+            hash = hash xor (b.toLong() and 0xff)
+            hash *= 0x100000001b3L
+        }
+        return (hash and Long.MAX_VALUE).coerceAtLeast(1)
+    }
+
+    private fun JsonObject?.array(key: String): List<JsonElement> =
+        when (val v = this?.get(key)) {
+            is JsonArray -> v
+            is JsonObject -> listOf(v)
+            else -> emptyList()
+        }
+
+    private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+
+    private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.let { it.intOrNull ?: it.contentOrNull?.toIntOrNull() }
+
+    private fun JsonObject.long(key: String): Long? =
+        (this[key] as? JsonPrimitive)?.let { it.longOrNull ?: it.contentOrNull?.toLongOrNull() }
+}

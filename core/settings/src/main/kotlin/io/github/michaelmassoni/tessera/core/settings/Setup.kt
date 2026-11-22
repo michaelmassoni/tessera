@@ -15,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -87,10 +88,22 @@ data class SetupStep(
     val grant: SetupGrant,
     /** Optional steps can be skipped with "Not now"; required ones only by leaving the app. */
     val required: Boolean = true,
+    /** Whether the step applies, decided when it's reached (Music asks for audio only for music on the phone). */
+    val wanted: (Context) -> Boolean = { true },
+)
+
+/**
+ * A page of the app's own, after the welcome and before the permission steps: a choice or a
+ * sign-in. [content] calls its argument to move on.
+ */
+class SetupCustom(
+    val wanted: (Context) -> Boolean = { true },
+    val content: @Composable (next: () -> Unit) -> Unit,
 )
 
 /** What an app's first-run setup covers. */
 data class SetupSpec(
+    val custom: List<SetupCustom> = emptyList(),
     val steps: List<SetupStep> = emptyList(),
     /** Offer to restore from a backup (for apps with data of their own). */
     val offerRestore: Boolean = false,
@@ -180,6 +193,10 @@ fun SetupGate(
 private sealed interface Page {
     data object Welcome : Page
 
+    data class Custom(
+        val custom: SetupCustom,
+    ) : Page
+
     data class Step(
         val step: SetupStep,
     ) : Page
@@ -197,6 +214,7 @@ private fun SetupFlow(
     val pages =
         remember {
             listOf(Page.Welcome) +
+                spec.custom.map { Page.Custom(it) } +
                 spec.steps.filterNot { Setup.granted(context, it.grant) }.map { Page.Step(it) } +
                 if (spec.offerRestore && !Setup.wasRestored(context)) listOf(Page.Restore) else emptyList()
         }
@@ -212,7 +230,7 @@ private fun SetupFlow(
         declined = false
         // Skip steps granted along the way (a default-app role brings its permissions with it).
         var i = index + 1
-        while (i < pages.size && (pages[i] as? Page.Step)?.let { Setup.granted(context, it.step.grant) } == true) i++
+        while (i < pages.size && skipped(context, pages[i])) i++
         if (i >= pages.size) onDone() else index = i
     }
     val page = pages[index]
@@ -295,7 +313,7 @@ private fun SetupFlow(
 
                     is Page.Step -> {
                         SetupPage(
-                            image = { StepIcon(p.step.icon) },
+                            image = { SetupIcon(p.step.icon) },
                             title = stringResource(p.step.title),
                             text =
                                 stringResource(p.step.text) +
@@ -316,23 +334,37 @@ private fun SetupFlow(
                     Page.Restore -> {
                         RestorePage(onDone = ::next)
                     }
+
+                    is Page.Custom -> {
+                        p.custom.content(::next)
+                    }
                 }
             }
         }
     }
     // Back goes to the previous page; from the welcome it leaves the app, and setup runs again next time.
-    androidx.activity.compose.BackHandler(index > 0) { index-- }
+    androidx.activity.compose.BackHandler(index > 0) {
+        var i = index - 1
+        while (i > 0 && skipped(context, pages[i])) i--
+        index = i
+    }
 }
 
+/**
+ * The layout every setup page shares: a picture, a title, a sentence or two, anything else the
+ * page needs ([body]: fields, choices), and its buttons at the bottom.
+ */
 @Composable
-private fun SetupPage(
+fun SetupPage(
     image: @Composable () -> Unit,
     title: String,
     text: String,
-    buttons: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    body: (@Composable ColumnScope.() -> Unit)? = null,
+    buttons: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(48.dp))
@@ -350,6 +382,13 @@ private fun SetupPage(
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(max = 560.dp).padding(top = 16.dp),
         )
+        if (body != null) {
+            Column(
+                Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(top = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = body,
+            )
+        }
         Spacer(Modifier.weight(1f).height(32.dp))
         Column(
             Modifier.widthIn(max = 420.dp).fillMaxWidth().padding(bottom = 24.dp),
@@ -358,10 +397,14 @@ private fun SetupPage(
     }
 }
 
+/** A setup page's picture: [icon] in a tonal circle. */
 @Composable
-private fun StepIcon(icon: Int) {
+fun SetupIcon(
+    @DrawableRes icon: Int,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        Modifier.size(96.dp).clip(CircleShape),
+        modifier.size(96.dp).clip(CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = CircleShape, modifier = Modifier.size(96.dp)) {
@@ -412,7 +455,7 @@ private fun RestorePage(onDone: () -> Unit) {
             }
         }
     SetupPage(
-        image = { StepIcon(io.github.michaelmassoni.tessera.core.design.R.drawable.ic_history) },
+        image = { SetupIcon(io.github.michaelmassoni.tessera.core.design.R.drawable.ic_history) },
         title = stringResource(R.string.setup_restore_title),
         text = stringResource(R.string.setup_restore_text) + (error?.let { "\n\n$it" } ?: ""),
     ) {
@@ -465,7 +508,7 @@ fun NeedsAccessScreen(
     val context = LocalContext.current
     Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Box(Modifier.safeDrawingPadding()) {
-            SetupPage(image = { StepIcon(icon) }, title = title, text = text) {
+            SetupPage(image = { SetupIcon(icon) }, title = title, text = text) {
                 Button(onClick = onAllow, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.setup_allow)) }
                 TextButton(onClick = { context.startActivity(Setup.appSettings(context)) }, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.setup_open_settings))
@@ -486,7 +529,7 @@ private fun SetupStepPreview() {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                 )
                 SetupPage(
-                    image = { StepIcon(io.github.michaelmassoni.tessera.core.design.R.drawable.ic_contacts) },
+                    image = { SetupIcon(io.github.michaelmassoni.tessera.core.design.R.drawable.ic_contacts) },
                     title = "Calls and contacts",
                     text = "To make calls, show your recent calls and show your contacts' names. Nothing leaves this phone.",
                 ) {
@@ -504,7 +547,7 @@ private fun SetupRestorePreview() {
     TesseraTheme(dynamicColor = false) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             SetupPage(
-                image = { StepIcon(io.github.michaelmassoni.tessera.core.design.R.drawable.ic_history) },
+                image = { SetupIcon(io.github.michaelmassoni.tessera.core.design.R.drawable.ic_history) },
                 title = stringResource(R.string.setup_restore_title),
                 text = stringResource(R.string.setup_restore_text),
             ) {
@@ -514,3 +557,14 @@ private fun SetupRestorePreview() {
         }
     }
 }
+
+/** Pages passed over: steps granted along the way or not wanted, and custom pages not wanted. */
+private fun skipped(
+    context: Context,
+    page: Page,
+): Boolean =
+    when (page) {
+        is Page.Step -> !page.step.wanted(context) || Setup.granted(context, page.step.grant)
+        is Page.Custom -> !page.custom.wanted(context)
+        else -> false
+    }

@@ -4,6 +4,15 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Music plays from Subsonic servers (Accepted)
+
+The maintainer keeps their music in Navidrome (HTTPS, reached over Tailscale), so Music 0.4 adds
+a Subsonic-compatible source, chosen in first-run setup or Settings. Music now has `INTERNET`,
+used only for the server the person adds. Plain http is allowed by the network security config
+but refused by the app outside private networks and Tailscale; user-installed CAs are trusted
+for self-hosted servers with a private CA. An exported, read-only `ArtProvider` serves cover art
+to media controllers. Jellyfin (not Subsonic) is out of scope. See docs/music.md.
+
 ## 2026-11-22: First-run setup for every app but Calculator (Accepted)
 
 The maintainer agreed: a shared setup (welcome, one page per permission, restore) on fresh

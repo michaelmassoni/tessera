@@ -91,6 +91,14 @@ private fun LibraryPreview() {
 
 @TesseraPreviews
 @Composable
+private fun ServerLibraryPreview() {
+    TesseraTheme(dynamicColor = false) {
+        MusicApp(library.copy(fromServer = true, notice = ServerNotice.Unreachable), playing, { progress }, NoLibrary, NoPlayer)
+    }
+}
+
+@TesseraPreviews
+@Composable
 private fun FullPlayerPreview() {
     TesseraTheme(dynamicColor = false) { FullPlayer(playing, { progress }, NoPlayer, onClose = {}) }
 }

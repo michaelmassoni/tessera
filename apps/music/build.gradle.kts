@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.music"
-        versionCode = 7
-        versionName = "0.3.0"
+        versionCode = 8
+        versionName = "0.4.0"
     }
 }
 
@@ -17,6 +17,8 @@ dependencies {
     implementation(libs.compose.material3.navigation.suite)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
+    implementation(libs.media3.datasource)
+    implementation(libs.media3.database)
     implementation(libs.kotlinx.serialization.json)
     // Glance brings WorkManager 2.7 with Room 2.2, whose database R8 strips: release builds crashed
     // on start (0.2.0, 0.2.1). The current WorkManager has the keep rules.
