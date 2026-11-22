@@ -4,6 +4,14 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: Backups are files, per app and for the whole suite (Accepted)
+
+The maintainer asked for backup and restore and left the design to Claude. Each app backs up its
+own data to a file the person picks (SAF), and "Back up all Tessera apps" puts every app's backup
+in one file, collected through the existing signature-checked settings provider. No cloud and no
+new permissions. Android's own providers (contacts, calendar, messages, call log) aren't
+included: they belong to the system and have their own export paths. See docs/backup.md.
+
 ## 2026-11-22: Clock's widget is a RemoteViews layout, not Glance (Accepted)
 
 A clock widget must show the current minute. Glance has no `TextClock`, and redrawing a Glance
