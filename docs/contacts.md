@@ -116,3 +116,7 @@ needed.
 - Blocking numbers.
 - QR sharing.
 - Multiple addresses in the editor (all of them are still shown on the detail screen).
+
+## First run
+
+See [setup.md](setup.md) for what contacts asks for the first time it opens.

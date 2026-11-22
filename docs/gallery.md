@@ -141,3 +141,7 @@ The viewer is always full-screen.
 - Map and people views.
 - Slideshows.
 - Cloud.
+
+## First run
+
+See [setup.md](setup.md) for what gallery asks for the first time it opens.

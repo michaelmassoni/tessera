@@ -105,3 +105,7 @@ notification permission is asked when teams are picked.
 
 WNBL (needs a source; ESPN doesn't carry it), betting odds, news, video, fantasy, player profiles,
 Wear OS.
+
+## First run
+
+See [setup.md](setup.md) for what sports asks for the first time it opens.

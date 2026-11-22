@@ -4,6 +4,13 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-22: First-run setup for every app but Calculator (Accepted)
+
+The maintainer agreed: a shared setup (welcome, one page per permission, restore) on fresh
+installs only; apps that can't work without a permission block on a "needs access" screen;
+"Restore all" from any app's setup covers the others; optional features stay in Settings. See
+docs/setup.md.
+
 ## 2026-11-22: Phone labels spam from your own reports; no community list yet (Accepted)
 
 The maintainer chose: a community spam list if a popular, trusted one exists; label only (never

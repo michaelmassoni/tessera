@@ -20,8 +20,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import io.github.michaelmassoni.tessera.core.settings.NeedsAccessScreen
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.phone.data.ContactNumber
 import io.github.michaelmassoni.tessera.phone.data.PhoneRepository
@@ -37,6 +40,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class MainActivity : ComponentActivity() {
     private var state by mutableStateOf(PhoneState())
@@ -67,11 +71,22 @@ class MainActivity : ComponentActivity() {
         dialNumber = numberFrom(intent)
         val actions = Actions()
         setTesseraContent {
-            val number = dialNumber
-            // A dial request opens the keypad with the number filled in.
-            PhoneApp(state, actions, initialTab = if (number != null) 3 else 1, initialNumber = number.orEmpty())
+            SetupGate(phoneSetup) {
+                val number = dialNumber
+                if (state.loaded && !state.hasPermissions) {
+                    // Calls, recents and contacts all need these: nothing works without them.
+                    NeedsAccessScreen(
+                        DesignR.drawable.ic_contacts,
+                        stringResource(R.string.setup_access_title),
+                        stringResource(R.string.setup_access_text),
+                        onAllow = actions::grant,
+                    )
+                } else {
+                    // A dial request opens the keypad with the number filled in.
+                    PhoneApp(state, actions, initialTab = if (number != null) 3 else 1, initialNumber = number.orEmpty())
+                }
+            }
         }
-        if (!hasAll()) request.launch(permissions.toTypedArray())
     }
 
     override fun onResume() {

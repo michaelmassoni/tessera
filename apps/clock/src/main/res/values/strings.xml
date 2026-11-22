@@ -132,4 +132,8 @@
     <string name="widget_next_alarm">Next alarm %1$s</string>
     <!-- A TextClock pattern: short weekday, day and short month. -->
     <string name="widget_date_format" translatable="false">EEE, d MMM</string>
+    <string name="setup_notifications_title">Notifications</string>
+    <string name="setup_notifications_text">So alarms and timers can ring and show on screen. Without them Android may keep them silent.</string>
+    <string name="setup_full_screen_title">Alarms over the lock screen</string>
+    <string name="setup_full_screen_text">So a ringing alarm fills the screen, even when the phone is locked.</string>
 </resources>
