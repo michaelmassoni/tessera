@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.files.data.AndroidFreeSpace
 import io.github.michaelmassoni.tessera.files.data.FileIntents
@@ -50,19 +51,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val actions = Actions(this, viewModel)
         setTesseraContent {
-            var granted by remember { mutableStateOf(Environment.isExternalStorageManager()) }
-            LifecycleResumeEffect(Unit) {
-                granted = Environment.isExternalStorageManager()
-                if (granted) viewModel.refresh()
-                onPauseOrDispose { }
-            }
-            if (!granted) {
-                PermissionScreen(onGrant = {
-                    startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, "package:$packageName".toUri()))
-                })
-            } else {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                FilesScreen(state = state, events = viewModel.events, actions = actions)
+            SetupGate(filesSetup) {
+                var granted by remember { mutableStateOf(Environment.isExternalStorageManager()) }
+                LifecycleResumeEffect(Unit) {
+                    granted = Environment.isExternalStorageManager()
+                    if (granted) viewModel.refresh()
+                    onPauseOrDispose { }
+                }
+                if (!granted) {
+                    PermissionScreen(onGrant = {
+                        startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, "package:$packageName".toUri()))
+                    })
+                } else {
+                    val state by viewModel.state.collectAsStateWithLifecycle()
+                    FilesScreen(state = state, events = viewModel.events, actions = actions)
+                }
             }
         }
     }

@@ -144,3 +144,7 @@ covers the incoming-call screen.
 - RTT.
 - Video calls.
 - Dual-SIM picking (the system's default SIM is used).
+
+## First run
+
+See [setup.md](setup.md) for what phone asks for the first time it opens.

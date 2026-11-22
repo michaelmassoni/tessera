@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.sports.data.EspnSource
 import io.github.michaelmassoni.tessera.sports.data.followStore
@@ -54,30 +55,36 @@ class MainActivity : ComponentActivity() {
         }
         val actions = Actions()
         setTesseraContent {
-            val state by viewModel.state.collectAsStateWithLifecycle()
-            var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-            LaunchedEffect(Unit) {
-                while (true) {
-                    delay(30_000)
-                    now = System.currentTimeMillis()
+            SetupGate(sportsSetup) {
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        delay(30_000)
+                        now = System.currentTimeMillis()
+                    }
                 }
-            }
-            val failed = stringResource(R.string.offline)
-            val retry = stringResource(R.string.retry)
-            LaunchedEffect(Unit) {
-                viewModel.events.collect { event ->
-                    when (event) {
-                        SportsEvent.UpdateFailed -> {
-                            if (snackbar.showSnackbar(failed, actionLabel = retry) == SnackbarResult.ActionPerformed) viewModel.refresh()
-                        }
+                val failed = stringResource(R.string.offline)
+                val retry = stringResource(R.string.retry)
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            SportsEvent.UpdateFailed -> {
+                                if (snackbar.showSnackbar(failed, actionLabel = retry) ==
+                                    SnackbarResult.ActionPerformed
+                                ) {
+                                    viewModel.refresh()
+                                }
+                            }
 
-                        SportsEvent.FollowsChanged -> {
-                            viewModel.refresh(quiet = true)
+                            SportsEvent.FollowsChanged -> {
+                                viewModel.refresh(quiet = true)
+                            }
                         }
                     }
                 }
+                SportsApp(state, actions, now, ZoneId.systemDefault(), snackbar)
             }
-            SportsApp(state, actions, now, ZoneId.systemDefault(), snackbar)
         }
     }
 

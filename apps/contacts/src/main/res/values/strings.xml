@@ -84,4 +84,6 @@
     <string name="unnamed">(No name)</string>
 
     <string name="settings_default_account">Default account for new contacts</string>
+    <string name="setup_access_title">Your contacts</string>
+    <string name="setup_access_text">To show, add and edit the contacts on this phone and in its accounts. Nothing leaves this phone.</string>
 </resources>

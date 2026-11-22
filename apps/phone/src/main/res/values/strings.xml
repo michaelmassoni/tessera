@@ -73,4 +73,10 @@
     <string name="suspected_spam">Suspected spam</string>
     <string name="report_spam">Report as spam</string>
     <string name="not_spam">Not spam</string>
+    <string name="setup_default_title">Make Tessera your phone app</string>
+    <string name="setup_default_text">So calls ring here, with where unknown numbers are from and spam labels. You can change it later in system Settings.</string>
+    <string name="setup_access_title">Calls and contacts</string>
+    <string name="setup_access_text">To make calls, show your recent calls and show your contacts\' names. Nothing leaves this phone.</string>
+    <string name="setup_notifications_title">Notifications</string>
+    <string name="setup_notifications_text">For incoming and missed calls, and the call in progress.</string>
 </resources>

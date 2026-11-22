@@ -146,4 +146,8 @@
     <string name="channel_reminders">Event reminders</string>
     <string name="snooze">Snooze</string>
     <string name="action_ok">OK</string>
+    <string name="setup_access_title">Your calendars</string>
+    <string name="setup_access_text">To show and edit the events in the calendars on this phone and in its accounts. Nothing leaves this phone.</string>
+    <string name="setup_notifications_title">Notifications</string>
+    <string name="setup_notifications_text">For event reminders.</string>
 </resources>

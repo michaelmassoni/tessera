@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.notes.engine.ChecklistItem
 import io.github.michaelmassoni.tessera.notes.engine.Note
@@ -31,9 +32,11 @@ class MainActivity : ComponentActivity() {
         val listActions = ListActionsImpl()
         val editorActions = EditorActionsImpl()
         setTesseraContent {
-            val list by viewModel.list.collectAsStateWithLifecycle()
-            val editor by viewModel.editor.collectAsStateWithLifecycle()
-            NotesApp(list, editor, viewModel.events, checkedLastPref, listActions, editorActions)
+            SetupGate(notesSetup) {
+                val list by viewModel.list.collectAsStateWithLifecycle()
+                val editor by viewModel.editor.collectAsStateWithLifecycle()
+                NotesApp(list, editor, viewModel.events, checkedLastPref, listActions, editorActions)
+            }
         }
     }
 

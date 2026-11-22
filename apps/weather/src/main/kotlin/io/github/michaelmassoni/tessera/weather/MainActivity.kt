@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.weather.background.WeatherJobs
 import io.github.michaelmassoni.tessera.weather.data.ForecastCache
@@ -83,32 +84,38 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { WeatherJobs.schedule(applicationContext) }
         val actions = Actions()
         setTesseraContent {
-            val state by viewModel.state.collectAsStateWithLifecycle()
-            // "Now" moves on while the app is open, for the hours row and "Updated n min ago".
-            var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-            LaunchedEffect(Unit) {
-                while (true) {
-                    delay(60_000)
-                    now = System.currentTimeMillis()
+            SetupGate(weatherSetup) {
+                val state by viewModel.state.collectAsStateWithLifecycle()
+                // "Now" moves on while the app is open, for the hours row and "Updated n min ago".
+                var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        delay(60_000)
+                        now = System.currentTimeMillis()
+                    }
                 }
-            }
-            val failed = stringResource(R.string.offline)
-            val retry = stringResource(R.string.retry)
-            val noLocation = stringResource(R.string.location_unavailable)
-            LaunchedEffect(Unit) {
-                viewModel.events.collect { event ->
-                    when (event) {
-                        WeatherEvent.UpdateFailed -> {
-                            if (snackbar.showSnackbar(failed, actionLabel = retry) == SnackbarResult.ActionPerformed) viewModel.refresh()
-                        }
+                val failed = stringResource(R.string.offline)
+                val retry = stringResource(R.string.retry)
+                val noLocation = stringResource(R.string.location_unavailable)
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            WeatherEvent.UpdateFailed -> {
+                                if (snackbar.showSnackbar(failed, actionLabel = retry) ==
+                                    SnackbarResult.ActionPerformed
+                                ) {
+                                    viewModel.refresh()
+                                }
+                            }
 
-                        WeatherEvent.LocationUnavailable -> {
-                            snackbar.showSnackbar(noLocation)
+                            WeatherEvent.LocationUnavailable -> {
+                                snackbar.showSnackbar(noLocation)
+                            }
                         }
                     }
                 }
+                WeatherApp(state, actions, now, snackbar)
             }
-            WeatherApp(state, actions, now, snackbar)
         }
     }
 

@@ -34,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettings
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.gallery.data.EditorIO
@@ -112,51 +113,53 @@ class MainActivity : ComponentActivity() {
         val viewer = ViewerImpl()
         val editor = EditorImpl()
         setTesseraContent {
-            val settings by TesseraSettings.get(this).shared.collectAsStateWithLifecycle()
-            val single = external
-            when {
-                single != null -> {
-                    TesseraTheme(darkTheme = true, dynamicColor = settings.theme.dynamicColor, pureBlack = true) {
-                        Viewer(
-                            listOf(single),
-                            0,
-                            object : ViewerActions by viewer {
-                                override fun close() = finish()
+            SetupGate(gallerySetup(permissions()), skip = external != null) {
+                val settings by TesseraSettings.get(this).shared.collectAsStateWithLifecycle()
+                val single = external
+                when {
+                    single != null -> {
+                        TesseraTheme(darkTheme = true, dynamicColor = settings.theme.dynamicColor, pureBlack = true) {
+                            Viewer(
+                                listOf(single),
+                                0,
+                                object : ViewerActions by viewer {
+                                    override fun close() = finish()
+                                },
+                            )
+                        }
+                    }
+
+                    access == Access.None -> {
+                        PermissionScreen(
+                            denied = denied,
+                            onGrant = ::askForAccess,
+                            onSettings = {
+                                startActivity(
+                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()),
+                                )
                             },
                         )
                     }
-                }
 
-                access == Access.None -> {
-                    PermissionScreen(
-                        denied = denied,
-                        onGrant = ::askForAccess,
-                        onSettings = {
-                            startActivity(
-                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()),
+                    else -> {
+                        val state by viewModel.state.collectAsStateWithLifecycle()
+                        Column {
+                            if (access ==
+                                Access.Partial
+                            ) {
+                                LimitedAccessBanner(onManage = ::askForAccess, modifier = Modifier.statusBarsPadding())
+                            }
+                            GalleryApp(
+                                state = state,
+                                itemsOf = viewModel::items,
+                                gridActions = grid,
+                                viewerActions = viewer,
+                                dynamicColor = settings.theme.dynamicColor,
+                                editorActions = if (pickMode) null else editor,
+                                pickMode = pickMode,
+                                pickMultiple = pickMultiple,
                             )
-                        },
-                    )
-                }
-
-                else -> {
-                    val state by viewModel.state.collectAsStateWithLifecycle()
-                    Column {
-                        if (access ==
-                            Access.Partial
-                        ) {
-                            LimitedAccessBanner(onManage = ::askForAccess, modifier = Modifier.statusBarsPadding())
                         }
-                        GalleryApp(
-                            state = state,
-                            itemsOf = viewModel::items,
-                            gridActions = grid,
-                            viewerActions = viewer,
-                            dynamicColor = settings.theme.dynamicColor,
-                            editorActions = if (pickMode) null else editor,
-                            pickMode = pickMode,
-                            pickMultiple = pickMultiple,
-                        )
                     }
                 }
             }

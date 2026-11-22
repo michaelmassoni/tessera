@@ -21,11 +21,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import io.github.michaelmassoni.tessera.core.settings.NeedsAccessScreen
+import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.messages.data.Foreground
 import io.github.michaelmassoni.tessera.messages.data.HeadlessSmsSendService
@@ -50,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class MainActivity : ComponentActivity() {
     private val repository by lazy { MessagesRepository(this) }
@@ -111,11 +115,24 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
         val actions = Actions()
-        setTesseraContent { MessagesApp(state, open, actions) }
+        setTesseraContent {
+            SetupGate(messagesSetup) {
+                if (state.loaded && !state.hasPermissions) {
+                    // Conversations and sending all need these: nothing works without them.
+                    NeedsAccessScreen(
+                        DesignR.drawable.ic_contacts,
+                        stringResource(R.string.setup_access_title),
+                        stringResource(R.string.setup_access_text),
+                        onAllow = actions::grant,
+                    )
+                } else {
+                    MessagesApp(state, open, actions)
+                }
+            }
+        }
         // Alarms can be lost (exact-alarm access revoked, force stop): set them again, and send
         // anything overdue.
         lifecycleScope.launch(Dispatchers.IO) { runCatching { scheduled.rearm() } }
-        if (!hasAll()) request.launch(permissions)
     }
 
     override fun onResume() {
@@ -156,7 +173,7 @@ class MainActivity : ComponentActivity() {
 
     private fun granted(p: String) = ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
 
-    private fun hasAll() = permissions.all(::granted)
+    private fun hasAll() = messagesRequired.all(::granted)
 
     private fun handleIntent(intent: Intent) {
         // From a notification: open that conversation.

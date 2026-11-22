@@ -105,3 +105,7 @@ a Media3 `MediaSessionService`.
 - Folders view.
 - Tag editing.
 - Android Auto.
+
+## First run
+
+See [setup.md](setup.md) for what music asks for the first time it opens.
