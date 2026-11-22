@@ -228,4 +228,20 @@ class EspnTest {
         assertEquals(null, Scores.nextStart(games, setOf("nba:99"), now))
         assertFalse(games[1].involves(setOf("nba:14")))
     }
+
+    @Test fun `rosters as one list or grouped by position, and none`() {
+        val nba =
+            """{"athletes":[{"displayName":"Steven Adams","jersey":"12","position":{"abbreviation":"C"}},{"fullName":"Amen Thompson","jersey":"1","position":{"abbreviation":"G"}}],"team":{"recordSummary":"10-4","standingSummary":"2nd in Southwest"}}"""
+        val info = Espn.parseRoster(nba)
+        assertEquals(listOf("Steven Adams", "Amen Thompson"), info.roster.map { it.name })
+        assertEquals("C", info.roster[0].position)
+        assertEquals("10-4", info.record)
+        val nfl =
+            """{"athletes":[{"position":"offense","items":[{"displayName":"QB One","jersey":"9","position":{"abbreviation":"QB"}}]},""" +
+                """{"position":"defense","items":[{"displayName":"LB Two"}]}]}"""
+        assertEquals(listOf("QB One", "LB Two"), Espn.parseRoster(nfl).roster.map { it.name })
+        val afl = """{"athletes":[],"team":{"recordSummary":"19-4","standingSummary":"1st in AFL"}}"""
+        assertEquals(emptyList<Player>(), Espn.parseRoster(afl).roster)
+        assertEquals("1st in AFL", Espn.parseRoster(afl).standing)
+    }
 }

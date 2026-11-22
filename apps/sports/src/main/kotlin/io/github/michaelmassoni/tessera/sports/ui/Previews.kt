@@ -6,12 +6,15 @@ import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.sports.Load
 import io.github.michaelmassoni.tessera.sports.SportsState
+import io.github.michaelmassoni.tessera.sports.TeamPage
 import io.github.michaelmassoni.tessera.sports.data.Follows
 import io.github.michaelmassoni.tessera.sports.engine.Game
 import io.github.michaelmassoni.tessera.sports.engine.GameState
 import io.github.michaelmassoni.tessera.sports.engine.League
+import io.github.michaelmassoni.tessera.sports.engine.Player
 import io.github.michaelmassoni.tessera.sports.engine.Side
 import io.github.michaelmassoni.tessera.sports.engine.Team
+import io.github.michaelmassoni.tessera.sports.engine.TeamInfo
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -107,6 +110,12 @@ private object NoActions : SportsActions {
     override fun doneFollowing() = Unit
 
     override fun openSettings() = Unit
+
+    override fun reveal(game: Game) = Unit
+
+    override fun openTeam(team: Team) = Unit
+
+    override fun closeTeam() = Unit
 }
 
 @TesseraPreviews
@@ -120,5 +129,35 @@ private fun ScoresPreview() {
 private fun FollowPreview() {
     TesseraTheme(dynamicColor = false) {
         SportsApp(state.copy(follows = Follows()), NoActions, now, zone, SnackbarHostState())
+    }
+}
+
+// Spoiler-free: live and final scores hidden until tapped, in both themes.
+@TesseraPreviews
+@Composable
+private fun HiddenScoresPreview() {
+    TesseraTheme(dynamicColor = false) { SportsApp(state.copy(hideScores = true), NoActions, now, zone, SnackbarHostState()) }
+}
+
+// A team's page: record, next games, results and roster, in both themes.
+@TesseraPreviews
+@Composable
+private fun TeamPreview() {
+    val page =
+        TeamPage(
+            TeamInfo(
+                record = "10-4",
+                standing = "2nd in Southwest Division",
+                roster =
+                    listOf(
+                        Player("Amen Thompson", "1", "G"),
+                        Player("Alperen Sengun", "28", "C"),
+                        Player("Jabari Smith Jr.", "10", "F"),
+                    ),
+            ),
+            games.filter { it.involves(setOf(rockets.key)) },
+        )
+    TesseraTheme(dynamicColor = false) {
+        SportsApp(state.copy(teamOpen = rockets, team = Load.Ready(page)), NoActions, now, zone, SnackbarHostState())
     }
 }

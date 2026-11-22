@@ -85,6 +85,20 @@ data class Leader(
     val value: String,
 )
 
+/** A player on a team's roster. */
+data class Player(
+    val name: String,
+    val jersey: String?,
+    val position: String?,
+)
+
+/** A team's page: its record and standing (as ESPN words them) and roster. */
+data class TeamInfo(
+    val record: String?,
+    val standing: String?,
+    val roster: List<Player>,
+)
+
 data class GameDetail(
     val game: Game,
     val lines: List<LineScore>,

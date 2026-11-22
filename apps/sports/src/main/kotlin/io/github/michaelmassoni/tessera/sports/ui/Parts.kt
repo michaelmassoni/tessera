@@ -162,6 +162,8 @@ fun GameCard(
     followed: Set<String>,
     modifier: Modifier = Modifier,
     showDay: Boolean = true,
+    /** Spoiler-free: the score isn't shown (nor who won) until the game is tapped. */
+    hidden: Boolean = false,
 ) {
     val time = timeFormat()
     val start = time.format(Instant.ofEpochMilli(game.start).atZone(zone))
@@ -175,7 +177,9 @@ fun GameCard(
         }
     val league = stringResource(game.league.label())
     val description =
-        if (game.state == GameState.Scheduled || game.state == GameState.Postponed) {
+        if (hidden && (game.state == GameState.Live || game.state == GameState.Final)) {
+            stringResource(R.string.game_hidden_description, game.away.team.name, game.home.team.name, status)
+        } else if (game.state == GameState.Scheduled || game.state == GameState.Postponed) {
             stringResource(R.string.game_upcoming_description, game.away.team.name, game.home.team.name, status)
         } else {
             stringResource(
@@ -202,11 +206,11 @@ fun GameCard(
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TeamBlock(game.away, game, followed, starFirst = true)
-                Value(game.away, game, TextAlign.Start, Modifier.weight(1f))
+                TeamBlock(game.away, game, followed, starFirst = true, hidden)
+                Value(game.away, game, TextAlign.Start, Modifier.weight(1f), hidden)
                 Middle(game, start, if (showDay) day else null, status)
-                Value(game.home, game, TextAlign.End, Modifier.weight(1f))
-                TeamBlock(game.home, game, followed, starFirst = false)
+                Value(game.home, game, TextAlign.End, Modifier.weight(1f), hidden)
+                TeamBlock(game.home, game, followed, starFirst = false, hidden)
             }
         }
     }
@@ -221,6 +225,7 @@ private fun TeamBlock(
     game: Game,
     followed: Set<String>,
     starFirst: Boolean,
+    hidden: Boolean,
 ) {
     val star = side.team.key in followed
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -230,7 +235,7 @@ private fun TeamBlock(
             Text(
                 side.team.shortName,
                 style = MaterialTheme.typography.labelLarge,
-                color = if (side.lost(game)) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                color = if (side.lost(game) && !hidden) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
@@ -253,10 +258,21 @@ private fun Value(
     game: Game,
     align: TextAlign,
     modifier: Modifier = Modifier,
+    hidden: Boolean = false,
 ) {
     val started = game.state == GameState.Live || game.state == GameState.Final
     val padding = Modifier.padding(horizontal = 4.dp)
-    if (started) {
+    if (started && hidden) {
+        // A dash where the score would be: tap the card to see it.
+        Text(
+            "–",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = align,
+            maxLines = 1,
+            modifier = modifier.then(padding),
+        )
+    } else if (started) {
         val dim = side.lost(game)
         // Three-digit scores shrink to fit beside the logo rather than being cut off.
         Text(

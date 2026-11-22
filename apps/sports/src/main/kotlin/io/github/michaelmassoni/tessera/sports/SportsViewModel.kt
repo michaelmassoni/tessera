@@ -14,8 +14,11 @@ import io.github.michaelmassoni.tessera.sports.engine.League
 import io.github.michaelmassoni.tessera.sports.engine.Scores
 import io.github.michaelmassoni.tessera.sports.engine.StandingsGroup
 import io.github.michaelmassoni.tessera.sports.engine.Team
+import io.github.michaelmassoni.tessera.sports.engine.TeamInfo
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +58,18 @@ data class SportsState(
     val detail: Load<GameDetail>? = null,
     /** The game whose sheet is open (shown while its details load). */
     val opened: Game? = null,
+    /** The team whose page is open, and its page once loaded. */
+    val teamOpen: Team? = null,
+    val team: Load<TeamPage>? = null,
+    /** Spoiler-free: scores stay hidden until a game is tapped ([revealed]). */
+    val hideScores: Boolean = false,
+    val revealed: Set<String> = emptySet(),
+)
+
+/** A team's page: its games this season (results and fixtures) and its roster. */
+data class TeamPage(
+    val info: TeamInfo?,
+    val games: List<Game>,
 )
 
 sealed interface SportsEvent {
@@ -69,8 +84,9 @@ class SportsViewModel(
     private val io: CoroutineDispatcher,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val hideScores: () -> Boolean = { false },
 ) : ViewModel() {
-    private val _state = MutableStateFlow(SportsState())
+    private val _state = MutableStateFlow(SportsState(hideScores = hideScores()))
     val state: StateFlow<SportsState> = _state.asStateFlow()
     private val _events = MutableSharedFlow<SportsEvent>(extraBufferCapacity = 4)
     val events = _events.asSharedFlow()
@@ -158,7 +174,11 @@ class SportsViewModel(
 
     // ---- Game detail ----
 
-    fun open(game: Game) = loadDetail(game, quiet = false)
+    /** Opening a game reveals its score. */
+    fun open(game: Game) {
+        _state.update { it.copy(revealed = it.revealed + game.id) }
+        loadDetail(game, quiet = false)
+    }
 
     private fun loadDetail(
         game: Game,
@@ -183,6 +203,33 @@ class SportsViewModel(
         detailJob?.cancel()
         _state.update { it.copy(detail = null, opened = null) }
     }
+
+    // ---- Teams ----
+
+    fun openTeam(team: Team) {
+        _state.update { it.copy(teamOpen = team, team = Load.Loading) }
+        viewModelScope.launch {
+            val page =
+                runCatching {
+                    coroutineScope {
+                        val info = async { runCatching { source.team(team) }.getOrNull() }
+                        val games = async { source.schedule(team) }
+                        TeamPage(info.await(), games.await())
+                    }
+                }
+            _state.update { if (it.teamOpen == team) it.copy(team = page.fold({ p -> Load.Ready(p) }, { Load.Failed })) else it }
+        }
+    }
+
+    fun closeTeam() = _state.update { it.copy(teamOpen = null, team = null) }
+
+    // ---- Spoiler-free ----
+
+    /** Shows one game's score while scores are hidden (tapping a hidden card). */
+    fun reveal(game: Game) = _state.update { it.copy(revealed = it.revealed + game.id) }
+
+    /** The setting may have changed in Settings. */
+    fun reloadSettings() = _state.update { it.copy(hideScores = hideScores()) }
 
     // ---- Following ----
 

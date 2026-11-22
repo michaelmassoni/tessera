@@ -10,6 +10,7 @@ import io.github.michaelmassoni.tessera.sports.engine.League
 import io.github.michaelmassoni.tessera.sports.engine.Scores
 import io.github.michaelmassoni.tessera.sports.engine.StandingsGroup
 import io.github.michaelmassoni.tessera.sports.engine.Team
+import io.github.michaelmassoni.tessera.sports.engine.TeamInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -40,6 +41,8 @@ interface ScoreSource {
     suspend fun standings(league: League): List<StandingsGroup>
 
     suspend fun detail(game: Game): GameDetail?
+
+    suspend fun team(team: Team): TeamInfo
 
     /** What's on now in [league]: one small request, for refreshing live games. */
     suspend fun current(league: League): List<Game> = day(league, LocalDate.now())
@@ -78,6 +81,8 @@ class EspnSource : ScoreSource {
 
     override suspend fun detail(game: Game) =
         withContext(Dispatchers.Default) { Espn.parseSummary(game.league, get(Espn.summaryUrl(game))) }
+
+    override suspend fun team(team: Team) = withContext(Dispatchers.Default) { Espn.parseRoster(get(Espn.rosterUrl(team))) }
 }
 
 /** The leagues and teams followed, in order. */
@@ -116,8 +121,14 @@ class SportsSettings(
         get() = prefs.getBoolean(KEY_LIVE, true)
         set(value) = prefs.edit { putBoolean(KEY_LIVE, value) }
 
+    /** Spoiler-free: scores are hidden in the app, the widget and Live Updates until you tap a game. */
+    var hideScores: Boolean
+        get() = prefs.getBoolean(KEY_HIDE, false)
+        set(value) = prefs.edit { putBoolean(KEY_HIDE, value) }
+
     private companion object {
         const val KEY_LIVE = "live_updates"
+        const val KEY_HIDE = "hide_scores"
     }
 }
 

@@ -37,6 +37,7 @@ import io.github.michaelmassoni.tessera.sports.engine.LiveScore
 import io.github.michaelmassoni.tessera.sports.engine.Scores
 import io.github.michaelmassoni.tessera.sports.engine.Team
 import io.github.michaelmassoni.tessera.sports.ui.icon
+import io.github.michaelmassoni.tessera.sports.widget.SportsWidget
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.ZoneId
@@ -134,6 +135,8 @@ object LiveGames {
         updatedAt: Long,
         awayLogo: Bitmap? = null,
         homeLogo: Bitmap? = null,
+        /** Spoiler-free: the teams and the clock, no score or margin. */
+        hide: Boolean = false,
     ): Notification {
         val open =
             PendingIntent.getActivity(
@@ -144,17 +147,23 @@ object LiveGames {
             )
         val live = game.state == GameState.Live
         val title =
-            context.getString(
-                R.string.live_title,
-                game.away.team.shortName,
-                game.away.score.orEmpty(),
-                game.home.team.shortName,
-                game.home.score.orEmpty(),
-            )
+            if (hide) {
+                context.getString(R.string.live_title_hidden, game.away.team.shortName, game.home.team.shortName)
+            } else {
+                context.getString(
+                    R.string.live_title,
+                    game.away.team.shortName,
+                    game.away.score.orEmpty(),
+                    game.home.team.shortName,
+                    game.home.score.orEmpty(),
+                )
+            }
         val leader = LiveScore.leader(game)
         val gap = abs((game.home.score?.toIntOrNull() ?: 0) - (game.away.score?.toIntOrNull() ?: 0))
         val text =
-            if (live) {
+            if (hide) {
+                if (live) game.status else context.getString(R.string.final_score)
+            } else if (live) {
                 context.getString(
                     R.string.live_text,
                     game.status,
@@ -194,7 +203,8 @@ object LiveGames {
             awayLogo?.let { style.setProgressStartIcon(Icon.createWithBitmap(it)) }
             homeLogo?.let { style.setProgressEndIcon(Icon.createWithBitmap(it)) }
             builder.setStyle(style)
-            LiveScore.margin(game, yours.team.key)?.let { margin ->
+            if (hide) builder.setShortCriticalText(context.getString(R.string.live_chip_hidden))
+            LiveScore.margin(game, yours.team.key)?.takeUnless { hide }?.let { margin ->
                 builder.setShortCriticalText(
                     when {
                         margin > 0 -> context.getString(R.string.live_chip_ahead, yours.team.abbreviation, margin)
@@ -246,8 +256,19 @@ class LiveWorker(
         followed: Set<String>,
         at: Long,
     ) {
-        val n = LiveGames.notification(applicationContext, game, followed, at, logo(game.away.team), logo(game.home.team))
+        val n =
+            LiveGames.notification(
+                applicationContext,
+                game,
+                followed,
+                at,
+                logo(game.away.team),
+                logo(game.home.team),
+                hide = applicationContext.sportsSettings().hideScores,
+            )
         manager.notify(game.id.hashCode(), n)
+        // The widget shows the same game.
+        SportsWidget.refresh(applicationContext)
     }
 
     override suspend fun doWork(): Result {
