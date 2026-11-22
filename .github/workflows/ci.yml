@@ -31,7 +31,9 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
 
       - name: Build and check
-        run: ./gradlew assembleDebug check --console=plain
+        # compileReleaseKotlin too: a dependency that only debug builds get by accident (through
+        # tooling) broke every release on 2026-11-22 while debug CI stayed green.
+        run: ./gradlew assembleDebug check compileReleaseKotlin --console=plain
 
       - name: Upload reports
         if: failure()
