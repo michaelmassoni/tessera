@@ -27,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -121,9 +122,13 @@ fun AlbumArt(
     // Lists show the same album many times and scroll rows back in: thumbnails come from memory
     // after the first decode.
     val key = if (artwork == null && albumId > 0) "$albumId@$px" else null
-    val image by produceState(key?.let(ArtCache::get), albumId, artwork, px) {
-        value = key?.let(ArtCache::get)
-        if (value != null) return@produceState
+    // Until this size is ready, any size already loaded stands in: art moving from a list to a page
+    // keeps its picture instead of flashing the placeholder.
+    val image by produceState(key?.let(ArtCache::get) ?: AnySize.get(albumId), albumId, artwork, px) {
+        key?.let(ArtCache::get)?.let {
+            value = it
+            return@produceState
+        }
         value =
             withContext(Dispatchers.IO) {
                 if (artwork != null) {
@@ -145,7 +150,10 @@ fun AlbumArt(
                             context.contentResolver
                                 .loadThumbnail(MusicRepository.albumUri(albumId), Size(px, px), null)
                                 .asImageBitmap()
-                        }?.also { bitmap -> key?.let { ArtCache.put(it, bitmap) } }
+                        }?.also { bitmap ->
+                            key?.let { ArtCache.put(it, bitmap) }
+                            AnySize.put(albumId, bitmap)
+                        }
                     } catch (_: IOException) {
                         null
                     }
@@ -363,12 +371,19 @@ private fun Controls(
     state: PlaybackState,
     actions: PlayerActions,
 ) {
+    // On is a filled circle, not just a tint, so it reads at a glance in dark theme too.
+    val toggle =
+        IconButtonDefaults.iconToggleButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            checkedContainerColor = MaterialTheme.colorScheme.primary,
+            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+        )
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconToggleButton(checked = state.shuffle, onCheckedChange = { actions.toggleShuffle() }) {
+        IconToggleButton(checked = state.shuffle, onCheckedChange = { actions.toggleShuffle() }, colors = toggle) {
             Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = stringResource(R.string.shuffle))
         }
         IconButton(onClick = actions::previous) {
@@ -378,7 +393,11 @@ private fun Controls(
         IconButton(onClick = actions::next) {
             Icon(painterResource(DesignR.drawable.ic_skip_next), contentDescription = stringResource(R.string.next))
         }
-        IconToggleButton(checked = state.repeatMode != Player.REPEAT_MODE_OFF, onCheckedChange = { actions.cycleRepeat() }) {
+        IconToggleButton(
+            checked = state.repeatMode != Player.REPEAT_MODE_OFF,
+            onCheckedChange = { actions.cycleRepeat() },
+            colors = toggle,
+        ) {
             Icon(
                 painterResource(
                     if (state.repeatMode ==
@@ -431,6 +450,9 @@ private fun SeekBar(
         }
     }
 }
+
+/** The last art loaded for each album, at whatever size, to show while another size loads. */
+private object AnySize : LruCache<Long, ImageBitmap>(64)
 
 /** Album thumbnails by album and size, up to about 16 MB. */
 private object ArtCache : LruCache<String, ImageBitmap>(16 * 1024 * 1024) {

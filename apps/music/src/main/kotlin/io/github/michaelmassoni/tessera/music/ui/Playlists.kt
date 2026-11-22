@@ -1,13 +1,19 @@
 package io.github.michaelmassoni.tessera.music.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
@@ -25,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -41,48 +48,56 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** The Playlists tab: a New playlist button and every playlist with its song count. */
 @Composable
 internal fun PlaylistList(
     playlists: List<Playlist>,
+    byId: Map<Long, Song>,
+    grid: Boolean,
     actions: LibraryActions,
     onOpen: (Long) -> Unit,
 ) {
     var creating by rememberSaveable { mutableStateOf(false) }
-    LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-        item(key = "new") {
-            FilledTonalButton(onClick = { creating = true }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Icon(painterResource(DesignR.drawable.ic_add), contentDescription = null)
-                Text(stringResource(R.string.new_playlist), modifier = Modifier.padding(start = 8.dp))
+    if (grid) {
+        PlaylistGrid(playlists, byId, onNew = { creating = true }, onOpen = onOpen)
+    } else {
+        LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
+            item(key = "new") {
+                FilledTonalButton(onClick = { creating = true }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Icon(painterResource(DesignR.drawable.ic_add), contentDescription = null)
+                    Text(stringResource(R.string.new_playlist), modifier = Modifier.padding(start = 8.dp))
+                }
             }
-        }
-        if (playlists.isEmpty()) {
-            item(key = "empty") {
-                Text(
-                    stringResource(R.string.empty_playlists),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                )
+            if (playlists.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        stringResource(R.string.empty_playlists),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                    )
+                }
             }
-        }
-        items(Playlists.sorted(playlists), key = { it.id }) { p ->
-            ListItem(
-                onClick = { onOpen(p.id) },
-                leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
-                supportingContent = {
-                    val count = pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size)
-                    Text(if (p.readOnly) stringResource(R.string.read_only_playlist, count) else count)
-                },
-                modifier = Modifier.padding(horizontal = 8.dp),
-            ) { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            items(playlists, key = { it.id }) { p ->
+                ListItem(
+                    onClick = { onOpen(p.id) },
+                    leadingContent = { PlaylistArt(p, byId, 56.dp) },
+                    supportingContent = {
+                        val count = pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size)
+                        Text(if (p.readOnly) stringResource(R.string.read_only_playlist, count) else count)
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
         }
     }
     if (creating) {
@@ -358,6 +373,74 @@ internal fun SaveToPlaylistSheet(
                     leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
                     trailingContent = { Checkbox(checked = inIt, onCheckedChange = null) },
                 ) { Text(p.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+        }
+    }
+}
+
+/** A playlist's picture: its first song's album art, or a playlist icon when it's empty. */
+@Composable
+private fun PlaylistArt(
+    playlist: Playlist,
+    byId: Map<Long, Song>,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val album = playlist.songIds.firstNotNullOfOrNull { byId[it]?.albumId }
+    if (album != null) {
+        AlbumArt(album, size = size, modifier = modifier)
+    } else {
+        Box(
+            modifier.size(size).background(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.shapes.small),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(DesignR.drawable.ic_queue_music),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaylistGrid(
+    playlists: List<Playlist>,
+    byId: Map<Long, Song>,
+    onNew: () -> Unit,
+    onOpen: (Long) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(150.dp),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item(key = "new", span = { GridItemSpan(maxLineSpan) }) {
+            Row {
+                FilledTonalButton(onClick = onNew) {
+                    Icon(painterResource(DesignR.drawable.ic_add), contentDescription = null)
+                    Text(stringResource(R.string.new_playlist), modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+        }
+        gridItems(playlists, key = { it.id }) { p ->
+            Surface(onClick = { onOpen(p.id) }, shape = MaterialTheme.shapes.medium) {
+                Column {
+                    PlaylistArt(p, byId, 160.dp, Modifier.fillMaxWidth().aspectRatio(1f))
+                    Text(
+                        p.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Text(
+                        pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

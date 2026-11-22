@@ -256,8 +256,30 @@ object Subsonic {
             track = if (track > 0) disc.coerceAtLeast(0) * 1000 + track else 0,
             year = o.int("year") ?: 0,
             art = o.string("coverArt"),
+            albumArtist =
+                o.string("displayAlbumArtist")
+                    ?: ((o["albumArtists"] as? JsonArray)?.firstOrNull() as? JsonObject)?.string("name")
+                    ?: o.string("albumArtist")
+                    ?: "",
+            addedAt = time(o.string("created")),
+            playedAt = time(o.string("played")),
         )
     }
+
+    /** An ISO 8601 time from the server, as ms since 1970; 0 when missing or unreadable. */
+    fun time(text: String?): Long =
+        try {
+            if (text.isNullOrBlank()) {
+                0
+            } else {
+                java.time.OffsetDateTime
+                    .parse(text)
+                    .toInstant()
+                    .toEpochMilli()
+            }
+        } catch (_: java.time.format.DateTimeParseException) {
+            0
+        }
 
     fun songUri(id: String) = "$SCHEME:song/$id"
 
