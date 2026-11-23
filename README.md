@@ -152,19 +152,19 @@ Bug reports and ideas are welcome in [Issues](../../issues).
 [kotlin]: https://kotlinlang.org/
 [license badge]: https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge
 [license]: LICENSE
-[v calculator]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=calculator-v*&label=&color=3E5F8A&style=flat-square
+[v calculator]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=calculator-v*&label=&color=455A64&style=flat-square
 [v clock]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=clock-v*&label=&color=5B4B8A&style=flat-square
-[v files]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=files-v*&label=&color=2F6B4F&style=flat-square
+[v files]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=files-v*&label=&color=795548&style=flat-square
 [v notes]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=notes-v*&label=&color=B8860B&style=flat-square
-[v contacts]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=contacts-v*&label=&color=1F6F8B&style=flat-square
-[v gallery]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=gallery-v*&label=&color=A63D5A&style=flat-square
-[v calendar]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=calendar-v*&label=&color=1A73A8&style=flat-square
+[v contacts]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=contacts-v*&label=&color=00838F&style=flat-square
+[v gallery]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=gallery-v*&label=&color=8E3A7E&style=flat-square
+[v calendar]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=calendar-v*&label=&color=3949AB&style=flat-square
 [v music]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=music-v*&label=&color=D9661F&style=flat-square
 [v phone]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=phone-v*&label=&color=1E8E3E&style=flat-square
 [v messages]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=messages-v*&label=&color=0B57D0&style=flat-square
-[v weather]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=weather-v*&label=&color=2E9FD9&style=flat-square
-[v sports]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=sports-v*&label=&color=C2362F&style=flat-square
-[v tasks]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=tasks-v*&label=&color=2E7D32&style=flat-square
+[v weather]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=weather-v*&label=&color=0288D1&style=flat-square
+[v sports]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=sports-v*&label=&color=C62828&style=flat-square
+[v tasks]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=tasks-v*&label=&color=558B2F&style=flat-square
 [v recorder]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=recorder-v*&label=&color=AD1457&style=flat-square
 [obtainium calculator]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.calculator%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Calculator%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Calculator%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-calculator-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Calculator%5C%22%7D%22%7D
 [obtainium clock]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.clock%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Clock%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Clock%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-clock-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Clock%5C%22%7D%22%7D

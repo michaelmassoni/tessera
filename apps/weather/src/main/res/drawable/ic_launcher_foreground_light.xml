@@ -8,12 +8,12 @@
     android:viewportHeight="108">
     <!-- Scaled to the suite's glyph size (about 48 of 108, like Calendar and Clock) and centred. -->
     <group
-            android:pivotX="54.5"
-            android:pivotY="51.5"
-            android:scaleX="0.8"
-            android:scaleY="0.8"
-            android:translateX="-0.5"
-            android:translateY="2.5">
+        android:pivotX="54.5"
+        android:pivotY="51.5"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:translateX="-0.5"
+        android:translateY="2.5">
         <path
             android:fillColor="#FFFFFFFF"
             android:pathData="M45,44m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0" />
