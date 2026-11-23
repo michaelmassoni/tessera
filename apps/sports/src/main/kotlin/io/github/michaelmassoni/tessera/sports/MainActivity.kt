@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
     private val snackbar = SnackbarHostState()
 
-    /** Live Updates need notifications; asked once teams are picked. */
+    /** Live scores need notifications; asked once teams are picked. */
     private val askNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { LiveGames.kick(applicationContext) }
 

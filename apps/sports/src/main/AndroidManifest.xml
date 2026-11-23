@@ -3,9 +3,8 @@
 
     <!-- Scores, fixtures and standings (ESPN); see docs/sports.md. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Live Updates: a followed team's live score in a notification. Asked when teams are picked. -->
+    <!-- Live scores: a followed team's live score in a notification. Asked when teams are picked. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <application
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -66,7 +65,7 @@
             </intent-filter>
         </activity>
 
-        <!-- My team widget (Glance): fetched every 30 minutes, and by Live Updates during a game. -->
+        <!-- My team widget (Glance): fetched every 30 minutes, and by Live scores during a game. -->
         <receiver
             android:name=".widget.SportsWidgetReceiver"
             android:exported="true"

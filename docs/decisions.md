@@ -4,6 +4,20 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-23: Sports' live score as an Apple Sports-style card, not a Live Update (Accepted)
+
+The maintainer asked for the live score to look like Apple Sports' lock-screen card: logos and big
+scores at the sides, the clock between, names under the logos (right-aligned for the home team),
+the situation and last play below. Android promotes a notification to a Live Update (the status
+bar chip, the pinned place on the lock screen) only with a standard layout, so a custom one can't
+be both. The maintainer chose the layout.
+
+- The notification is a RemoteViews layout (collapsed and expanded) in the system's frame
+  (`DecoratedCustomViewStyle`), like Clock's widget: notifications can't be Compose. Text uses the
+  system's notification styles, so light and dark follow the shade.
+- `POST_PROMOTED_NOTIFICATIONS` is dropped; the setting is now "Live scores".
+- ESPN's last play and football's down and distance are read for it.
+
 ## 2026-11-23: Calendar, Contacts and Tasks sync with your own server, without DAVx5 (Accepted)
 
 The maintainer asked for Tessera to replace DAVx5, with DAVx5's sync settings (they use "every 4

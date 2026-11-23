@@ -37,7 +37,7 @@ class SettingsActivity : io.github.michaelmassoni.tessera.core.settings.TesseraS
             onCheckedChange = {
                 hide = it
                 settings.hideScores = it
-                // Redraw a Live Update that's showing, with or without its score.
+                // Redraw a live score that's showing, with or without its score.
                 if (settings.liveUpdates) LiveGames.kick(applicationContext)
             },
         )
