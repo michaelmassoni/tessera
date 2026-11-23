@@ -53,9 +53,17 @@ object ForecastCodec {
 
             ForecastSource.Bom -> {
                 val bom = Bom.parse(b.getValue("location"), b.getValue("daily"), b.getValue("hourly"), b.getValue("observations"))
-                val extra = b["openmeteo"]?.let { runCatching { OpenMeteo.parseForecast(it).hours }.getOrNull() }.orEmpty()
-                val hours = Timeline.merge(bom.hours, extra)
-                bom.copy(hours = hours, hoursFromOpenMeteo = hours.size > bom.hours.size)
+                val om = b["openmeteo"]?.let { runCatching { OpenMeteo.parseForecast(it) }.getOrNull() }
+                // BOM has no visibility or pressure: take Open-Meteo's for the same hours (and now).
+                val byTime = om?.hours?.associateBy { it.time }.orEmpty()
+                val filled =
+                    bom.hours.map { h ->
+                        byTime[h.time]?.let { o -> h.copy(visibility = h.visibility ?: o.visibility, pressure = h.pressure ?: o.pressure) }
+                            ?: h
+                    }
+                val hours = Timeline.merge(filled, om?.hours.orEmpty())
+                val pressure = bom.current.pressure.takeIf { it > 0 } ?: om?.current?.pressure ?: 0.0
+                bom.copy(current = bom.current.copy(pressure = pressure), hours = hours, hoursFromOpenMeteo = hours.size > bom.hours.size)
             }
         }
     }

@@ -71,18 +71,50 @@
             </intent-filter>
         </activity>
 
-        <!-- Weather widget (Glance); the background check keeps it fresh while one is placed. -->
+        <!-- Weather widgets (Glance): forecast, and date & weather. The background check keeps them
+             fresh while one is placed; they also redraw on time, time zone and locale changes. -->
         <receiver
             android:name=".widget.WeatherWidgetReceiver"
             android:exported="true"
             android:label="@string/widget_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weather_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.DateWeatherWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_date_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_date_info" />
+        </receiver>
+        <!-- The date widget's redraw at midnight. -->
+        <receiver
+            android:name=".widget.WeatherWidgetTick"
+            android:exported="false" />
+        <!-- A widget's settings: opened by the launcher when one is placed or reconfigured. -->
+        <activity
+            android:name=".widget.WeatherWidgetSettingsActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
