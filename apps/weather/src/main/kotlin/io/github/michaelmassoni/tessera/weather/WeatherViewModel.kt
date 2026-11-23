@@ -147,7 +147,14 @@ class WeatherViewModel(
 
     fun refresh(force: Boolean = true) {
         _state.value.pages.forEach { page ->
-            if (force || page.forecast == null || Timeline.isStale(page.fetchedAt, clock())) fetch(page.place)
+            if (force || page.forecast == null || Timeline.isStale(page.fetchedAt, clock())) {
+                fetch(page.place)
+            } else {
+                // A fresh cached forecast (the background update keeps it so) still needs today's
+                // warnings and air quality, which aren't cached: without this they only showed after a
+                // pull to refresh.
+                loadExtras(page.place.id, page.place)
+            }
         }
     }
 

@@ -97,4 +97,38 @@ class BomTest {
         // A 0.1 cache file is the bare Open-Meteo response.
         assertEquals(10, ForecastCodec.decode(berlin).days.size)
     }
+
+    @Test
+    fun `BOM hours get visibility and pressure from Open-Meteo`() {
+        val berlin = fixture("forecast_berlin.json")
+        val plain =
+            ForecastCodec.decode(
+                ForecastCodec.bom(
+                    fixture("bom_location.json"),
+                    fixture("bom_daily.json"),
+                    fixture("bom_hourly.json"),
+                    fixture("bom_observations.json"),
+                ),
+            )
+        assertTrue(plain.hours.all { it.visibility == null })
+        assertEquals(0.0, plain.current.pressure, 0.0)
+        val mixed =
+            ForecastCodec.decode(
+                ForecastCodec.bom(
+                    fixture("bom_location.json"),
+                    fixture("bom_daily.json"),
+                    fixture("bom_hourly.json"),
+                    fixture("bom_observations.json"),
+                    berlin,
+                ),
+            )
+        val om = OpenMeteo.parseForecast(berlin)
+        val first = mixed.hours.first { it.time == plain.hours.first().time }
+        val same = om.hours.first { it.time == first.time }
+        assertEquals(same.visibility, first.visibility)
+        assertEquals(same.pressure, first.pressure)
+        assertEquals(om.current.pressure, mixed.current.pressure, 0.0)
+        // BOM's own values stay.
+        assertEquals(plain.hours.first().temperature, first.temperature, 0.0)
+    }
 }

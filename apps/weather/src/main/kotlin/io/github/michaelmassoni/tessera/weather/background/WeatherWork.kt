@@ -31,7 +31,7 @@ import io.github.michaelmassoni.tessera.weather.engine.ForecastCodec
 import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Warnings
 import io.github.michaelmassoni.tessera.weather.ui.label
-import io.github.michaelmassoni.tessera.weather.widget.WeatherWidget
+import io.github.michaelmassoni.tessera.weather.widget.WeatherWidgets
 import java.io.File
 import java.time.Duration
 import java.time.LocalTime
@@ -62,7 +62,7 @@ object WeatherJobs {
         val settings = context.weatherSettings()
         val work = WorkManager.getInstance(context)
         val network = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-        if (settings.rainAlerts || settings.warningAlerts || WeatherWidget.placed(context)) {
+        if (settings.rainAlerts || settings.warningAlerts || WeatherWidgets.placed(context)) {
             work.enqueueUniquePeriodicWork(
                 CHECK,
                 ExistingPeriodicWorkPolicy.KEEP,
@@ -167,7 +167,9 @@ class CheckWorker(
         val settings = context.weatherSettings()
         val place = WeatherJobs.primaryPlace(context) ?: return Result.success()
         val forecast = runCatching { WeatherJobs.refresh(context, place) }.getOrElse { return Result.retry() }
-        WeatherWidget.refresh(context)
+        // Places only a widget shows (set in its settings) are kept fresh too.
+        WeatherWidgets.otherPlaces(context).forEach { runCatching { WeatherJobs.refresh(context, it) } }
+        WeatherWidgets.refresh(context)
         val now = System.currentTimeMillis()
         if (settings.rainAlerts) {
             Alerts.rainSoon(forecast.hours, now)?.let { hour ->
@@ -215,7 +217,7 @@ class MorningWorker(
         val place = WeatherJobs.primaryPlace(context)
         if (place != null) {
             val forecast = runCatching { WeatherJobs.refresh(context, place) }.getOrElse { return Result.retry() }
-            WeatherWidget.refresh(context)
+            WeatherWidgets.refresh(context)
             val today = forecast.days.firstOrNull()
             if (today != null) {
                 val unit = settings.units.temperature

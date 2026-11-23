@@ -110,10 +110,25 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
   with a network connection while rain or warning alerts are on or a widget is placed, and a
   one-off job at the next 7:00 for the morning forecast that schedules the next one. Each run
   refreshes the cache the app reads.
-- **Widget (Glance, 4×2, resizable):** the place, the temperature now, the condition icon and
-  high/low; from 250dp wide, the next five hours too. It reads the cache, so it shows what the
-  app or the background check fetched last; the app redraws it after every fetch. Tapping it
-  opens the app.
+- **Forecast widget (Glance, 4×2, resizable):** the place, the temperature now, the condition
+  icon and high/low; from 250dp wide, the next five hours; from 240dp tall, as many days as fit
+  (up to 8). It reads the cache, so it shows what the app or the background check fetched last;
+  the app redraws it after every fetch. Tapping it opens the app.
+- **Date & weather widget (0.7, 4×1):** today's date in large type (sized to fit), and under it
+  the condition icon, temperature now, condition and high/low, like the At a Glance line. The
+  date opens the calendar app (the default for CATEGORY_APP_CALENDAR, else Weather); the weather
+  opens Weather. Redraws at midnight (an RTC alarm, not a wake-up) and on time, time zone and
+  locale changes. By default it has no background and the dark theme's light text.
+- **Widget settings (0.7):** each widget has its own, shown when it's placed and from the
+  launcher's reconfigure: place (the app's main place, the current location, or any saved
+  place; the background check also fetches places only a widget shows), what to show (high/low,
+  place name; hours and days for the forecast widget; conditions and a long or short date for
+  the date widget), background (tinted, solid, none) and opacity, theme (same as Tessera, light,
+  dark).
+- **Fixes (0.7):** warnings and air quality load even when the cached forecast is fresh (they
+  showed only after a refresh before). For BOM places, visibility and pressure come from
+  Open-Meteo for the same hours (BOM has neither). Pollen data (Open-Meteo, from CAMS Europe)
+  covers Europe only, so the pollen tile shows only there.
 - Channels: "Morning forecast" (low), "Rain alerts" (default), "Severe weather warnings" (high).
 
 ## Behaviour

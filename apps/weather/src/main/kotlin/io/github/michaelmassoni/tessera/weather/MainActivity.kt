@@ -33,7 +33,7 @@ import io.github.michaelmassoni.tessera.weather.engine.Place
 import io.github.michaelmassoni.tessera.weather.engine.Warning
 import io.github.michaelmassoni.tessera.weather.ui.WeatherActions
 import io.github.michaelmassoni.tessera.weather.ui.WeatherApp
-import io.github.michaelmassoni.tessera.weather.widget.WeatherWidget
+import io.github.michaelmassoni.tessera.weather.widget.WeatherWidgets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                     locator = Locator(applicationContext),
                     io = Dispatchers.IO,
                     // The widget shows what the app just fetched.
-                    onForecast = { lifecycleScope.launch { WeatherWidget.refresh(applicationContext) } },
+                    onForecast = { lifecycleScope.launch { WeatherWidgets.refresh(applicationContext) } },
                 )
             }
         }
