@@ -1,7 +1,7 @@
 package io.github.michaelmassoni.tessera.weather.widget
 
 import android.content.Context
-import android.content.Intent
+import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -15,13 +15,10 @@ import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -32,52 +29,45 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import io.github.michaelmassoni.tessera.weather.MainActivity
+import androidx.glance.unit.ColorProvider
 import io.github.michaelmassoni.tessera.weather.R
-import io.github.michaelmassoni.tessera.weather.background.WeatherJobs
-import io.github.michaelmassoni.tessera.weather.data.ForecastCache
 import io.github.michaelmassoni.tessera.weather.data.weatherSettings
 import io.github.michaelmassoni.tessera.weather.engine.Convert
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
-import io.github.michaelmassoni.tessera.weather.engine.ForecastCodec
 import io.github.michaelmassoni.tessera.weather.engine.TemperatureUnit
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.ui.icon
 import io.github.michaelmassoni.tessera.weather.ui.label
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 import java.time.Instant
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import java.util.Locale
 
 /**
- * Conditions now and the next hours for the background place (last location or first saved
- * place), from the cache the app keeps. The background check refreshes it every 30 minutes while
- * a widget is placed; the app redraws it whenever it fetches.
+ * Conditions now, and (as room allows and its settings say) the next hours and days, for its
+ * place: the app's main place unless set to another. The background check refreshes it every 30
+ * minutes while a widget is placed; the app redraws it whenever it fetches.
  */
 class WeatherWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(SMALL, WIDE))
+    // Exact: the days fill whatever height it has (Responsive rounds down to the nearest size).
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(
         context: Context,
         id: GlanceId,
     ) {
-        val place = WeatherJobs.primaryPlace(context)
-        val forecast =
-            withContext(Dispatchers.IO) {
-                place?.let { ForecastCache(File(context.filesDir, "forecasts")).read(it.id) }?.let {
-                    runCatching { ForecastCodec.decode(it.body) }.getOrNull()
-                }
-            }
+        val settings = WeatherWidgets.settings(context, id, WeatherWidgetSettings())
+        val place = WeatherWidgets.place(context, settings.place)
+        val forecast = WeatherWidgets.forecast(context, place)
         val unit = context.weatherSettings().units.temperature
         val name = place?.name?.ifBlank { null } ?: context.getString(R.string.current_location)
-        provideContent { GlanceTheme { Content(context, name, forecast, unit) } }
+        val (scheme, background) = settings.colors(context)
+        provideContent { GlanceTheme(colors = scheme) { Content(context, name, forecast, unit, settings, background) } }
     }
 
     @Composable
@@ -86,15 +76,17 @@ class WeatherWidget : GlanceAppWidget() {
         name: String,
         forecast: Forecast?,
         unit: TemperatureUnit,
+        settings: WeatherWidgetSettings,
+        background: ColorProvider,
     ) {
-        val open = actionStartActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        val size = LocalSize.current
         Column(
             GlanceModifier
                 .fillMaxSize()
                 .cornerRadius(28.dp)
-                .background(GlanceTheme.colors.widgetBackground)
+                .background(background)
                 .padding(16.dp)
-                .clickable(open),
+                .clickable(actionStartActivity(WeatherWidgets.openApp(context))),
         ) {
             if (forecast == null) {
                 Text(
@@ -103,19 +95,20 @@ class WeatherWidget : GlanceAppWidget() {
                 )
                 return@Column
             }
+
+            fun deg(c: Double) = context.getString(R.string.degrees, Convert.temperature(c, unit))
             val current = forecast.current
             val today = forecast.days.firstOrNull()
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(GlanceModifier.defaultWeight()) {
-                    Text(
-                        name,
-                        maxLines = 1,
-                        style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium),
-                    )
-                    Text(
-                        context.getString(R.string.degrees, Convert.temperature(current.temperature, unit)),
-                        style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 40.sp),
-                    )
+                    if (settings.showName) {
+                        Text(
+                            name,
+                            maxLines = 1,
+                            style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                        )
+                    }
+                    Text(deg(current.temperature), style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 40.sp))
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Image(
@@ -124,21 +117,17 @@ class WeatherWidget : GlanceAppWidget() {
                         colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                         modifier = GlanceModifier.size(40.dp),
                     )
-                    if (today != null) {
+                    if (today != null && settings.showHighLow) {
                         Text(
-                            context.getString(
-                                R.string.high_low,
-                                context.getString(R.string.degrees, Convert.temperature(today.high, unit)),
-                                context.getString(R.string.degrees, Convert.temperature(today.low, unit)),
-                            ),
+                            context.getString(R.string.high_low, deg(today.high), deg(today.low)),
                             style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp),
                         )
                     }
                 }
             }
-            if (LocalSize.current.width >= WIDE.width) {
+            if (settings.showHours && size.width >= WIDE.width) {
                 Spacer(GlanceModifier.height(8.dp))
-                val time = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+                val time = hourFormat(context)
                 Row(GlanceModifier.fillMaxWidth()) {
                     Timeline.nextHours(forecast.hours, System.currentTimeMillis()).take(HOURS).forEach { h ->
                         Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -159,8 +148,45 @@ class WeatherWidget : GlanceAppWidget() {
                                 modifier = GlanceModifier.size(20.dp),
                             )
                             Text(
-                                context.getString(R.string.degrees, Convert.temperature(h.temperature, unit)),
+                                deg(h.temperature),
                                 style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp, textAlign = TextAlign.Center),
+                            )
+                        }
+                    }
+                }
+            }
+            if (settings.showDays && size.height >= TALL.height) {
+                Spacer(GlanceModifier.height(8.dp))
+                // Rows as fit under what's above (about 28dp each), at most a week.
+                val used = if (settings.showHours) 150 else 90
+                val fit = ((size.height.value - used - 32) / 28).toInt().coerceIn(1, DAYS)
+                val todayDate = LocalDate.now(forecast.zone)
+                val dayName = dayFormat()
+                // In their own column: a Glance column keeps only its first 10 children.
+                Column(GlanceModifier.fillMaxWidth()) {
+                    forecast.days.take(fit).forEach { d ->
+                        Row(GlanceModifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (d.date == todayDate) context.getString(R.string.today) else dayName.format(d.date),
+                                maxLines = 1,
+                                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp),
+                                modifier = GlanceModifier.defaultWeight(),
+                            )
+                            Image(
+                                ImageProvider(d.condition.icon(true)),
+                                contentDescription = context.getString(d.condition.label(true)),
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                                modifier = GlanceModifier.size(20.dp),
+                            )
+                            Text(
+                                deg(d.low),
+                                style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp, textAlign = TextAlign.End),
+                                modifier = GlanceModifier.width(44.dp),
+                            )
+                            Text(
+                                deg(d.high),
+                                style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp, textAlign = TextAlign.End),
+                                modifier = GlanceModifier.width(44.dp),
                             )
                         }
                     }
@@ -172,38 +198,18 @@ class WeatherWidget : GlanceAppWidget() {
     companion object {
         private val SMALL = DpSize(110.dp, 100.dp)
         private val WIDE = DpSize(250.dp, 100.dp)
+        private val TALL = DpSize(250.dp, 240.dp)
         private const val HOURS = 5
+        private const val DAYS = 8
 
-        suspend fun placed(context: Context) = GlanceAppWidgetManager(context).getGlanceIds(WeatherWidget::class.java).isNotEmpty()
+        /** "Mon". */
+        fun dayFormat(): DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.getDefault())
 
-        suspend fun refresh(context: Context) {
-            if (placed(context)) WeatherWidget().updateAll(context)
-        }
-    }
-}
-
-class WeatherWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = WeatherWidget()
-
-    /** Placing the first widget starts the background refresh; removing the last stops it. */
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        reschedule(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        reschedule(context)
-    }
-
-    private fun reschedule(context: Context) {
-        val pending = goAsync()
-        kotlinx.coroutines.CoroutineScope(Dispatchers.Default).launch {
-            try {
-                WeatherJobs.schedule(context.applicationContext)
-            } finally {
-                pending.finish()
-            }
-        }
+        /** "15:00" or "3 PM", as the clock is set. */
+        fun hourFormat(context: Context): DateTimeFormatter =
+            DateTimeFormatter.ofPattern(
+                DateFormat.getBestDateTimePattern(Locale.getDefault(), if (DateFormat.is24HourFormat(context)) "Hmm" else "ha"),
+                Locale.getDefault(),
+            )
     }
 }
