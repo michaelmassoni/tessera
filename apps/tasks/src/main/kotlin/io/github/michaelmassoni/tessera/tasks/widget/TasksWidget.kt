@@ -91,7 +91,13 @@ class TasksWidget : GlanceAppWidget() {
         background: ColorProvider,
     ) {
         val list = data.list(settings.list.orEmpty()) ?: data.lists.minByOrNull { it.order }
-        val rows = list?.let { TaskOps.view(data.tasksOf(it.id), settings.sort).open.take(MAX_ROWS) }.orEmpty()
+        val rows =
+            list
+                ?.let { l ->
+                    val open = TaskOps.view(data.tasksOf(l.id), settings.sort).open
+                    val days = settings.upcoming.days
+                    (if (days == null) open else TaskOps.dueBy(open, LocalDate.now().plusDays(days))).take(MAX_ROWS)
+                }.orEmpty()
         // With one list there's nothing to switch to.
         val switchable = data.lists.size > 1
         val now = LocalDateTime.now()
