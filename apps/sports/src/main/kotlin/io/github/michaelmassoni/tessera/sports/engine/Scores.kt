@@ -27,7 +27,7 @@ object Scores {
     /** How far ahead it looks for fixtures. */
     const val UPCOMING_DAYS = 7L
 
-    /** How often live games refresh while visible, and while a Live Update is showing. */
+    /** How often live games refresh while visible, and while a live score is showing. */
     const val LIVE_REFRESH_MS = 15_000L
 
     /** How often the rest refreshes while the app is open. */

@@ -10,8 +10,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.drawable.Icon
 import android.os.Build
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.work.CoroutineWorker
@@ -43,11 +44,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /**
- * Live Updates: while a followed team plays, its score sits in an ongoing notification (promoted
- * to a Live Update on Android 16 QPR1+). While a game is live the worker keeps running, checking
+ * Live scores: while a followed team plays, its score sits in an ongoing notification laid out
+ * as Apple Sports does (not promoted to an Android Live Update: that needs a standard layout).
+ * While a game is live the worker keeps running, checking
  * ESPN's current scoreboard every [LIVE_INTERVAL_MS] and as soon as the screen comes on; between
  * games it sleeps until a minute before the next one. It's not a foreground service (Android won't
  * start one from the background for this), so with the screen off and the phone idle, Android may
@@ -68,8 +69,8 @@ object LiveGames {
     /** How long one worker run keeps watching (WorkManager stops a run after 10 minutes). */
     const val RUN_MS = 9 * 60_000L
 
-    /** Progress units per period in the Live Update's bar. */
-    private const val UNITS = 100
+    /** How faded a losing score is after full time. */
+    private const val LOSER_ALPHA = 0.55f
 
     /** Starts (or restarts) the watch: right away, then as the games need. */
     fun kick(context: Context) = enqueue(context, delayMs = 0, ExistingWorkPolicy.REPLACE)
@@ -120,13 +121,49 @@ object LiveGames {
     }
 
     /**
+     * A score layout ([layout]: collapsed or expanded) filled in. Spoiler-free ([hide]) leaves out the
+     * scores and the last play. After full time the losing score is dimmed, as Apple Sports does.
+     */
+    private fun scoreViews(
+        context: Context,
+        layout: Int,
+        game: Game,
+        status: String,
+        awayLogo: Bitmap?,
+        homeLogo: Bitmap?,
+        hide: Boolean,
+    ): RemoteViews =
+        RemoteViews(context.packageName, layout).apply {
+            awayLogo?.let { setImageViewBitmap(R.id.away_logo, it) } ?: setViewVisibility(R.id.away_logo, View.GONE)
+            homeLogo?.let { setImageViewBitmap(R.id.home_logo, it) } ?: setViewVisibility(R.id.home_logo, View.GONE)
+            setTextViewText(R.id.status, status)
+            if (hide) {
+                setViewVisibility(R.id.away_score, View.GONE)
+                setViewVisibility(R.id.home_score, View.GONE)
+            } else {
+                setTextViewText(R.id.away_score, game.away.score.orEmpty())
+                setTextViewText(R.id.home_score, game.home.score.orEmpty())
+                if (game.state == GameState.Final) {
+                    if (game.home.winner) setFloat(R.id.away_score, "setAlpha", LOSER_ALPHA)
+                    if (game.away.winner) setFloat(R.id.home_score, "setAlpha", LOSER_ALPHA)
+                }
+            }
+            if (layout == R.layout.live_expanded) {
+                setTextViewText(R.id.league, game.league.shortName)
+                setTextViewText(R.id.away_name, game.away.team.shortName)
+                setTextViewText(R.id.home_name, game.home.team.shortName)
+                game.situation?.let { setTextViewText(R.id.situation, it) } ?: setViewVisibility(R.id.situation, View.GONE)
+                game.lastPlay?.takeUnless { hide || game.state != GameState.Live }?.let { setTextViewText(R.id.last_play, it) }
+                    ?: setViewVisibility(R.id.last_play, View.GONE)
+            }
+        }
+
+    /**
      * The notification for [game]: ongoing while live, a dismissible final score after.
      *
-     * Each team sits next to its own score ("Rockets 115 · Nuggets 117", away first as in the
-     * app), the text says who leads ("4th 3:20 · Nuggets by 2"), and the status bar chip shows
-     * your team's margin ("DEN +2"). On Android 16 the bar shows how far through the game it is,
-     * a segment per period, between the away and home logos. The time is when the score was
-     * fetched, so an old score never looks current.
+     * The title and text read "Rockets 115 · Nuggets 117" and "3:20 - 4th · Nuggets by 2" (also what
+     * screen readers and watches get); the layouts show the score as Apple Sports does. The time is
+     * when the score was fetched, so an old score never looks current.
      */
     internal fun notification(
         context: Context,
@@ -176,14 +213,12 @@ object LiveGames {
                     leader?.let { context.getString(R.string.live_won, it.team.shortName) } ?: context.getString(R.string.live_drawn),
                 )
             }
-        val yours = LiveScore.yours(game, followed)
         val builder =
             Notification
                 .Builder(context, CHANNEL)
                 .setSmallIcon(game.league.sport.icon())
                 .setContentTitle(title)
                 .setContentText(text)
-                .setSubText(game.league.shortName)
                 .setWhen(updatedAt)
                 .setShowWhen(true)
                 .setContentIntent(open)
@@ -192,34 +227,14 @@ object LiveGames {
                 .setOnlyAlertOnce(true)
                 .setOngoing(live)
                 .setAutoCancel(!live)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            val periods = LiveScore.periods(game.league)
-            val style =
-                Notification
-                    .ProgressStyle()
-                    .setProgressSegments(List(periods) { Notification.ProgressStyle.Segment(UNITS) })
-                    .setProgress((LiveScore.elapsed(game) * UNITS).roundToInt())
-                    .setStyledByProgress(true)
-            awayLogo?.let { style.setProgressStartIcon(Icon.createWithBitmap(it)) }
-            homeLogo?.let { style.setProgressEndIcon(Icon.createWithBitmap(it)) }
-            builder.setStyle(style)
-            if (hide) builder.setShortCriticalText(context.getString(R.string.live_chip_hidden))
-            LiveScore.margin(game, yours.team.key)?.takeUnless { hide }?.let { margin ->
-                builder.setShortCriticalText(
-                    when {
-                        margin > 0 -> context.getString(R.string.live_chip_ahead, yours.team.abbreviation, margin)
-                        margin < 0 -> context.getString(R.string.live_chip_behind, yours.team.abbreviation, -margin)
-                        else -> context.getString(R.string.live_chip_level, yours.team.abbreviation)
-                    },
-                )
-            }
-        } else {
-            (if (yours === game.away) awayLogo else homeLogo)?.let { builder.setLargeIcon(it) }
-        }
-        if (live && Build.VERSION.SDK_INT_FULL >= Build.VERSION_CODES_FULL.BAKLAVA_1) {
-            // Android 16 QPR1+: ask for a Live Update (a status bar chip, near the top of the lock screen).
-            builder.setRequestPromotedOngoing(true)
-        }
+        // In the spirit of Apple Sports: logos and big scores at the sides, the clock between, names
+        // under the logos, then the situation and the last play (expanded). A custom layout can't be
+        // promoted to an Android Live Update; docs/sports.md says why it's worth it.
+        val status = if (live) game.status else context.getString(R.string.final_score)
+        builder
+            .setStyle(Notification.DecoratedCustomViewStyle())
+            .setCustomContentView(scoreViews(context, R.layout.live_collapsed, game, status, awayLogo, homeLogo, hide))
+            .setCustomBigContentView(scoreViews(context, R.layout.live_expanded, game, status, awayLogo, homeLogo, hide))
         if (!live) builder.setTimeoutAfter(3 * 60 * 60 * 1000L)
         return builder.build()
     }

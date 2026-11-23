@@ -94,7 +94,7 @@ object LiveScore {
 
     /**
      * [fresh]'s versions of [live] games (matched by id); a game missing from them keeps its old
-     * state, so a scoreboard that dropped it doesn't end the Live Update.
+     * state, so a scoreboard that dropped it doesn't end the live score.
      */
     fun update(
         live: List<Game>,

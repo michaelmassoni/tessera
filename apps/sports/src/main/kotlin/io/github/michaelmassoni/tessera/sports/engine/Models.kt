@@ -55,6 +55,10 @@ data class Game(
     val away: Side,
     val venue: String?,
     val broadcast: String?,
+    /** What just happened, while live ("Alperen Sengun shooting foul"). */
+    val lastPlay: String? = null,
+    /** Football's down and distance ("2nd & 10 at JAX 25"). */
+    val situation: String? = null,
 ) {
     fun involves(teamKeys: Set<String>) = home.team.key in teamKeys || away.team.key in teamKeys
 }

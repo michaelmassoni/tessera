@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The live score, collapsed: each team's logo beside its score, the clock between. A notification
+    can only be a RemoteViews layout (see docs/decisions.md, as Clock's widget); text uses the
+    system's notification styles so it follows light and dark.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/away_logo"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/away_score"
+        style="@style/LiveScore.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp" />
+
+    <TextView
+        android:id="@+id/status"
+        style="@style/LiveStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:maxLines="1" />
+
+    <TextView
+        android:id="@+id/home_score"
+        style="@style/LiveScore.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp" />
+
+    <ImageView
+        android:id="@+id/home_logo"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter" />
+</LinearLayout>
