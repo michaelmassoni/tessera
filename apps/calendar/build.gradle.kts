@@ -7,8 +7,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.calendar"
-        versionCode = 18
-        versionName = "0.8.0"
+        versionCode = 19
+        versionName = "0.8.1"
     }
 }
 
