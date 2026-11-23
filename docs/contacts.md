@@ -14,6 +14,8 @@ and needs no network, Google account or Play Services.
 |------------|-----|
 | `READ_CONTACTS` | List, search and show contacts |
 | `WRITE_CONTACTS` | Create, edit, star and delete contacts; import vCards |
+| `INTERNET` | Only to sync with the CardDAV server the person adds (docs/sync.md); nothing else is contacted |
+| `READ_SYNC_SETTINGS`, `WRITE_SYNC_SETTINGS` | The sync accounts: whether they sync on local changes |
 
 Both are asked for on first launch, behind an explanation screen. If they're denied, the screen
 stays with a button to open the app's system settings. Calling and texting use `ACTION_DIAL` and
@@ -21,6 +23,10 @@ stays with a button to open the app's system settings. Calling and texting use `
 needed.
 
 ## Features
+
+- **Sync with a server (0.3):** CardDAV address books, each its own account, with both of DAVx5's
+  group methods (docs/sync.md). First run offers it after contacts access; Settings have a Sync
+  section and the group method.
 
 ### List
 
