@@ -20,6 +20,7 @@ import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.tasks.data.AccountStore
 import io.github.michaelmassoni.tessera.tasks.data.Accounts
 import io.github.michaelmassoni.tessera.tasks.data.TaskData
+import io.github.michaelmassoni.tessera.tasks.data.TasksPrefs
 import io.github.michaelmassoni.tessera.tasks.engine.Due
 import io.github.michaelmassoni.tessera.tasks.engine.Repeat
 import io.github.michaelmassoni.tessera.tasks.engine.Task
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var openTask by mutableStateOf<String?>(null)
     private var notice by mutableStateOf<SyncNotice?>(null)
     private var exactAlarms by mutableStateOf(true)
+    private var stars by mutableStateOf(true)
     private val accounts by lazy { AccountStore(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,7 +59,7 @@ class MainActivity : ComponentActivity() {
                         it.state == WorkInfo.State.RUNNING || (it.state == WorkInfo.State.ENQUEUED && it.runAttemptCount > 0)
                     }
                 val alarmsLate = !exactAlarms && data.tasks.any { !it.completed && !it.deleted && it.due?.time != null }
-                TasksApp(TasksState(data, accounts.account != null, running, notice, alarmsLate), actions, openTask = openTask)
+                TasksApp(TasksState(data, accounts.account != null, running, notice, alarmsLate, stars), actions, openTask = openTask)
             }
         }
     }
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        stars = TasksPrefs.stars(this)
         exactAlarms = getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
         // Opening the app brings the server's changes.
         if (accounts.account != null) SyncWorker.schedule.soon(this, delaySeconds = 0)

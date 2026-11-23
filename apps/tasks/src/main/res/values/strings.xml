@@ -76,7 +76,7 @@
     <string name="move_to">List</string>
     <string name="sort_by">Sort by</string>
     <string name="sort_my_order">My order</string>
-    <string name="sort_date">Date</string>
+    <string name="sort_date">Due date</string>
     <string name="sort_starred">Starred first</string>
     <string name="sort_title">Title</string>
     <string name="empty_list">No tasks yet</string>
@@ -116,4 +116,26 @@
     <string name="sign_out_summary">Stop syncing. Tasks stay on this phone.</string>
     <string name="sign_out_text">Your tasks stay on this phone as phone-only lists, and on the server as they are now.</string>
     <string name="widget_description">Tick off tasks and add new ones</string>
+
+    <!-- App settings -->
+    <string name="settings_tasks">Tasks</string>
+    <string name="settings_stars">Starred tasks</string>
+    <string name="settings_stars_summary">A star on each task and a Starred view. Off hides them; stars already set stay on the tasks.</string>
+
+    <!-- Widget settings -->
+    <string name="widget_settings">Widget settings</string>
+    <string name="widget_list">List</string>
+    <string name="widget_sort">Order</string>
+    <string name="widget_show">Show</string>
+    <string name="widget_show_name">List name</string>
+    <string name="widget_show_dates">Due dates</string>
+    <string name="widget_background">Background</string>
+    <string name="widget_background_tinted">Tinted</string>
+    <string name="widget_background_solid">Solid</string>
+    <string name="widget_background_none">None</string>
+    <string name="widget_opacity">Opacity: %1$d%%</string>
+    <string name="widget_theme">Theme</string>
+    <string name="widget_theme_app">Same as Tessera</string>
+    <string name="widget_theme_light">Light</string>
+    <string name="widget_theme_dark">Dark</string>
 </resources>

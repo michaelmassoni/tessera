@@ -9,4 +9,6 @@
     android:targetCellWidth="3"
     android:targetCellHeight="3"
     android:updatePeriodMillis="1800000"
+    android:configure="io.github.michaelmassoni.tessera.tasks.widget.TasksWidgetSettingsActivity"
+    android:widgetFeatures="reconfigurable"
     android:widgetCategory="home_screen" />

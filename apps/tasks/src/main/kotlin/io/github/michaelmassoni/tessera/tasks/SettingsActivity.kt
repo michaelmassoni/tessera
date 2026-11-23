@@ -25,9 +25,11 @@ import io.github.michaelmassoni.tessera.core.dav.SyncSettings
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.tasks.data.AccountStore
 import io.github.michaelmassoni.tessera.tasks.data.Accounts
+import io.github.michaelmassoni.tessera.tasks.data.TasksPrefs
 import io.github.michaelmassoni.tessera.tasks.sync.SyncWorker
 import kotlinx.coroutines.launch
 
@@ -55,6 +57,18 @@ class SettingsActivity : TesseraSettingsActivity() {
         val work by remember { WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(SyncWorker.schedule.soonName) }
             .collectAsStateWithLifecycle(emptyList())
         val syncing = work.any { it.state == WorkInfo.State.RUNNING }
+
+        var stars by remember { mutableStateOf(TasksPrefs.stars(context)) }
+        SettingsHeader(stringResource(R.string.settings_tasks))
+        SwitchSetting(
+            title = stringResource(R.string.settings_stars),
+            summary = stringResource(R.string.settings_stars_summary),
+            checked = stars,
+            onCheckedChange = {
+                stars = it
+                TasksPrefs.setStars(context, it)
+            },
+        )
 
         SettingsHeader(stringResource(R.string.settings_sync))
         val a = account
