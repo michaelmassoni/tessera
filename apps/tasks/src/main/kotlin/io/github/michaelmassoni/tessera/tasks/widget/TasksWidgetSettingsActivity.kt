@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
@@ -139,6 +140,28 @@ private fun Screen(
             SettingsHeader(stringResource(R.string.widget_show))
             SwitchSetting(stringResource(R.string.widget_show_name), settings.showName, { onChange(settings.copy(showName = it)) })
             SwitchSetting(stringResource(R.string.widget_show_dates), settings.showDates, { onChange(settings.copy(showDates = it)) })
+            SettingsHeader(stringResource(R.string.widget_upcoming))
+            Column(Modifier.selectableGroup()) {
+                Upcoming.entries.forEach { u ->
+                    RadioSetting(
+                        stringResource(
+                            when (u) {
+                                Upcoming.All -> R.string.widget_upcoming_all
+                                Upcoming.Week -> R.string.widget_upcoming_week
+                                Upcoming.None -> R.string.widget_upcoming_none
+                            },
+                        ),
+                        selected = settings.upcoming == u,
+                        onSelect = { onChange(settings.copy(upcoming = u)) },
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.widget_upcoming_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
             SettingsHeader(stringResource(R.string.widget_background))
             Column(Modifier.selectableGroup()) {
                 WidgetBackground.entries.forEach { b ->
