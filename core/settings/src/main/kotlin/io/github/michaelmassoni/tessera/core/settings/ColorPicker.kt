@@ -6,10 +6,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -37,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -130,6 +134,79 @@ fun IconColorDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
+
+/**
+ * Picks one colour (a calendar's, say): a palette, hue/saturation/brightness sliders and a hex
+ * code field (`#RRGGBB`), with a swatch of the colour chosen.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ColorDialog(
+    title: String,
+    initial: Int,
+    onApply: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    palette: List<Int> = DefaultPalette,
+) {
+    var color by rememberSaveable { mutableIntStateOf(initial or OPAQUE) }
+    val chosenLabel = stringResource(R.string.color_picker_chosen)
+    AlertDialog(
+        modifier = modifier,
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color(color))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .semantics { contentDescription = chosenLabel },
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    palette.forEach { p ->
+                        val hex = ColorMath.toHex(p)
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(p))
+                                .border(if (p or OPAQUE == color) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                .selectable(selected = p or OPAQUE == color, onClick = { color = p or OPAQUE }, role = Role.RadioButton)
+                                .semantics { contentDescription = hex },
+                        )
+                    }
+                }
+                HsvSliders(color) { color = it }
+                HexField(color) { color = it or OPAQUE }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onApply(color) }) { Text(stringResource(R.string.action_apply)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
+
+/** Twelve distinct colours, close to Google Calendar's. */
+val DefaultPalette: List<Int> =
+    listOf(
+        0xFFD50000,
+        0xFFE67C73,
+        0xFFF4511E,
+        0xFFF6BF26,
+        0xFF33B679,
+        0xFF0B8043,
+        0xFF039BE5,
+        0xFF3F51B5,
+        0xFF7986CB,
+        0xFF8E24AA,
+        0xFF616161,
+        0xFF795548,
+    ).map { it.toInt() }
+
+private const val OPAQUE = 0xFF000000.toInt()
 
 @Composable
 private fun HsvSliders(

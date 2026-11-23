@@ -15,6 +15,8 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 |------------|-----|
 | `READ_CALENDAR`, `WRITE_CALENDAR` | Show, create, edit and delete events |
 | `POST_NOTIFICATIONS` | Event reminders |
+| `INTERNET` | Only to sync with the CalDAV server the person adds (docs/sync.md); nothing else is contacted |
+| `READ_SYNC_SETTINGS`, `WRITE_SYNC_SETTINGS` | The sync account: whether it syncs on local changes |
 | `RECEIVE_BOOT_COMPLETED` | Not needed: the calendar provider re-arms its own alarms |
 
 ## Calendars
@@ -29,6 +31,10 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
   once, not once in onCreate and again in onResume.
 - **Colours:** event and calendar colours are the user's data (they come from the account) and
   are shown as is, like contact photos. Everything else uses theme colours.
+- **Colour picker (0.8):** each calendar in the Calendars list has a colour button: a palette, hue,
+  saturation and brightness, and a hex code. Tessera-synced calendars send it to the server.
+- **Sync with a server (0.8):** see docs/sync.md. First run offers it after calendar access; the
+  Settings have a Sync section.
 
 ## Views
 

@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.calendar.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -64,6 +66,8 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.calendar.CalendarEvent
@@ -76,6 +80,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.Scope
+import io.github.michaelmassoni.tessera.core.settings.ColorDialog
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.YearMonth
@@ -123,6 +128,12 @@ interface CalendarActions {
     fun setVisible(
         calendar: CalendarInfo,
         visible: Boolean,
+    )
+
+    /** Changes a calendar's colour (any calendar: docs/sync.md). */
+    fun setColor(
+        calendar: CalendarInfo,
+        color: Int,
     )
 
     fun import()
@@ -218,7 +229,7 @@ fun CalendarApp(
             dismissButton = { TextButton(onClick = { discard = false }) { Text(stringResource(R.string.keep_editing)) } },
         )
     }
-    if (calendarsDialog) CalendarsDialog(state.calendars, actions::setVisible) { calendarsDialog = false }
+    if (calendarsDialog) CalendarsDialog(state.calendars, actions::setVisible, actions::setColor) { calendarsDialog = false }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -408,9 +419,22 @@ private fun DayHeading(
 private fun CalendarsDialog(
     calendars: List<CalendarInfo>,
     onVisible: (CalendarInfo, Boolean) -> Unit,
+    onColor: (CalendarInfo, Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val resources = LocalResources.current
+    var colouring by remember { mutableStateOf<CalendarInfo?>(null) }
+    colouring?.let { cal ->
+        ColorDialog(
+            title = stringResource(R.string.calendar_colour_title, calendarName(cal, resources)),
+            initial = cal.color,
+            onApply = {
+                onColor(cal, it)
+                colouring = null
+            },
+            onDismiss = { colouring = null },
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.calendars)) },
@@ -424,8 +448,7 @@ private fun CalendarsDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Checkbox(checked = cal.visible, onCheckedChange = { onVisible(cal, it) })
-                        Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(Color(cal.color)))
-                        Column {
+                        Column(Modifier.weight(1f)) {
                             Text(calendarName(cal, resources))
                             if (cal.accountName.isNotBlank() && cal.accountName != cal.name) {
                                 Text(
@@ -434,6 +457,16 @@ private fun CalendarsDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
+                        }
+                        val colourLabel = stringResource(R.string.calendar_colour, calendarName(cal, resources))
+                        IconButton(onClick = { colouring = cal }, modifier = Modifier.semantics { contentDescription = colourLabel }) {
+                            Box(
+                                Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(cal.color))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                            )
                         }
                     }
                 }

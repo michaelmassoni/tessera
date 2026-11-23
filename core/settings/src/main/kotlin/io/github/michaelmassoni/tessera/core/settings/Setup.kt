@@ -93,11 +93,13 @@ data class SetupStep(
 )
 
 /**
- * A page of the app's own, after the welcome and before the permission steps: a choice or a
- * sign-in. [content] calls its argument to move on.
+ * A page of the app's own, after the welcome and before the permission steps (or after them, with
+ * [afterSteps]: a calendar sign-in needs calendar access first): a choice or a sign-in. [content]
+ * calls its argument to move on.
  */
 class SetupCustom(
     val wanted: (Context) -> Boolean = { true },
+    val afterSteps: Boolean = false,
     val content: @Composable (next: () -> Unit) -> Unit,
 )
 
@@ -216,8 +218,9 @@ private fun SetupFlow(
     val pages =
         remember {
             listOf(Page.Welcome) +
-                spec.custom.map { Page.Custom(it) } +
+                spec.custom.filterNot { it.afterSteps }.map { Page.Custom(it) } +
                 spec.steps.filterNot { Setup.granted(context, it.grant) }.map { Page.Step(it) } +
+                spec.custom.filter { it.afterSteps }.map { Page.Custom(it) } +
                 if (spec.offerRestore && !Setup.wasRestored(context)) listOf(Page.Restore) else emptyList()
         }
     var index by rememberSaveable { mutableIntStateOf(0) }

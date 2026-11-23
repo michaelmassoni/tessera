@@ -153,6 +153,11 @@ private object NoActions : CalendarActions {
         visible: Boolean,
     ) = Unit
 
+    override fun setColor(
+        calendar: CalendarInfo,
+        color: Int,
+    ) = Unit
+
     override fun import() = Unit
 
     override fun openSettings() = Unit

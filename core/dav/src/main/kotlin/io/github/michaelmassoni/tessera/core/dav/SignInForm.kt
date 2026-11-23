@@ -123,6 +123,8 @@ data class RemoteCollection(
     val name: String,
     val color: Int? = null,
     val writable: Boolean = true,
+    /** A line under the name ("Also synced by DAVx5"). */
+    val note: String? = null,
 )
 
 /** The server's collections, ticked to sync; [empty] when there are none. */
@@ -145,7 +147,10 @@ fun CollectionPicker(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(checked = on, onCheckedChange = null, modifier = Modifier.size(48.dp))
-                Text(c.name, style = MaterialTheme.typography.bodyLarge)
+                Column {
+                    Text(c.name, style = MaterialTheme.typography.bodyLarge)
+                    c.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                }
             }
         }
     }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Events live in the system calendar database and sync with their accounts; the app keeps only settings. -->
+<!-- Events live in the system calendar database and sync with their accounts; the app keeps only
+     settings (not the sync account: its password only decrypts on this phone). -->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="sharedpref" path="settings.xml" />

@@ -70,7 +70,8 @@ fun DavSetupPage(
     val found = remote
     when {
         found != null -> {
-            var chosen by remember { mutableStateOf(found.map { it.href }.toSet()) }
+            // Those another app already syncs (noted) start unticked, to avoid duplicates.
+            var chosen by remember { mutableStateOf(found.filter { it.note == null }.map { it.href }.toSet()) }
             SetupPage(
                 image = { SetupIcon(icon) },
                 modifier = modifier,
