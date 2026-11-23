@@ -68,6 +68,8 @@ every client reads the same way.
 - A list's tasks with checkboxes (tap to complete, with a short strike-through before it leaves),
   the list's name (with more than one list, tap it to switch to the next), and **+** that opens the add sheet over the home
   screen (a translucent activity) without opening the app.
+  Tapping a task opens it in the app; tapping anywhere else (not a checkbox, + or the list switcher)
+  opens the app.
 - Due today/overdue shown in colour. Resizable.
 - **Widget settings** (each widget its own; shown when it's placed, and from the launcher's
   reconfigure): list (only with more than one), order (due date by default), show list name, show

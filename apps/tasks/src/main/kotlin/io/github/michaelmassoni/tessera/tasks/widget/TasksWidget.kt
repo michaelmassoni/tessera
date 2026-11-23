@@ -40,6 +40,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.layout.wrapContentHeight
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.state.GlanceStateDefinition
@@ -102,11 +103,17 @@ class TasksWidget : GlanceAppWidget() {
         val switchable = data.lists.size > 1
         val now = LocalDateTime.now()
         val today = LocalDate.now()
+        // Anywhere that isn't a checkbox, a task, + or the list switcher opens the app.
+        val openApp =
+            actionStartActivity(
+                Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            )
         Column(
             GlanceModifier
                 .fillMaxSize()
                 .cornerRadius(24.dp)
                 .background(background)
+                .clickable(openApp)
                 .padding(12.dp),
         ) {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -125,7 +132,7 @@ class TasksWidget : GlanceAppWidget() {
                             GlanceModifier
                                 .defaultWeight()
                                 .padding(4.dp)
-                                .let { if (switchable) it.clickable(actionRunCallback<NextList>()) else it },
+                                .clickable(if (switchable) actionRunCallback<NextList>() else openApp),
                     )
                 } else {
                     Spacer(GlanceModifier.defaultWeight())
@@ -151,10 +158,11 @@ class TasksWidget : GlanceAppWidget() {
                 Text(
                     context.getString(R.string.all_done),
                     style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant),
-                    modifier = GlanceModifier.padding(8.dp),
+                    modifier = GlanceModifier.fillMaxSize().padding(8.dp).clickable(openApp),
                 )
             } else {
-                LazyColumn {
+                // Only as tall as its rows, so the space under them is the background (which opens the app).
+                LazyColumn(GlanceModifier.fillMaxWidth().wrapContentHeight()) {
                     items(rows, itemId = {
                         it.task.id
                             .hashCode()
