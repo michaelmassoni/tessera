@@ -38,6 +38,10 @@
     <string name="state_ended">Call ended</string>
     <string name="answer">Answer</string>
     <string name="decline">Decline</string>
+    <string name="end_and_answer">End &amp; answer</string>
+    <string name="hold_and_answer">Hold &amp; answer</string>
+    <string name="on_call">On call</string>
+    <string name="swap">Swap</string>
     <string name="hang_up">Hang up</string>
     <string name="mute">Mute</string>
     <string name="keypad">Keypad</string>

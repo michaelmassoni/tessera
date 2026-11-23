@@ -21,6 +21,8 @@ data class CallInfo(
     val location: String? = null,
     /** Reported as spam on this phone. */
     val spam: Boolean = false,
+    /** Part of a conference call (shown as the conference, not on its own). */
+    val child: Boolean = false,
 ) {
     val ringing: Boolean get() = state == Call.STATE_RINGING
     val active: Boolean get() = state == Call.STATE_ACTIVE
@@ -102,7 +104,26 @@ object CallManager {
         _audio.value = audio
     }
 
+    /** Answers [id]. Telecom puts a call you're already on on hold first ("Hold & answer"). */
     fun answer(id: String) = calls[id]?.answer(VideoProfile.STATE_AUDIO_ONLY)
+
+    /** A ringing call to answer once the calls being ended have gone ("End & answer"). */
+    private var answerWhenFree: String? = null
+
+    /** Ends every other call, then answers [id] when the line is free. */
+    fun endAndAnswer(id: String) {
+        val others =
+            calls.filterKeys { it != id }.values.filter {
+                @Suppress("DEPRECATION")
+                it.state != Call.STATE_DISCONNECTED
+            }
+        if (others.isEmpty()) {
+            answer(id)
+            return
+        }
+        answerWhenFree = id
+        others.forEach { it.disconnect() }
+    }
 
     fun reject(id: String) = calls[id]?.reject(false, null)
 
@@ -133,6 +154,15 @@ object CallManager {
 
     @Suppress("DEPRECATION") // Call.getState() is still the state on API 31.
     private fun publish() {
+        answerWhenFree?.let { id ->
+            val ringing = calls[id]?.takeIf { it.state == Call.STATE_RINGING }
+            if (ringing == null) {
+                answerWhenFree = null
+            } else if (calls.none { (other, call) -> other != id && call.state != Call.STATE_DISCONNECTED }) {
+                answerWhenFree = null
+                ringing.answer(VideoProfile.STATE_AUDIO_ONLY)
+            }
+        }
         _state.value =
             calls.map { (id, call) ->
                 val state = call.state
@@ -149,6 +179,7 @@ object CallManager {
                     incoming = call.details.callDirection == Call.Details.DIRECTION_INCOMING,
                     location = location.takeIf { name == null },
                     spam = spam && name == null,
+                    child = call.parent != null,
                 )
             }
     }
