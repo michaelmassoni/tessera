@@ -4,6 +4,29 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-23: Weather fills BOM's gaps from Open-Meteo; no pollen outside Europe (Accepted)
+
+The maintainer noticed no visibility, pressure, air quality or pollen for Melbourne.
+
+- **Visibility and pressure:** BOM's API has neither. For BOM places, the Open-Meteo forecast
+  already fetched for the hours past BOM's three days now also supplies visibility and pressure
+  for BOM's own hours, and pressure now. BOM's values stay the source for everything it has.
+- **Air quality** was a bug, not a gap: it (and warnings) loaded only after a network fetch, so a
+  fresh cached forecast never showed them. They now load on every open.
+- **Pollen:** Open-Meteo's pollen (CAMS Europe) covers Europe only. Australia's real pollen counts
+  (AusPollen / Melbourne Pollen, University of Melbourne and AirHealth) have a JSON feed behind
+  their sites, but their terms forbid reproducing the forecasts without written permission.
+  Google's Pollen API needs a key with billing, which Tessera can't ship. The maintainer chose to
+  skip pollen for Australia for now; asking AusPollen for permission is the way to add it later.
+
+## 2026-11-23: Phone stays "experimental" until call waiting is tested on a real phone (Accepted)
+
+The review for lifting the label found one gap a daily dialler can't have: with a second call,
+the screen showed the held call, so hang-up could end the wrong one, and there was no swap.
+Phone 0.7 adds call waiting (Hold & answer, End & answer, Swap). The emulator's modem can't hold a
+call or take a second one, so the label goes once the maintainer has tested, on their Pixel: call
+waiting both ways and swapping, Bluetooth audio, and the screen turning off at the ear.
+
 ## 2026-11-23: Sports' live score as an Apple Sports-style card, not a Live Update (Accepted)
 
 The maintainer asked for the live score to look like Apple Sports' lock-screen card: logos and big
