@@ -1,6 +1,6 @@
 # Phone: spec
 
-Package `io.github.michaelmassoni.tessera.phone`. Status: v0.1, first implementation.
+Package `io.github.michaelmassoni.tessera.phone`. Status: v0.7.
 **Experimental until tested on a real device with a SIM.**
 
 ## Goals
@@ -100,8 +100,16 @@ covers the incoming-call screen.
   released with `RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY` when the call ends or audio moves to the
   speaker, a headset or Bluetooth.
 - **Ongoing call notification:** with Hang up. Tapping it returns to the call.
-- **Second calls:** a second incoming call during a call shows Answer (which holds the first) and
-  Decline. Conference merging is out of scope.
+- **Second calls (call waiting, 0.7):** a second incoming call during a call takes over the
+  screen with a strip for the call you're on, and Decline, **End & answer** (ends the call
+  you're on, then answers once the line is free) and **Hold & answer** (Telecom holds the first).
+  With two calls, the screen is about the one you're talking on (active, then dialling, then
+  the newest on hold; `CallFocus`, unit tested) and an "On hold" strip has **Swap** (resumes the
+  held call; Telecom holds the other). When the call you're on ends, the held one shows on its
+  own, still on hold, until you resume it. Calls inside a conference are left out (the
+  conference stands for them); merging calls is out of scope. The emulator's modem can't hold
+  or take a second call, so this needs testing on a real phone.
+- **Short windows** (landscape, under 600dp tall): no picture, so the buttons and labels fit.
 
 ## Caller ID and spam (0.5)
 

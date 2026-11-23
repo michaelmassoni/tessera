@@ -24,7 +24,7 @@ section).
 | Dual SIM | P2 | Ask which SIM to use, or use a per-contact default, through `PhoneAccountHandle`. |
 | Quick reply on decline | P2 | "Can't talk now…" texts, which need `RESPOND_VIA_MESSAGE` handling. |
 | Recents: ~~delete~~ (Phone 0.4), search, filter missed calls | P2 | Delete needs `WRITE_CALL_LOG`. |
-| Swap and merge calls | P3 | Swap is close to free once hold works; merge needs conference support. |
+| ~~Swap calls, call waiting~~ (Phone 0.7); merge calls | P3 | Merge needs conference support. |
 | Speed dial | P3 | |
 | Avatar for unknown numbers | P3 | Shows "#"; Messages shows the first digit. Use the same person icon in both. |
 | Swipe to answer and decline | P3 | Pixel Phone is testing it in beta (2026). Buttons stay for accessibility. |
