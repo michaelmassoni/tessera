@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.sports.live
 
 import android.app.Notification
+import io.github.michaelmassoni.tessera.sports.R
 import io.github.michaelmassoni.tessera.sports.engine.Game
 import io.github.michaelmassoni.tessera.sports.engine.GameState
 import io.github.michaelmassoni.tessera.sports.engine.League
@@ -55,18 +56,37 @@ class LiveGamesTest {
         assertTrue(n.flags and Notification.FLAG_ONGOING_EVENT != 0)
         assertEquals(Notification.VISIBILITY_PUBLIC, n.visibility)
         assertEquals(LiveGames.CHANNEL, n.channelId)
-        // Robolectric's SDK 37 is past Android 16 QPR1: a Live Update, with the bar and the chip.
-        assertTrue(n.flags and Notification.FLAG_PROMOTED_ONGOING != 0 || n.extras.getBoolean("android.requestPromotedOngoing"))
-        assertEquals(Notification.ProgressStyle::class.java.name, n.extras.getString(Notification.EXTRA_TEMPLATE))
-        assertEquals("DEN +2", n.shortCriticalText)
+        // The Apple Sports-style layouts, in the system's notification frame.
+        assertEquals(Notification.DecoratedCustomViewStyle::class.java.name, n.extras.getString(Notification.EXTRA_TEMPLATE))
     }
 
     @Test
-    fun `the chip follows your team, behind or level`() {
-        assertEquals("HOU −2", LiveGames.notification(context, game(GameState.Live), setOf(rockets.key), 0).shortCriticalText)
+    fun `a level game says so`() {
         val level = LiveGames.notification(context, game(GameState.Live, home = "99", away = "99"), setOf(nuggets.key), 0)
-        assertEquals("DEN =", level.shortCriticalText)
         assertEquals("3:20 - 4th · Tied", level.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+    }
+
+    @Suppress("DEPRECATION") // bigContentView: the only way to read back the layout built.
+    @Test
+    fun `the expanded card shows scores, clock, names and the last play`() {
+        val g = game(GameState.Live).copy(lastPlay = "Jokic makes 2-pt jump shot")
+        val parent = android.widget.FrameLayout(context)
+        val card = LiveGames.notification(context, g, setOf(nuggets.key), 0).bigContentView.apply(context, parent)
+
+        fun text(id: Int) = card.findViewById<android.widget.TextView>(id).text.toString()
+        assertEquals("115", text(R.id.away_score))
+        assertEquals("117", text(R.id.home_score))
+        assertEquals("3:20 - 4th", text(R.id.status))
+        assertEquals("Rockets", text(R.id.away_name))
+        assertEquals("Nuggets", text(R.id.home_name))
+        assertEquals("NBA", text(R.id.league))
+        assertEquals("Jokic makes 2-pt jump shot", text(R.id.last_play))
+        assertEquals(android.view.View.GONE, card.findViewById<android.view.View>(R.id.situation).visibility)
+
+        // Spoiler-free: no scores and no last play.
+        val hidden = LiveGames.notification(context, g, setOf(nuggets.key), 0, hide = true).bigContentView.apply(context, parent)
+        assertEquals(android.view.View.GONE, hidden.findViewById<android.view.View>(R.id.away_score).visibility)
+        assertEquals(android.view.View.GONE, hidden.findViewById<android.view.View>(R.id.last_play).visibility)
     }
 
     @Test

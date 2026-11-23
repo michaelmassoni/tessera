@@ -59,7 +59,7 @@ import java.time.format.FormatStyle
 
 /**
  * A followed team's game: live, else the next one this week, else the latest result. Fetched when
- * it's drawn (every 30 minutes) and redrawn by Live Updates' checks while a game is live. Scores
+ * it's drawn (every 30 minutes) and redrawn by Live scores' checks while a game is live. Scores
  * stay hidden in spoiler-free mode.
  */
 class SportsWidget : GlanceAppWidget() {

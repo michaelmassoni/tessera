@@ -159,6 +159,11 @@ object Espn {
             away = away,
             venue = comp["venue"]["fullName"].str(),
             broadcast = broadcast,
+            lastPlay = comp["situation"]["lastPlay"]["text"].str()?.ifBlank { null }?.takeIf { state == GameState.Live },
+            situation =
+                (comp["situation"]["downDistanceText"].str() ?: comp["situation"]["shortDownDistanceText"].str())
+                    ?.ifBlank { null }
+                    ?.takeIf { state == GameState.Live },
         )
     }
 

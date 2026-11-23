@@ -65,11 +65,11 @@
 
     <string name="settings">Settings</string>
 
-    <!-- Live Updates -->
+    <!-- Live scores -->
     <string name="channel_live">Live games</string>
-    <string name="settings_live">Live Updates</string>
+    <string name="settings_live">Live scores</string>
     <string name="settings_live_summary">While your team plays, the score in a notification, updated about every 15 seconds</string>
-    <!-- Live Update: each team beside its own score, away first: "Rockets 115 · Nuggets 117" -->
+    <!-- live score: each team beside its own score, away first: "Rockets 115 · Nuggets 117" -->
     <string name="live_title">%1$s %2$s · %3$s %4$s</string>
     <!-- "4th 3:20 · Nuggets by 2" -->
     <string name="live_text">%1$s · %2$s</string>
@@ -78,9 +78,6 @@
     <string name="live_won">%1$s win</string>
     <string name="live_drawn">Draw</string>
     <!-- The status bar chip: your team and its margin, "DEN +2" -->
-    <string name="live_chip_ahead">%1$s +%2$d</string>
-    <string name="live_chip_behind">%1$s −%2$d</string>
-    <string name="live_chip_level">%1$s =</string>
     <string name="follow_team">Follow team</string>
     <string name="unfollow_team">Unfollow team</string>
     <string name="team_next">Next games</string>
@@ -89,9 +86,8 @@
     <string name="team_no_games">No games this season yet</string>
     <string name="game_hidden_description">%1$s at %2$s, %3$s. Score hidden; tap to show it</string>
     <string name="settings_hide_scores">Hide scores</string>
-    <string name="settings_hide_scores_summary">Spoiler-free: tap a game to see its score. Live Updates and the widget show the clock only</string>
+    <string name="settings_hide_scores_summary">Spoiler-free: tap a game to see its score. Live scores and the widget show the clock only</string>
     <string name="live_title_hidden">%1$s at %2$s</string>
-    <string name="live_chip_hidden">Live</string>
     <string name="widget_name">My team</string>
     <string name="widget_description">Your team\'s live game, or its next game or latest result</string>
     <string name="widget_pick_teams">Open Sports to pick your teams</string>

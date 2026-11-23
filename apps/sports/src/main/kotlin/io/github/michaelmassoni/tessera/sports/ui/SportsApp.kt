@@ -119,7 +119,7 @@ interface SportsActions {
         on: Boolean,
     )
 
-    /** Leaving the team picker (asks for notifications if Live Updates can be used). */
+    /** Leaving the team picker (asks for notifications if Live scores can be used). */
     fun doneFollowing()
 
     /** Spoiler-free: shows one game's score. */

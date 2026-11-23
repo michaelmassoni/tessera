@@ -1,7 +1,7 @@
 # Sports
 
 Scores, fixtures and standings for the teams and leagues you follow, with your team's live game
-in a Live Update. Inspired by Apple Sports' focus (your teams first, scores at a glance; no news,
+in a live score notification. Inspired by Apple Sports' focus (your teams first, scores at a glance; no news,
 video or betting), in Tessera's Material 3 Expressive style with dynamic colour.
 
 ## Leagues
@@ -48,7 +48,7 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
 - **Game** (a sheet): the score card, the line score by period, and each team's leaders. The
   sheet opens once the details are in (a loading indicator shows over the list meanwhile, until
   the sheet has finished rising over it, then fades; Back cancels), so it comes up at its final height instead of growing and jumping.
-- **Settings**: Live Updates on or off; Hide scores (0.3).
+- **Settings**: Live scores on or off; Hide scores (0.3).
 - **Team** (0.3, a screen): from the team chips under a game's score in its sheet, or a row in the
   standings. The logo, record and standing as ESPN words them ("14-3 · 1st in Atlantic
   Division"), the next five games, the last ten results (newest first) and the roster (number,
@@ -56,25 +56,33 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
   follows or unfollows the team.
 - **Spoiler-free** (0.3, Settings → Hide scores, off by default): live and final games show a
   dash for each score and no winner dimming; tapping a card shows that game's score (for this
-  session), and opening a game shows it too. Live Updates then show the teams and clock only
+  session), and opening a game shows it too. Live scores then show the teams and clock only
   ("Rockets at Nuggets", "3:20 - 4th", a "Live" chip), and so does the widget.
 - **Widget** (0.3, "My team", Glance, 4×1, home and lock screen): a followed team's live game,
   else its next game in the coming week, else its latest result from the last three days
   (`WidgetPick`, unit tested): logos, abbreviations, scores (or records before the game) and the
-  clock or start time. It fetches when drawn (every 30 minutes) and Live Updates redraw it with
+  clock or start time. It fetches when drawn (every 30 minutes) and live scores redraw it with
   each score.
 
-## Live Updates
+## Live scores
 
-While a followed team plays, its score is in an ongoing notification, promoted to a Live Update on
-Android 16 QPR1+ (0.2.1):
+While a followed team plays, its score is in an ongoing notification laid out as Apple Sports
+does on the lock screen (0.5; before, an Android Live Update with a progress bar):
 
-- Title: each team beside its own score, away first as in the app: "Rockets 115 · Nuggets 117".
-- Text: the clock and who leads: "3:20 - 4th · Nuggets by 2" ("Tied" when level).
-- Status bar chip: your team and its margin, "DEN +2" / "DEN −3" / "DEN =".
-- Android 16: a progress bar of the game, a segment per quarter, half or inning, between the
-  away and home logos (the dark-background logos in dark mode). Older Android: your team's logo.
-- When it ends, a dismissible "Final · Nuggets win" stays for up to three hours.
+- **Expanded:** the league above; each team's logo and big score on its side (away left, home
+  right), the clock between; the names under the logos, the away team's left-aligned and the home
+  team's right-aligned, with football's down and distance between; the last play below.
+- **Collapsed:** the logos, scores and clock on one line.
+- After full time the losing score is dimmed, and a dismissible final score stays for up to
+  three hours. Spoiler-free leaves out the scores and the last play.
+- Logos are the dark-background ones in dark mode; text uses the system's notification styles.
+- Two or more games at once: Android (16+) bundles an app's notifications, so the lock screen shows
+  a line per game until it's expanded; per-game groups don't stop it.
+- The title and text stay "Rockets 115 · Nuggets 117" and "3:20 - 4th · Nuggets by 2" for screen
+  readers, watches and cars.
+- **Not a Live Update:** Android promotes only standard layouts to a Live Update (the status bar
+  chip, the pinned place on the lock screen). The maintainer chose the Apple Sports layout over
+  those (2026-11-23).
 
 Refreshing: a WorkManager job finds what's live (the full followed-games fetch), then keeps running
 while anything is: every 15 s it asks ESPN's current scoreboard for that league only (one small
@@ -98,8 +106,7 @@ notification permission is asked when teams are picked.
 | Permission | Why |
 |------------|-----|
 | `INTERNET` | Scores, fixtures, standings and logos. |
-| `POST_NOTIFICATIONS` | Live Updates for followed teams' games. Asked when teams are picked. |
-| `POST_PROMOTED_NOTIFICATIONS` | Lets the live score show as a Live Update. |
+| `POST_NOTIFICATIONS` | Live scores for followed teams' games. Asked when teams are picked. |
 
 ## Out of scope for v0.1
 

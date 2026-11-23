@@ -116,12 +116,12 @@ fun Context.followStore() = FollowStore(File(filesDir, "follows.json"))
 class SportsSettings(
     private val prefs: SharedPreferences,
 ) {
-    /** Live Update notifications for followed teams' games. */
+    /** live score notifications for followed teams' games. */
     var liveUpdates: Boolean
         get() = prefs.getBoolean(KEY_LIVE, true)
         set(value) = prefs.edit { putBoolean(KEY_LIVE, value) }
 
-    /** Spoiler-free: scores are hidden in the app, the widget and Live Updates until you tap a game. */
+    /** Spoiler-free: scores are hidden in the app, the widget and Live scores until you tap a game. */
     var hideScores: Boolean
         get() = prefs.getBoolean(KEY_HIDE, false)
         set(value) = prefs.edit { putBoolean(KEY_HIDE, value) }

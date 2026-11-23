@@ -24,10 +24,14 @@ class EspnTest {
         assertEquals("115", den.away.score)
         assertEquals(4, den.period)
         assertEquals("3:20 - 4th", den.status)
+        assertEquals("Alperen Sengun shooting foul", den.lastPlay)
+        // Down and distance is football's; a finished game has no last play.
+        assertEquals(null, den.situation)
         val atl = games.first { it.home.team.abbreviation == "ATL" }
         assertEquals(GameState.Final, atl.state)
         assertTrue(atl.home.winner)
         assertEquals("10-6", atl.home.record)
+        assertEquals(null, atl.lastPlay)
         assertEquals("nba:1", atl.home.team.key)
         assertNotNull(atl.home.team.logo)
         assertEquals("c8102e", atl.home.team.color)
