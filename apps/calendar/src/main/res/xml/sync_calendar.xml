@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uploads local changes (supportsUploading) and is user-visible in system Settings. -->
+<sync-adapter xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accountType="io.github.michaelmassoni.tessera.calendar"
+    android:allowParallelSyncs="false"
+    android:contentAuthority="com.android.calendar"
+    android:isAlwaysSyncable="true"
+    android:supportsUploading="true"
+    android:userVisible="true" />

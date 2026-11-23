@@ -34,8 +34,9 @@ changes" for all three).
 - Periodic syncs use WorkManager (network required; unmetered when chosen), so the 15 min to
   once-a-day choices behave as in DAVx5.
 - "Immediately on local changes": Calendar and Contacts register `syncAutomatically` for their
-  account, so the system's content-changed trigger runs a sync a few seconds after an edit (in any
-  app). Off: local changes wait for the next periodic or manual sync. Tasks schedules a sync after
+  account, so the system's content-changed trigger runs a sync after an edit in any app. Android
+  waits about 30 seconds (a burst of edits makes one sync), so it's usually within a minute; it can
+  wait longer while the phone is idle. DAVx5 relies on the same trigger. Off: local changes wait for the next periodic or manual sync. Tasks schedules a sync after
   its own changes.
 
 ## Calendar

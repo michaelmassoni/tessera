@@ -38,6 +38,7 @@
     <string name="color_picker_hex_invalid">Use 6 hex digits, like #3E5F8A</string>
     <string name="color_picker_low_contrast">The symbol may be hard to see on this background</string>
     <string name="color_picker_preview">Icon preview</string>
+    <string name="color_picker_chosen">Colour chosen</string>
     <string name="action_apply">Apply</string>
     <string name="action_cancel">Cancel</string>
 

@@ -29,8 +29,8 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
   predictive back, and layouts for phones, foldables and tablets.
 - **Private by design.** No ads, trackers, analytics or crash reporters, and no internet access
   unless an app needs it. Weather (Bureau of Meteorology in Australia, Open-Meteo elsewhere) and
-  Sports (scores from ESPN) fetch public data with no account or key. Music and Tasks talk only to a
-  server you add yourself (Subsonic or CalDAV), and Music looks up lyrics only if you turn that on.
+  Sports (scores from ESPN) fetch public data with no account or key. Music, Tasks and Calendar talk
+  only to a server you add yourself (Subsonic or CalDAV), and Music looks up lyrics only if you turn that on.
   Nothing about you is sent anywhere else.
 - **Works on de-Googled phones.** Nothing depends on Google Play Services, so the apps work the same
   on GrapheneOS, LineageOS or a stock phone.
@@ -47,7 +47,7 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 | <img src="docs/icons/notes.svg" width="48" alt=""/> | **Notes**<br/>Text and checklist notes, labels, pins, archive, trash and a widget. | [![notes][v notes]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Notes to Obtainium">][obtainium notes] |
 | <img src="docs/icons/contacts.svg" width="48" alt=""/> | **Contacts**<br/>Search, favourites, editor, vCard import and export. | [![contacts][v contacts]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Contacts to Obtainium">][obtainium contacts] |
 | <img src="docs/icons/gallery.svg" width="48" alt=""/> | **Gallery**<br/>Timeline and albums, zoom, video, a photo editor, move and copy, favourites, trash. | [![gallery][v gallery]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Gallery to Obtainium">][obtainium gallery] |
-| <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month, week, day and schedule views, repeating events, reminders, widgets, ICS import. | [![calendar][v calendar]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calendar to Obtainium">][obtainium calendar] |
+| <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month, week, day and schedule views, repeating events, reminders, widgets, ICS import, sync with your own CalDAV server. | [![calendar][v calendar]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calendar to Obtainium">][obtainium calendar] |
 | <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Music on your phone or a Subsonic server (Navidrome and others), lyrics, playlists, Android Auto. | [![music][v music]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Music to Obtainium">][obtainium music] |
 | <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, call history, keypad with T9 search, blocking, caller location and spam labels, and the call screen when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
 | <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive, Android Auto. | [![messages][v messages]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Messages to Obtainium">][obtainium messages] |

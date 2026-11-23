@@ -14,6 +14,8 @@ import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import io.github.michaelmassoni.tessera.calendar.engine.SeriesSplit
+import io.github.michaelmassoni.tessera.calendar.sync.CalendarAccounts
+import io.github.michaelmassoni.tessera.calendar.sync.CalendarSync
 
 /** Reads and writes the system calendar database. Blocking: call off the main thread. */
 class CalendarRepository(
@@ -98,6 +100,33 @@ class CalendarRepository(
         resolver.update(
             ContentUris.withAppendedId(Calendars.CONTENT_URI, calendarId),
             ContentValues().apply { put(Calendars.VISIBLE, if (visible) 1 else 0) },
+            null,
+            null,
+        )
+    }
+
+    /**
+     * Sets a calendar's colour. Only the account's sync adapter may, so this writes as it; a
+     * Tessera-synced calendar is also marked for sending to the server. Another account's own
+     * sync (DAVx5, Google) may later put its colour back.
+     */
+    fun setColor(
+        calendar: CalendarInfo,
+        color: Int,
+    ) {
+        val uri =
+            Calendars.CONTENT_URI
+                .buildUpon()
+                .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, calendar.accountName)
+                .appendQueryParameter(Calendars.ACCOUNT_TYPE, calendar.accountType)
+                .build()
+        resolver.update(
+            ContentUris.withAppendedId(uri, calendar.id),
+            ContentValues().apply {
+                put(Calendars.CALENDAR_COLOR, color)
+                if (calendar.accountType == CalendarAccounts.ACCOUNT_TYPE) put(Calendars.CAL_SYNC2, CalendarSync.COLOR_DIRTY)
+            },
             null,
             null,
         )
