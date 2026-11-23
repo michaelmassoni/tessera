@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The synced accounts take every standard field, so contacts apps let them be edited. -->
+<ContactsAccountType xmlns:android="http://schemas.android.com/apk/res/android" />

@@ -85,5 +85,33 @@
 
     <string name="settings_default_account">Default account for new contacts</string>
     <string name="setup_access_title">Your contacts</string>
-    <string name="setup_access_text">To show, add and edit the contacts on this phone and in its accounts. Nothing leaves this phone.</string>
+    <string name="setup_access_text">To show, add and edit the contacts on this phone and in its accounts. Nothing leaves this phone unless you sync with your own server.</string>
+
+    <!-- Sync with a CardDAV server (docs/sync.md) -->
+    <string name="account_label">Tessera Contacts</string>
+    <string name="settings_sync">Sync</string>
+    <string name="sync_with_server">Sync with a server</string>
+    <string name="settings_sync_off">Off. Contacts come from the accounts on this phone.</string>
+    <string name="settings_sync_needs_access">Open Contacts and allow contacts access first</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_server_summary">%1$s at %2$s</string>
+    <string name="settings_address_books">Address books to sync</string>
+    <string name="settings_address_books_summary">Choose which of the server\'s address books are on this phone</string>
+    <string name="settings_group_method">Contact groups on the server</string>
+    <string name="group_method_vcards">Groups are separate vCards (iOS, macOS, Nextcloud)</string>
+    <string name="group_method_categories">Groups are categories on each contact</string>
+    <string name="group_method_change">Change</string>
+    <string name="group_method_change_text">Changes on this phone are sent first. Then the address books are read again from the server, the new way.</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_out_summary">Stop syncing. The contacts leave this phone; they stay on the server.</string>
+    <string name="sign_out_text">The server\'s address books and their contacts leave this phone. They stay on the server as they are now.</string>
+    <string name="cancel">Cancel</string>
+    <string name="problem_not_carddav">That server doesn\'t offer CardDAV address books at that address. Try the address you sign in to in a browser.</string>
+    <string name="setup_sync_text">Contacts can sync with your own CardDAV server, without another app such as DAVx5. You can change this later in Settings.</string>
+    <string name="sync_local">Use the contacts on this phone</string>
+    <string name="sync_server_text">OpenCloud, Nextcloud, Radicale or any CardDAV server</string>
+    <string name="setup_pick_title">Which address books?</string>
+    <string name="setup_pick_text">These address books on your server will sync with this phone.</string>
+    <string name="no_server_address_books">No address books on the server yet.</string>
+    <string name="use_address_books">Sync these address books</string>
 </resources>
