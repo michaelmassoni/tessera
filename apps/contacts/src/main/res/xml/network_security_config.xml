@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Contacts reaches only the CardDAV server the person adds. Plain http:// is allowed here because Android
+    can't limit it to private addresses; the app refuses http:// for anything outside a private
+    network or Tailscale (ServerAddress.normalize). User-installed certificate authorities are
+    trusted so a server with a private CA works.
+-->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <base-config
+        cleartextTrafficPermitted="true"
+        tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- Deliberate: self-hosted servers often use a private CA the person installs. -->
+            <certificates
+                src="user"
+                tools:ignore="AcceptsUserCertificates" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
