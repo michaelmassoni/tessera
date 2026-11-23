@@ -344,7 +344,7 @@ private fun Summary(
 ) {
     val summary = DayDetail.summary(hours, metric) ?: return
     val day = forecast.days.firstOrNull { it.date == date }
-    val time = hourFormat()
+    val time = timeFormat()
 
     @Composable
     fun v(raw: Double) = metric.text(metric.display(raw, units), units)

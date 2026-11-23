@@ -62,9 +62,11 @@ import io.github.michaelmassoni.tessera.weather.engine.ForecastSource
 import io.github.michaelmassoni.tessera.weather.engine.Hour
 import io.github.michaelmassoni.tessera.weather.engine.Metric
 import io.github.michaelmassoni.tessera.weather.engine.Ranges
+import io.github.michaelmassoni.tessera.weather.engine.TileMath
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.engine.Units
 import io.github.michaelmassoni.tessera.weather.engine.Uv
+import io.github.michaelmassoni.tessera.weather.engine.UvBand
 import io.github.michaelmassoni.tessera.weather.engine.Warning
 import io.github.michaelmassoni.tessera.weather.engine.Wind
 import io.github.michaelmassoni.tessera.weather.engine.WindUnit
@@ -207,14 +209,16 @@ internal fun hourFormat(): DateTimeFormatter {
     val locale = LocalConfiguration.current.locales[0]
     return remember(locale) {
         DateTimeFormatter.ofPattern(
-            DateFormat.getBestDateTimePattern(locale, if (DateFormat.is24HourFormat(context)) "HH" else "ha"),
+            // "15:00", not a bare "15", on a 24-hour clock.
+            DateFormat.getBestDateTimePattern(locale, if (DateFormat.is24HourFormat(context)) "Hmm" else "ha"),
             locale,
         )
     }
 }
 
+/** A time of day for sentences ("14:00", "2:00 PM"); [hourFormat]'s bare "14" is only for labels under an hour. */
 @Composable
-private fun timeFormat(): DateTimeFormatter {
+internal fun timeFormat(): DateTimeFormatter {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
     return remember(locale) {
@@ -413,17 +417,8 @@ private fun RangeBarView(
     }
 }
 
-private data class Tile(
-    /** What the tile opens in the day details (nothing for air quality and pollen). */
-    val metric: Metric?,
-    val icon: Int,
-    val label: String,
-    val value: String,
-    val note: String? = null,
-)
-
 @Composable
-private fun Details(
+internal fun Details(
     forecast: Forecast,
     units: Units,
     now: Long,
@@ -447,13 +442,15 @@ private fun Details(
     val tiles =
         buildList {
             hour?.uv?.let { uv ->
+                val band = Uv.band(uv)
                 add(
                     Tile(
                         Metric.Uv,
                         R.drawable.ic_sunny,
                         stringResource(R.string.detail_uv),
                         uv.roundToInt().toString(),
-                        stringResource(Uv.band(uv).label()),
+                        stringResource(band.label()),
+                        look = Look.Uv(band.ordinal, high = band >= UvBand.High),
                     ),
                 )
             }
@@ -469,6 +466,8 @@ private fun Details(
                         stringResource(Wind.compass(current.windDirection).label()),
                         windUnit,
                     ),
+                    unit = windUnit,
+                    look = Look.Wind(TileMath.towards(current.windDirection)),
                 ),
             )
             add(
@@ -477,7 +476,7 @@ private fun Details(
                     R.drawable.ic_humidity_percentage,
                     stringResource(R.string.detail_humidity),
                     stringResource(R.string.percent, current.humidity),
-                    hour?.dewPoint?.let { stringResource(R.string.dew_point, temp(it, units)) },
+                    look = Look.Humidity(current.humidity / 100f, hour?.dewPoint?.let { temp(it, units) }),
                 ),
             )
             add(
@@ -487,17 +486,21 @@ private fun Details(
                     stringResource(R.string.detail_feels_like),
                     temp(current.feelsLike, units),
                     stringResource(feelsNote),
+                    look = Look.Shaped(TileShape.Clover, TileColor.Primary),
                 ),
             )
             today?.precipitation?.let { mm ->
                 val value = Convert.precipitation(mm, units.precipitation)
+                val unit = stringResource(units.precipitation.short())
                 add(
                     Tile(
                         Metric.Precipitation,
                         R.drawable.ic_water_drop,
                         stringResource(R.string.detail_precipitation),
-                        stringResource(R.string.precipitation_value, formatNumber(value), stringResource(units.precipitation.short())),
+                        stringResource(R.string.precipitation_value, formatNumber(value), unit),
                         stringResource(R.string.precipitation_today),
+                        unit = unit,
+                        look = Look.Shaped(TileShape.Cloud, TileColor.Secondary),
                     ),
                 )
             }
@@ -508,20 +511,22 @@ private fun Details(
                         R.drawable.ic_compress,
                         stringResource(R.string.detail_pressure),
                         stringResource(R.string.pressure_value, current.pressure.roundToInt()),
+                        unit = stringResource(R.string.unit_hpa),
+                        look = Look.Gauge(TileMath.pressure(current.pressure)),
                     ),
                 )
             }
             hour?.visibility?.let { metres ->
+                val unit = stringResource(if (miles) R.string.unit_mi else R.string.unit_km)
                 add(
                     Tile(
                         Metric.Visibility,
                         R.drawable.ic_visibility,
                         stringResource(R.string.detail_visibility),
-                        stringResource(
-                            R.string.visibility_value,
-                            formatNumber(Convert.visibility(metres, miles)),
-                            stringResource(if (miles) R.string.unit_mi else R.string.unit_km),
-                        ),
+                        stringResource(R.string.visibility_value, formatNumber(Convert.visibility(metres, miles)), unit),
+                        stringResource(TileMath.visibility(metres).label()),
+                        unit = unit,
+                        look = Look.Visibility,
                     ),
                 )
             }
@@ -533,6 +538,7 @@ private fun Details(
                         stringResource(R.string.detail_air_quality),
                         aqi.toString(),
                         air.band?.let { stringResource(it.label()) },
+                        look = Look.Gauge(TileMath.aqi(aqi), alarm = aqi > 100),
                     ),
                 )
             }
@@ -544,33 +550,28 @@ private fun Details(
                         stringResource(R.string.detail_pollen),
                         stringResource(level.label()),
                         stringResource(pollenLabel(type)),
+                        look = Look.Shaped(TileShape.Flower, TileColor.Secondary),
                     ),
                 )
             }
             if (today?.sunrise != null && today.sunset != null) {
-                // Before sunset: the next event is sunset (show sunrise as the note); after it, tomorrow's sunrise.
+                // After sunset, tomorrow's day (the sun waits at sunrise).
                 val tomorrow = forecast.days.getOrNull(1)
-                if (now < today.sunset) {
-                    add(
-                        Tile(
-                            Metric.Temperature,
-                            R.drawable.ic_wb_twilight,
-                            stringResource(R.string.detail_sunset),
-                            at(today.sunset),
-                            stringResource(R.string.sunrise_at, at(today.sunrise)),
-                        ),
-                    )
-                } else {
-                    add(
-                        Tile(
-                            Metric.Temperature,
-                            R.drawable.ic_wb_twilight,
-                            stringResource(R.string.detail_sunrise),
-                            at(tomorrow?.sunrise ?: today.sunrise),
-                            stringResource(R.string.sunset_at, at(tomorrow?.sunset ?: today.sunset)),
-                        ),
-                    )
-                }
+                val (rise, set) =
+                    if (now < today.sunset || tomorrow?.sunrise == null || tomorrow.sunset == null) {
+                        today.sunrise to today.sunset
+                    } else {
+                        tomorrow.sunrise to tomorrow.sunset
+                    }
+                add(
+                    Tile(
+                        Metric.Temperature,
+                        R.drawable.ic_wb_twilight,
+                        stringResource(R.string.detail_sun),
+                        stringResource(R.string.sun_value, at(rise), at(set)),
+                        look = Look.Sun(TileMath.sun(now, rise, set), at(rise), at(set)),
+                    ),
+                )
             }
         }
     Column(Modifier.widthIn(max = ContentWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -597,45 +598,6 @@ private fun formatNumber(value: Double): String =
     } else {
         value.toString()
     }
-
-@Composable
-private fun TileView(
-    tile: Tile,
-    onClick: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier =
-            modifier
-                .heightIn(min = 128.dp)
-                .clip(MaterialTheme.shapes.extraLarge)
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .semantics(mergeDescendants = true) {},
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painterResource(tile.icon),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    tile.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 6.dp),
-                )
-            }
-            Text(tile.value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-            if (tile.note != null) {
-                Text(tile.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
 
 @Composable
 private fun Footer(
