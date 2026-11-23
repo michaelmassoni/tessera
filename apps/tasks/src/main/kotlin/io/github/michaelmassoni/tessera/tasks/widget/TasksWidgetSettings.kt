@@ -22,6 +22,15 @@ enum class WidgetBackground { Tinted, Solid, Transparent }
 
 enum class WidgetTheme { App, Light, Dark }
 
+/** Which tasks due later the widget shows: [days] ahead of today, or every one (null). Undated tasks always show. */
+enum class Upcoming(
+    val days: Long?,
+) {
+    All(null),
+    Week(7),
+    None(0),
+}
+
 /** One placed Tasks widget's settings, kept in its Glance state (each widget has its own). */
 data class TasksWidgetSettings(
     /** The list shown; null for the first. */
@@ -30,6 +39,7 @@ data class TasksWidgetSettings(
     val sort: Sort = Sort.Date,
     val showDates: Boolean = true,
     val showName: Boolean = true,
+    val upcoming: Upcoming = Upcoming.All,
     val background: WidgetBackground = WidgetBackground.Tinted,
     /** 0–100, of the background only. */
     val opacity: Int = 100,
@@ -40,6 +50,7 @@ data class TasksWidgetSettings(
         prefs[SORT] = sort.name
         prefs[DATES] = showDates
         prefs[NAME] = showName
+        prefs[UPCOMING] = upcoming.name
         prefs[BACKGROUND] = background.name
         prefs[OPACITY] = opacity
         prefs[THEME] = theme.name
@@ -85,6 +96,7 @@ data class TasksWidgetSettings(
         private val SORT = stringPreferencesKey("sort")
         private val DATES = booleanPreferencesKey("show_dates")
         private val NAME = booleanPreferencesKey("show_name")
+        private val UPCOMING = stringPreferencesKey("upcoming")
         private val BACKGROUND = stringPreferencesKey("background")
         private val OPACITY = intPreferencesKey("opacity")
         private val THEME = stringPreferencesKey("theme")
@@ -96,6 +108,7 @@ data class TasksWidgetSettings(
                 sort = Sort.entries.firstOrNull { it.name == prefs[SORT] } ?: Sort.Date,
                 showDates = prefs[DATES] ?: true,
                 showName = prefs[NAME] ?: true,
+                upcoming = Upcoming.entries.firstOrNull { it.name == prefs[UPCOMING] } ?: Upcoming.All,
                 background = WidgetBackground.entries.firstOrNull { it.name == prefs[BACKGROUND] } ?: WidgetBackground.Tinted,
                 opacity = (prefs[OPACITY] ?: 100).coerceIn(0, 100),
                 theme = WidgetTheme.entries.firstOrNull { it.name == prefs[THEME] } ?: WidgetTheme.App,

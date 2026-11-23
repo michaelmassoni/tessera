@@ -129,6 +129,11 @@
     <string name="widget_show">Show</string>
     <string name="widget_show_name">List name</string>
     <string name="widget_show_dates">Due dates</string>
+    <string name="widget_upcoming">Tasks due later</string>
+    <string name="widget_upcoming_all">Show them all</string>
+    <string name="widget_upcoming_week">Show the next 7 days</string>
+    <string name="widget_upcoming_none">Hide until the day they\'re due</string>
+    <string name="widget_upcoming_note">Tasks without a date always show.</string>
     <string name="widget_background">Background</string>
     <string name="widget_background_tinted">Tinted</string>
     <string name="widget_background_solid">Solid</string>

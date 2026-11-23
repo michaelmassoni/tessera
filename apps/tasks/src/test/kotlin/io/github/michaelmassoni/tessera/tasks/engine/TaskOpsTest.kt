@@ -26,6 +26,27 @@ class TaskOpsTest {
     ) = Task(id, "l", id, parentId = parent, completedAt = done, order = order, due = due, starred = starred, dirty = false)
 
     @Test
+    fun `dueBy hides later tasks with their subtasks and keeps undated ones`() {
+        val rows =
+            TaskOps
+                .view(
+                    listOf(
+                        task("today", order = 0, due = Due("2026-11-23")),
+                        task("rent", order = 1, due = Due("2026-12-01", "09:00")),
+                        task("rent-sub", parent = "rent"),
+                        task("anytime", order = 2),
+                        task("later-sub", parent = "anytime", due = Due("2026-11-30")),
+                        task("overdue", order = 3, due = Due("2026-11-20")),
+                    ),
+                    Sort.MyOrder,
+                ).open
+        val ids = { last: String -> TaskOps.dueBy(rows, java.time.LocalDate.parse(last)).map { it.task.id } }
+        assertEquals(listOf("today", "anytime", "overdue"), ids("2026-11-23"))
+        assertEquals(listOf("today", "anytime", "later-sub", "overdue"), ids("2026-11-30"))
+        assertEquals(listOf("today", "rent", "rent-sub", "anytime", "later-sub", "overdue"), ids("2026-12-01"))
+    }
+
+    @Test
     fun `ticking a daily medication moves it to tomorrow`() {
         val meds = task("meds", due = Due("2026-11-23", "08:00")).copy(repeat = Repeat(Repeat.Frequency.Daily))
         val ticked = TaskOps.complete(meds, now, zone)

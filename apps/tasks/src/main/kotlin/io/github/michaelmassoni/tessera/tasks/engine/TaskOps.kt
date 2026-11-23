@@ -77,6 +77,26 @@ object TaskOps {
         return ListView(rows, completed)
     }
 
+    /**
+     * [rows] without tasks due after [last] (undated tasks always stay). A hidden task takes its
+     * subtasks with it, so nothing shows indented under a missing parent.
+     */
+    fun dueBy(
+        rows: List<Row>,
+        last: java.time.LocalDate,
+    ): List<Row> {
+        var parentShown = true
+        return rows.filter { r ->
+            val shown = r.task.due?.let { !it.localDate.isAfter(last) } ?: true
+            if (r.depth == 0) {
+                parentShown = shown
+                shown
+            } else {
+                parentShown && shown
+            }
+        }
+    }
+
     /** Starred open tasks across every list, soonest due first. */
     fun starred(tasks: List<Task>): List<Row> =
         tasks.filter { it.starred && !it.completed && !it.deleted }.sortedWith(comparator(Sort.Date)).map { Row(it) }

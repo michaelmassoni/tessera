@@ -71,7 +71,8 @@ every client reads the same way.
 - Due today/overdue shown in colour. Resizable.
 - **Widget settings** (each widget its own; shown when it's placed, and from the launcher's
   reconfigure): list (only with more than one), order (due date by default), show list name, show
-  due dates, background (tinted, solid, none) and opacity, theme (same as Tessera, light, dark).
+  due dates, tasks due later (all, the next 7 days, or hidden until their day; undated tasks always
+  show), background (tinted, solid, none) and opacity, theme (same as Tessera, light, dark).
 - Glance, with the keep rules from Calendar (R8 broke Glance widgets there).
 
 ## CalDAV sync
