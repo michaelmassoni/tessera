@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.tasks
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.tasks.data.TasksPrefs
 import io.github.michaelmassoni.tessera.tasks.engine.Due
 import io.github.michaelmassoni.tessera.tasks.engine.Repeat
 import io.github.michaelmassoni.tessera.tasks.engine.Task
@@ -23,7 +24,9 @@ class QuickAddActivity : ComponentActivity() {
             finish()
             return
         }
-        setTesseraContent { AddTaskSheet(listId, starred = false, actions = Adds(), onDismiss = ::finish) }
+        setTesseraContent {
+            AddTaskSheet(listId, starred = false, actions = Adds(), stars = TasksPrefs.stars(this), onDismiss = ::finish)
+        }
     }
 
     /** Only adding is possible here. */

@@ -100,3 +100,12 @@ private fun ListPreview() {
 private fun EditorPreview() {
     TesseraTheme(dynamicColor = false) { TasksApp(TasksState(sample), NoActions, openTask = "3") }
 }
+
+/** One list and stars off: no tabs or heading; the list's name and menus in the top bar. */
+@TesseraPreviews
+@Composable
+private fun SingleListPreview() {
+    val personal = sample.lists.first().copy(name = "Personal")
+    val data = sample.copy(lists = listOf(personal), tasks = sample.tasks.filter { it.listId == personal.id })
+    TesseraTheme(dynamicColor = false) { TasksApp(TasksState(data, signedIn = true, stars = false), NoActions) }
+}
