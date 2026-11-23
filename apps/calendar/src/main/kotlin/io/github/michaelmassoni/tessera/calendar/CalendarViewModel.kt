@@ -203,6 +203,16 @@ class CalendarViewModel(
         }
     }
 
+    fun setColor(
+        calendar: CalendarInfo,
+        color: Int,
+    ) {
+        viewModelScope.launch {
+            withContext(io) { repository.setColor(calendar, color) }
+            refresh()
+        }
+    }
+
     // ------------------------------------------------------------------ detail
 
     fun open(instance: Instance) {

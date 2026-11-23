@@ -22,7 +22,8 @@ private val sample =
                     "1",
                     "meds",
                     "Morning tablets",
-                    due = Due.of(today, java.time.LocalTime.of(8, 0)),
+                    // Yesterday, so it's overdue whatever the time the screenshots are taken.
+                    due = Due.of(today.minusDays(1), java.time.LocalTime.of(8, 0)),
                     repeat = Repeat(Repeat.Frequency.Daily),
                     starred = true,
                     order = 1,

@@ -34,6 +34,8 @@ import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Ics
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.Scope
+import io.github.michaelmassoni.tessera.calendar.sync.CalendarAccounts
+import io.github.michaelmassoni.tessera.calendar.sync.CalendarSyncWorker
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarActions
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarApp
 import io.github.michaelmassoni.tessera.calendar.ui.PermissionScreen
@@ -325,6 +327,14 @@ class MainActivity : ComponentActivity() {
             calendar: CalendarInfo,
             visible: Boolean,
         ) = viewModel.setVisible(calendar, visible)
+
+        override fun setColor(
+            calendar: CalendarInfo,
+            color: Int,
+        ) {
+            viewModel.setColor(calendar, color)
+            if (calendar.accountType == CalendarAccounts.ACCOUNT_TYPE) CalendarSyncWorker.schedule.soon(this@MainActivity)
+        }
 
         override fun import() = importFile.launch(arrayOf("text/calendar", "application/octet-stream"))
 
