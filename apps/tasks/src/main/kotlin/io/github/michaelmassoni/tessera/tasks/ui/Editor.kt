@@ -97,6 +97,7 @@ internal fun AddTaskSheet(
     listId: String,
     starred: Boolean,
     actions: TasksActions,
+    stars: Boolean,
     onDismiss: () -> Unit,
 ) {
     var title by rememberSaveable { mutableStateOf("") }
@@ -175,12 +176,14 @@ internal fun AddTaskSheet(
                 IconButton(onClick = { picking = true }) {
                     Icon(painterResource(DesignR.drawable.ic_schedule), contentDescription = stringResource(R.string.add_date))
                 }
-                IconButton(onClick = { star = !star }) {
-                    Icon(
-                        painterResource(if (star) DesignR.drawable.ic_star_filled else DesignR.drawable.ic_star),
-                        contentDescription = stringResource(if (star) R.string.unstar else R.string.star),
-                        tint = if (star) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (stars) {
+                    IconButton(onClick = { star = !star }) {
+                        Icon(
+                            painterResource(if (star) DesignR.drawable.ic_star_filled else DesignR.drawable.ic_star),
+                            contentDescription = stringResource(if (star) R.string.unstar else R.string.star),
+                            tint = if (star) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 androidx.compose.foundation.layout
                     .Spacer(Modifier.weight(1f))
@@ -198,6 +201,7 @@ internal fun TaskEditor(
     task: Task,
     data: TaskData,
     actions: TasksActions,
+    stars: Boolean,
     onOpen: (String) -> Unit,
     onClose: () -> Unit,
     onDeleted: () -> Unit,
@@ -223,12 +227,14 @@ internal fun TaskEditor(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { save { it.copy(starred = !it.starred) } }) {
-                        Icon(
-                            painterResource(if (task.starred) DesignR.drawable.ic_star_filled else DesignR.drawable.ic_star),
-                            contentDescription = stringResource(if (task.starred) R.string.unstar else R.string.star),
-                            tint = if (task.starred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    if (stars) {
+                        IconButton(onClick = { save { it.copy(starred = !it.starred) } }) {
+                            Icon(
+                                painterResource(if (task.starred) DesignR.drawable.ic_star_filled else DesignR.drawable.ic_star),
+                                contentDescription = stringResource(if (task.starred) R.string.unstar else R.string.star),
+                                tint = if (task.starred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                     IconButton(onClick = {
                         actions.delete(task.id)
@@ -328,7 +334,7 @@ internal fun TaskEditor(
                     val now = LocalDateTime.now()
                     val subtasks = TaskOps.view(data.tasks.filter { it.parentId == task.id }, Sort.MyOrder)
                     (subtasks.open.map { it.task } + subtasks.completed).forEach { s ->
-                        TaskRow(Row(s), today, now, actions, onOpen)
+                        TaskRow(Row(s), today, now, actions, onOpen, stars)
                     }
                     TextField(
                         subtask,

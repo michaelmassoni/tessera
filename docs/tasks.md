@@ -28,7 +28,11 @@ list can also stay on the phone only.
 ## Screens
 
 - **Lists:** the list's tasks; a list switcher (chips or a drawer); "Starred" view across lists.
-  Sort: my order (drag), date, starred first, title.
+  Sort: my order (drag), due date, starred first, title. With only one list (and stars off) there's
+  nothing to switch between: no tabs or list heading; the list's name, sort and menu (with "New
+  list") sit in the top bar.
+- **Settings > Starred tasks** (on by default): off hides the stars on rows, in the editor and the
+  add sheet, the Starred view and "starred first". Stars already set stay on the tasks (and sync).
 - **Task rows:** a round checkbox, title, details' first line, due date/time chip (red when
   overdue), repeat icon, star. Subtasks indented under their parent. Swipe to complete; long-press
   to drag.
@@ -62,9 +66,12 @@ every client reads the same way.
 ## Widget
 
 - A list's tasks with checkboxes (tap to complete, with a short strike-through before it leaves),
-  the list's name (tap to choose another list), and **+** that opens the add sheet over the home
+  the list's name (with more than one list, tap it to switch to the next), and **+** that opens the add sheet over the home
   screen (a translucent activity) without opening the app.
-- Due today/overdue shown in colour. Resizable; reconfigurable.
+- Due today/overdue shown in colour. Resizable.
+- **Widget settings** (each widget its own; shown when it's placed, and from the launcher's
+  reconfigure): list (only with more than one), order (due date by default), show list name, show
+  due dates, background (tinted, solid, none) and opacity, theme (same as Tessera, light, dark).
 - Glance, with the keep rules from Calendar (R8 broke Glance widgets there).
 
 ## CalDAV sync

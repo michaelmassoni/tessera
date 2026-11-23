@@ -47,6 +47,7 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import io.github.michaelmassoni.tessera.tasks.MainActivity
 import io.github.michaelmassoni.tessera.tasks.QuickAddActivity
 import io.github.michaelmassoni.tessera.tasks.R
@@ -76,8 +77,9 @@ class TasksWidget : GlanceAppWidget() {
         val store = context.tasks
         provideContent {
             val data by store.data.collectAsState()
-            val chosen = currentState<Preferences>()[LIST]
-            GlanceTheme { Content(context, data, chosen) }
+            val settings = TasksWidgetSettings.from(currentState<Preferences>())
+            val (scheme, background) = settings.colors(context)
+            GlanceTheme(colors = scheme) { Content(context, data, settings, background) }
         }
     }
 
@@ -85,36 +87,43 @@ class TasksWidget : GlanceAppWidget() {
     private fun Content(
         context: Context,
         data: TaskData,
-        chosen: String?,
+        settings: TasksWidgetSettings,
+        background: ColorProvider,
     ) {
-        val list = data.list(chosen.orEmpty()) ?: data.lists.minByOrNull { it.order }
-        val rows = list?.let { TaskOps.view(data.tasksOf(it.id), Sort.MyOrder).open.take(MAX_ROWS) }.orEmpty()
+        val list = data.list(settings.list.orEmpty()) ?: data.lists.minByOrNull { it.order }
+        val rows = list?.let { TaskOps.view(data.tasksOf(it.id), settings.sort).open.take(MAX_ROWS) }.orEmpty()
+        // With one list there's nothing to switch to.
+        val switchable = data.lists.size > 1
         val now = LocalDateTime.now()
         val today = LocalDate.now()
         Column(
             GlanceModifier
                 .fillMaxSize()
                 .cornerRadius(24.dp)
-                .background(GlanceTheme.colors.widgetBackground)
+                .background(background)
                 .padding(12.dp),
         ) {
             Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
+                val name =
                     list
                         ?.let {
-                            if (it.name == TaskStore.DEFAULT_NAME &&
-                                !it.synced
-                            ) {
-                                context.getString(R.string.my_tasks)
-                            } else {
-                                it.name
-                            }
-                        }.orEmpty() +
-                        " ▾",
-                    style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium),
-                    maxLines = 1,
-                    modifier = GlanceModifier.defaultWeight().padding(4.dp).clickable(actionRunCallback<NextList>()),
-                )
+                            if (it.name == TaskStore.DEFAULT_NAME && !it.synced) context.getString(R.string.my_tasks) else it.name
+                        }.orEmpty()
+                if (settings.showName) {
+                    // "▾" and tap-to-switch only when there's another list to switch to.
+                    Text(
+                        if (switchable) "$name ▾" else name,
+                        style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                        maxLines = 1,
+                        modifier =
+                            GlanceModifier
+                                .defaultWeight()
+                                .padding(4.dp)
+                                .let { if (switchable) it.clickable(actionRunCallback<NextList>()) else it },
+                    )
+                } else {
+                    Spacer(GlanceModifier.defaultWeight())
+                }
                 Image(
                     ImageProvider(DesignR.drawable.ic_add),
                     contentDescription = context.getString(R.string.new_task),
@@ -171,7 +180,7 @@ class TasksWidget : GlanceAppWidget() {
                                     style = TextStyle(color = GlanceTheme.colors.onSurface),
                                     maxLines = 2,
                                 )
-                                t.due?.let { due ->
+                                t.due?.takeIf { settings.showDates }?.let { due ->
                                     val day =
                                         when (due.localDate) {
                                             today -> context.getString(R.string.today)
@@ -198,7 +207,7 @@ class TasksWidget : GlanceAppWidget() {
     }
 
     companion object {
-        val LIST = stringPreferencesKey("list")
+        val LIST = TasksWidgetSettings.LIST
         val TASK = ActionParameters.Key<String>("task")
 
         // Glance shows at most 500 views; a row is a few.

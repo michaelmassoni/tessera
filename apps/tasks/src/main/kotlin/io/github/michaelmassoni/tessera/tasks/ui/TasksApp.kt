@@ -44,6 +44,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +92,8 @@ data class TasksState(
     val notice: SyncNotice? = null,
     // Exact alarms are off and a task has a time, so its reminder may come up to an hour late.
     val alarmsLate: Boolean = false,
+    // Stars (on tasks, the Starred view, "starred first"); the person may turn them off.
+    val stars: Boolean = true,
 )
 
 /** What the screens ask for. */
@@ -157,6 +160,8 @@ fun TasksApp(
     val lists = state.data.lists.sortedBy { it.order }
     var selected by rememberSaveable { mutableStateOf(lists.firstOrNull()?.id ?: STARRED) }
     if (selected != STARRED && lists.none { it.id == selected }) selected = lists.firstOrNull()?.id ?: STARRED
+    // With stars off there's no Starred view to be on.
+    if (selected == STARRED && !state.stars) lists.firstOrNull()?.let { selected = it.id }
     var editing by rememberSaveable { mutableStateOf(openTask) }
     // A task deleted in the editor: the list offers Undo.
     var deleted by remember { mutableStateOf<String?>(null) }
@@ -177,7 +182,9 @@ fun TasksApp(
         if (id != null) {
             val task = state.data.task(id)
             if (task != null) {
-                TaskEditor(task, state.data, actions, onOpen = { editing = it }, onClose = { editing = task.parentId }, onDeleted = {
+                TaskEditor(task, state.data, actions, state.stars, onOpen = {
+                    editing = it
+                }, onClose = { editing = task.parentId }, onDeleted = {
                     deleted = task.id
                     editing = task.parentId
                 })
@@ -228,26 +235,60 @@ private fun ListScreen(
             listsBefore = null
         }
     }
-    val tabs = listOf(STARRED) + lists.map { it.id }
+    val stars = state.stars
+    val tabs = (if (stars) listOf(STARRED) else emptyList()) + lists.map { it.id }
+    // One list and no Starred view: no tabs to switch between, so the list's name and its menus
+    // go in the top bar instead of a heading.
+    val single = lists.singleOrNull()?.takeIf { tabs.size == 1 }
+    var renaming by remember { mutableStateOf(false) }
+    var deletingList by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             Column {
-                CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.app_name)) },
-                    actions = {
-                        IconButton(onClick = actions::openSettings) {
-                            Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                if (single != null) {
+                    TopAppBar(
+                        title = { Text(single.title(), maxLines = 1) },
+                        actions = {
+                            ListMenus(
+                                stars = stars,
+                                sort = sort,
+                                onSort = { sort = it },
+                                onRename = { renaming = true },
+                                onDelete = { deletingList = true },
+                                onDeleteCompleted = { actions.deleteCompleted(single.id) },
+                                hasCompleted = state.data.tasksOf(single.id).any { it.completed },
+                                onNewList = { newList = true },
+                            )
+                            IconButton(onClick = actions::openSettings) {
+                                Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                            }
+                        },
+                    )
+                } else {
+                    CenterAlignedTopAppBar(
+                        title = { Text(stringResource(R.string.app_name)) },
+                        actions = {
+                            IconButton(onClick = actions::openSettings) {
+                                Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                            }
+                        },
+                    )
+                }
+                if (single == null) {
+                    PrimaryScrollableTabRow(selectedTabIndex = tabs.indexOf(selected).coerceAtLeast(0), edgePadding = 8.dp) {
+                        if (stars) {
+                            Tab(selected = selected == STARRED, onClick = { onSelect(STARRED) }, icon = {
+                                Icon(
+                                    painterResource(DesignR.drawable.ic_star_filled),
+                                    contentDescription = stringResource(R.string.starred),
+                                )
+                            })
                         }
-                    },
-                )
-                PrimaryScrollableTabRow(selectedTabIndex = tabs.indexOf(selected).coerceAtLeast(0), edgePadding = 8.dp) {
-                    Tab(selected = selected == STARRED, onClick = { onSelect(STARRED) }, icon = {
-                        Icon(painterResource(DesignR.drawable.ic_star_filled), contentDescription = stringResource(R.string.starred))
-                    })
-                    lists.forEach { l ->
-                        Tab(selected = selected == l.id, onClick = { onSelect(l.id) }, text = { Text(l.title(), maxLines = 1) })
+                        lists.forEach { l ->
+                            Tab(selected = selected == l.id, onClick = { onSelect(l.id) }, text = { Text(l.title(), maxLines = 1) })
+                        }
+                        Tab(selected = false, onClick = { newList = true }, text = { Text("+ " + stringResource(R.string.new_list)) })
                     }
-                    Tab(selected = false, onClick = { newList = true }, text = { Text("+ " + stringResource(R.string.new_list)) })
                 }
                 if (state.alarmsLate) AlarmsBanner(onAllow = actions::allowAlarms)
             }
@@ -264,7 +305,7 @@ private fun ListScreen(
                 StarredList(state.data, actions, onOpen)
             } else {
                 state.data.list(selected)?.let { list ->
-                    TaskListContent(list, state.data, sort, { sort = it }, actions, onOpen)
+                    TaskListContent(list, state.data, sort, { sort = it }, actions, stars, onOpen, showHeader = single == null)
                 }
             }
         }
@@ -282,8 +323,13 @@ private fun ListScreen(
     }
     if (adding) {
         val listId = if (selected == STARRED) lists.firstOrNull()?.id else selected
-        if (listId != null) AddTaskSheet(listId, starred = selected == STARRED, actions = actions, onDismiss = { adding = false })
+        if (listId !=
+            null
+        ) {
+            AddTaskSheet(listId, starred = selected == STARRED, actions = actions, stars = stars, onDismiss = { adding = false })
+        }
     }
+    single?.let { ListDialogs(it, actions, renaming, { renaming = it }, deletingList, { deletingList = it }) }
     if (newList) {
         NewListDialog(state.signedIn, onDismiss = { newList = false }) { name, onServer ->
             listsBefore = lists.map { it.id }.toSet()
@@ -299,7 +345,9 @@ private fun TaskListContent(
     sort: Sort,
     onSort: (Sort) -> Unit,
     actions: TasksActions,
+    stars: Boolean,
     onOpen: (String) -> Unit,
+    showHeader: Boolean = true,
 ) {
     val view = remember(data, list.id, sort) { TaskOps.view(data.tasksOf(list.id), sort) }
     var showCompleted by rememberSaveable(list.id) { mutableStateOf(false) }
@@ -318,10 +366,14 @@ private fun TaskListContent(
             if (a >= 0 && b >= 0) order = order.toMutableList().apply { add(b, removeAt(a)) }
         }
     LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 96.dp), modifier = Modifier.fillMaxSize()) {
-        item(key = "header") {
-            ListHeader(list, sort, onSort, onRename = { renaming = true }, onDelete = { deletingList = true }, onDeleteCompleted = {
-                actions.deleteCompleted(list.id)
-            }, hasCompleted = view.completed.isNotEmpty())
+        if (showHeader) {
+            item(key = "header") {
+                ListHeader(list, stars, sort, onSort, onRename = {
+                    renaming = true
+                }, onDelete = { deletingList = true }, onDeleteCompleted = {
+                    actions.deleteCompleted(list.id)
+                }, hasCompleted = view.completed.isNotEmpty())
+            }
         }
         if (order.isEmpty()) {
             item(key = "empty") {
@@ -346,6 +398,7 @@ private fun TaskListContent(
                                 now,
                                 actions,
                                 onOpen,
+                                stars,
                                 dragHandle =
                                     if (sort == Sort.MyOrder && row.depth == 0) {
                                         Modifier.longPressDraggableHandle(onDragStopped = {
@@ -388,28 +441,41 @@ private fun TaskListContent(
                 }
             }
             if (showCompleted) {
-                items(view.completed, key = { "c-" + it.id }) { t -> TaskRow(Row(t), today, now, actions, onOpen) }
+                items(view.completed, key = { "c-" + it.id }) { t -> TaskRow(Row(t), today, now, actions, onOpen, stars) }
             }
         }
     }
+    ListDialogs(list, actions, renaming, { renaming = it }, deletingList, { deletingList = it })
+}
+
+/** Renaming and deleting a list (from its heading, or the top bar when it's the only list). */
+@Composable
+private fun ListDialogs(
+    list: TaskList,
+    actions: TasksActions,
+    renaming: Boolean,
+    onRenaming: (Boolean) -> Unit,
+    deletingList: Boolean,
+    onDeleting: (Boolean) -> Unit,
+) {
     if (renaming) {
-        NameDialog(R.string.rename, list.title(), onDismiss = { renaming = false }) {
+        NameDialog(R.string.rename, list.title(), onDismiss = { onRenaming(false) }) {
             actions.renameList(list.id, it)
-            renaming = false
+            onRenaming(false)
         }
     }
     if (deletingList) {
         AlertDialog(
-            onDismissRequest = { deletingList = false },
+            onDismissRequest = { onDeleting(false) },
             title = { Text(stringResource(R.string.delete_list_title, list.title())) },
             text = { Text(stringResource(if (list.synced) R.string.delete_list_server_text else R.string.delete_list_text)) },
             confirmButton = {
                 TextButton(onClick = {
-                    deletingList = false
+                    onDeleting(false)
                     actions.deleteList(list.id)
                 }) { Text(stringResource(R.string.delete)) }
             },
-            dismissButton = { TextButton(onClick = { deletingList = false }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = { TextButton(onClick = { onDeleting(false) }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -424,6 +490,7 @@ private fun groups(rows: List<Row>): List<List<Row>> {
 @Composable
 private fun ListHeader(
     list: TaskList,
+    stars: Boolean,
     sort: Sort,
     onSort: (Sort) -> Unit,
     onRename: () -> Unit,
@@ -431,16 +498,33 @@ private fun ListHeader(
     onDeleteCompleted: () -> Unit,
     hasCompleted: Boolean,
 ) {
-    var sortMenu by remember { mutableStateOf(false) }
-    var menu by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(list.title(), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f), maxLines = 1)
+        ListMenus(stars, sort, onSort, onRename, onDelete, onDeleteCompleted, hasCompleted)
+    }
+}
+
+/** A list's Sort and more-options menus ([onNewList] adds "New list", for the top bar). */
+@Composable
+private fun ListMenus(
+    stars: Boolean,
+    sort: Sort,
+    onSort: (Sort) -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onDeleteCompleted: () -> Unit,
+    hasCompleted: Boolean,
+    onNewList: (() -> Unit)? = null,
+) {
+    var sortMenu by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
+    run {
         Box {
             IconButton(onClick = { sortMenu = true }) {
                 Icon(painterResource(DesignR.drawable.ic_sort), contentDescription = stringResource(R.string.sort_by))
             }
             DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                Sort.entries.forEach { s ->
+                Sort.entries.filter { stars || it != Sort.Starred }.forEach { s ->
                     DropdownMenuItem(
                         text = {
                             Text(
@@ -475,6 +559,12 @@ private fun ListHeader(
                 Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                onNewList?.let { add ->
+                    DropdownMenuItem(text = { Text(stringResource(R.string.new_list)) }, onClick = {
+                        menu = false
+                        add()
+                    })
+                }
                 DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = {
                     menu = false
                     onRename()
@@ -513,7 +603,7 @@ private fun StarredList(
         items(
             rows,
             key = { it.task.id },
-        ) { row -> TaskRow(row, today, now, actions, onOpen, listName = data.list(row.task.listId)?.title()) }
+        ) { row -> TaskRow(row, today, now, actions, onOpen, stars = true, listName = data.list(row.task.listId)?.title()) }
     }
 }
 
@@ -546,6 +636,7 @@ internal fun TaskRow(
     now: LocalDateTime,
     actions: TasksActions,
     onOpen: (String) -> Unit,
+    stars: Boolean,
     modifier: Modifier = Modifier,
     dragHandle: Modifier? = null,
     listName: String? = null,
@@ -614,7 +705,7 @@ internal fun TaskRow(
                 }
             }
         }
-        if (!t.completed) {
+        if (!t.completed && stars) {
             IconButton(onClick = { actions.save(t.copy(starred = !t.starred, modifiedAt = System.currentTimeMillis(), dirty = true)) }) {
                 Icon(
                     painterResource(if (t.starred) DesignR.drawable.ic_star_filled else DesignR.drawable.ic_star),

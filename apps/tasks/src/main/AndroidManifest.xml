@@ -104,6 +104,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- A widget's settings: opened by the launcher when one is placed or reconfigured. -->
+        <activity
+            android:name=".widget.TasksWidgetSettingsActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- Home screen widget (Glance): redrawn by TasksApplication when tasks change. -->
         <receiver
             android:name=".widget.TasksWidgetReceiver"
