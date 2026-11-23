@@ -54,8 +54,13 @@
     <string name="detail_precipitation">Precipitation</string>
     <string name="detail_pressure">Pressure</string>
     <string name="detail_visibility">Visibility</string>
-    <string name="detail_sunrise">Sunrise</string>
-    <string name="detail_sunset">Sunset</string>
+    <string name="detail_sun">Sun</string>
+    <string name="sun_value">Sunrise %1$s, sunset %2$s</string>
+    <string name="dew_point_label">Dew point</string>
+    <string name="visibility_good">Good</string>
+    <string name="visibility_moderate">Moderate</string>
+    <string name="visibility_poor">Poor</string>
+    <string name="visibility_very_poor">Very poor</string>
     <string name="uv_low">Low</string>
     <string name="uv_moderate">Moderate</string>
     <string name="uv_high">High</string>
@@ -63,7 +68,6 @@
     <string name="uv_extreme">Extreme</string>
     <string name="wind_value">%1$d %2$s</string>
     <string name="wind_detail">Gusts %1$d %3$s · from the %2$s</string>
-    <string name="dew_point">Dew point %1$s</string>
     <string name="feels_like_warmer">Feels warmer than it is</string>
     <string name="feels_like_cooler">Feels cooler than it is</string>
     <string name="feels_like_same">Similar to the actual temperature</string>
@@ -71,8 +75,6 @@
     <string name="precipitation_today">Today</string>
     <string name="pressure_value">%1$d hPa</string>
     <string name="visibility_value">%1$s %2$s</string>
-    <string name="sunset_at">Sunset %1$s</string>
-    <string name="sunrise_at">Sunrise %1$s</string>
     <!-- Day details: a measure hour by hour over one day -->
     <string name="detail_temperature">Temperature</string>
     <string name="back">Back</string>
@@ -106,6 +108,7 @@
     <string name="unit_in">in</string>
     <string name="unit_km">km</string>
     <string name="unit_mi">mi</string>
+    <string name="unit_hpa">hPa</string>
     <string name="compass_n">north</string>
     <string name="compass_ne">northeast</string>
     <string name="compass_e">east</string>

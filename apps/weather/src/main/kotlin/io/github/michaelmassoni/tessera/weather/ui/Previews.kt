@@ -1,7 +1,14 @@
 package io.github.michaelmassoni.tessera.weather.ui
 
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.weather.PlacePage
@@ -216,5 +223,25 @@ private fun DayDetailPreview() {
             onSelect = { _, _ -> },
             onBack = {},
         )
+    }
+}
+
+/** The detail tiles on their own (below the fold in the screen previews), light and dark. */
+@Preview(name = "Tiles", widthDp = 411, heightDp = 1000, showBackground = true)
+@Preview(name = "Tiles dark", widthDp = 411, heightDp = 1000, showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun TilesPreview() {
+    TesseraTheme(dynamicColor = false) {
+        Surface {
+            Box(Modifier.padding(16.dp)) {
+                Details(
+                    sampleForecast,
+                    Units(),
+                    now,
+                    AirQuality(usAqi = 54, pm25 = 14.0, pm10 = 18.5, pollen = mapOf("grass" to 64.0)),
+                    onDetail = { _, _ -> },
+                )
+            }
+        }
     }
 }

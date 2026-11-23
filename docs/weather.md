@@ -61,7 +61,17 @@ Weather needs the network; this spec is the justification CLAUDE.md asks for.
     placed on the 10 days' scale with today's current temperature marked, high.
   - Details: a grid of tiles: UV index (with its band: Low… Extreme), wind (speed, gusts,
     direction), humidity (and dew point), feels like, precipitation today, pressure,
-    visibility, sunrise and sunset.
+    visibility, sun.
+  - **Expressive tiles (0.6):** square tiles in Material 3 Expressive shapes, each with a picture
+    in theme colours (no fixed colours, so they follow the wallpaper and dark mode): UV on a
+    12-sided cookie with a dot per band (the current one large, in the error colour from High);
+    wind in a circle with a big arrow the way the wind blows; humidity as a wave filled to the
+    percentage with the dew point in a badge; feels like on a clover; precipitation on a cloud;
+    pressure (960–1060 hPa) and air quality (US AQI 0–300, error colour past 100) as dials;
+    visibility on a soft burst with a band (Good 10 km+, Moderate 4–10, Poor 1–4, Very poor);
+    pollen on a flower; the sun's arc from sunrise to sunset with where it is now (after sunset,
+    tomorrow's). Tiles grow taller with large text. Times follow the 24-hour setting in full
+    ("14:00", never a bare "14").
   - "Updated 10 min ago" and the Open-Meteo credit at the bottom. Pull down to refresh.
   - **Warnings (0.4):** under the hero, one banner per BOM warning in force for the place (error
     colours for "major" warnings such as severe thunderstorms, floods, fire weather and
