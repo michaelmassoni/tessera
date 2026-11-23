@@ -59,6 +59,10 @@ class InCallActivity : ComponentActivity() {
                     CallManager.answer(id)
                 }
 
+                override fun endAndAnswer(id: String) {
+                    CallManager.endAndAnswer(id)
+                }
+
                 override fun decline(id: String) {
                     CallManager.reject(id)
                 }

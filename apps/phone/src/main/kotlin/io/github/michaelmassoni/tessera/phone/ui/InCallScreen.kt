@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.phone.R
+import io.github.michaelmassoni.tessera.phone.call.CallFocus
 import io.github.michaelmassoni.tessera.phone.call.CallInfo
 import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
 import io.github.michaelmassoni.tessera.phone.engine.AudioRoute
@@ -55,7 +57,11 @@ import kotlinx.coroutines.delay
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 interface InCallActions {
+    /** Answers; a call you're already on goes on hold. */
     fun answer(id: String)
+
+    /** Ends the call you're on, then answers [id]. */
+    fun endAndAnswer(id: String)
 
     fun decline(id: String)
 
@@ -85,32 +91,42 @@ fun InCallScreen(
     actions: InCallActions,
     modifier: Modifier = Modifier,
 ) {
-    // A ringing call takes over the screen; otherwise the first live call (or the one that just ended).
-    val call = calls.firstOrNull { it.ringing } ?: calls.firstOrNull { !it.ended } ?: calls.firstOrNull()
+    // A ringing call takes over the screen; otherwise the call you're on (see CallFocus).
+    val focus = CallFocus.pick(calls)
+    val call = focus?.main
+    val other = focus?.other?.takeIf { call?.ended == false }
     var keypad by rememberSaveable { mutableStateOf(false) }
     // A Surface, not just a background: it also sets the content colour, so text that doesn't pick
     // its own colour is onSurface (light on dark in dark theme) rather than the default black.
     Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
-        Box(
+        BoxWithConstraints(
             Modifier.fillMaxSize().safeDrawingPadding(),
             contentAlignment = Alignment.TopCenter,
         ) {
-            if (call == null) return@Box
+            if (call == null) return@BoxWithConstraints
+            // Landscape and other short windows: no picture, so the buttons and their labels fit.
+            val short = maxHeight < 600.dp
             Column(
                 Modifier.widthIn(max = 480.dp).fillMaxSize().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.size(48.dp))
-                Box(
-                    Modifier.size(112.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painterResource(DesignR.drawable.ic_person),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(64.dp),
-                    )
+                if (other != null) {
+                    OtherCall(other, call.ringing, onSwap = { actions.hold(other.id, false) })
+                } else if (!short) {
+                    Spacer(Modifier.size(48.dp))
+                }
+                if (!short) {
+                    Box(
+                        Modifier.size(112.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_person),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(64.dp),
+                        )
+                    }
                 }
                 Text(
                     call.name ?: call.number.ifBlank {
@@ -118,7 +134,7 @@ fun InCallScreen(
                     },
                     style = MaterialTheme.typography.headlineMedium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 24.dp),
+                    modifier = Modifier.padding(top = if (short) 0.dp else 24.dp),
                 )
                 if (call.name !=
                     null
@@ -152,7 +168,7 @@ fun InCallScreen(
                 CallStatus(call)
                 Spacer(Modifier.weight(1f))
                 when {
-                    call.ringing -> IncomingControls(call, actions)
+                    call.ringing -> IncomingControls(call, waiting = other != null, actions)
                     call.ended -> Unit
                     keypad -> InCallKeypad(onDigit = { actions.dtmf(call.id, it) }, onClose = { keypad = false })
                     else -> ActiveControls(call, audio, actions, onKeypad = { keypad = true })
@@ -165,7 +181,7 @@ fun InCallScreen(
                                 containerColor = MaterialTheme.colorScheme.error,
                                 contentColor = MaterialTheme.colorScheme.onError,
                             ),
-                        modifier = Modifier.padding(top = 32.dp).size(72.dp),
+                        modifier = Modifier.padding(top = if (short) 12.dp else 32.dp).size(72.dp),
                     ) { Icon(painterResource(DesignR.drawable.ic_call_end), contentDescription = stringResource(R.string.hang_up)) }
                 }
             }
@@ -198,9 +214,54 @@ private fun CallStatus(call: CallInfo) {
     )
 }
 
+/**
+ * The other call: the one you're on while a new one rings, or the one on hold (tap Swap to go
+ * back to it; the call you're on goes on hold).
+ */
+@Composable
+private fun OtherCall(
+    other: CallInfo,
+    ringing: Boolean,
+    onSwap: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+    ) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painterResource(if (other.holding) DesignR.drawable.ic_pause else DesignR.drawable.ic_phone_in_talk),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(Modifier.weight(1f).padding(start = 12.dp, top = 4.dp, bottom = 4.dp)) {
+                Text(
+                    other.name ?: other.number.ifBlank { stringResource(R.string.unknown_number) },
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                )
+                Text(
+                    stringResource(if (other.holding) R.string.state_holding else R.string.on_call),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (!ringing && other.holding) {
+                TextButton(onClick = onSwap) { Text(stringResource(R.string.swap)) }
+            }
+        }
+    }
+}
+
+/**
+ * Answer and decline; with another call on the line, answering offers to hold it or end it
+ * (a second call while you're on one).
+ */
 @Composable
 private fun IncomingControls(
     call: CallInfo,
+    waiting: Boolean,
     actions: InCallActions,
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -212,9 +273,19 @@ private fun IncomingControls(
         ) {
             actions.decline(call.id)
         }
+        if (waiting) {
+            RoundAction(
+                DesignR.drawable.ic_call,
+                stringResource(R.string.end_and_answer),
+                MaterialTheme.colorScheme.tertiary,
+                MaterialTheme.colorScheme.onTertiary,
+            ) {
+                actions.endAndAnswer(call.id)
+            }
+        }
         RoundAction(
-            DesignR.drawable.ic_call,
-            stringResource(R.string.answer),
+            if (waiting) DesignR.drawable.ic_pause else DesignR.drawable.ic_call,
+            stringResource(if (waiting) R.string.hold_and_answer else R.string.answer),
             MaterialTheme.colorScheme.primary,
             MaterialTheme.colorScheme.onPrimary,
         ) {
@@ -394,6 +465,8 @@ private fun DialKey(
 private object NoInCallActions : InCallActions {
     override fun answer(id: String) = Unit
 
+    override fun endAndAnswer(id: String) = Unit
+
     override fun decline(id: String) = Unit
 
     override fun hangUp(id: String) = Unit
@@ -444,5 +517,25 @@ private fun ActiveCallPreview() {
             ),
             NoInCallActions,
         )
+    }
+}
+
+private fun previewOther(state: Int) = CallInfo("2", "+61 398 765 432", "Grace Hopper", null, state, 0, incoming = false)
+
+/** A second call ringing while you're on one: hold or end the first. */
+@TesseraPreviews
+@Composable
+private fun CallWaitingPreview() {
+    TesseraTheme(dynamicColor = false) {
+        InCallScreen(listOf(previewOther(Call.STATE_ACTIVE), previewCall(Call.STATE_RINGING)), AudioInfo(), NoInCallActions)
+    }
+}
+
+/** Two calls, one on hold (Swap). The one you're on is dialling, so there's no running timer. */
+@TesseraPreviews
+@Composable
+private fun OnHoldPreview() {
+    TesseraTheme(dynamicColor = false) {
+        InCallScreen(listOf(previewOther(Call.STATE_HOLDING), previewCall(Call.STATE_DIALING)), AudioInfo(), NoInCallActions)
     }
 }
