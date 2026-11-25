@@ -23,6 +23,23 @@ imports from it. They picked the name Feeds and "sync plus local".
 - **Podcasts** (a separate app, built alongside) has its own feed parser for now; one shared
   `core:feed` module can follow once both are merged.
 
+## 2026-11-25: Files gets a PDF viewer, on androidx.pdf 1.0.0-beta01 (Accepted)
+
+Files opened PDFs only through another app, and with none installed it said so. The maintainer
+chose a viewer inside Files over a separate Documents app (as Files by Google does): one less
+icon, and other apps' PDFs (mail, browser, Messages) open in it too. Scanning stays out: the
+maintainer uses Papra for that.
+
+- **Library:** `androidx.pdf` (`pdf-compose` for the `PdfViewer` composable, `pdf-document-service`
+  for `SandboxedPdfLoader`). It parses PDFs in an `isolatedProcess` service, so a malicious file
+  can't reach the app's data, and backports rendering to minSdk 28. Apache 2.0, no Play
+  Services (the OCR add-on, `pdf-ocr-play-services`, is not used).
+- **Pre-release exception:** it has no stable release; 1.0.0-beta01 is the first beta and the
+  Compose API is `@ExperimentalPdfApi`. Move to stable when it ships.
+- **Views inside:** `PdfViewer` wraps the library's own `PdfView` (a View) in `AndroidView`. Our
+  code stays Compose; this is the same as using any Compose component built on a View, and
+  writing a renderer, text selection and zoom ourselves isn't worth it.
+
 ## 2026-11-23: Weather fills BOM's gaps from Open-Meteo; no pollen outside Europe (Accepted)
 
 The maintainer noticed no visibility, pressure, air quality or pollen for Melbourne.

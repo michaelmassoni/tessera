@@ -169,4 +169,19 @@
     </plurals>
     <string name="setup_access_title">All files access</string>
     <string name="setup_access_text">A file manager needs to see every file and folder, not just photos or music, so Android asks for broader access than other apps. Turn on \"Allow access to manage all files\" on the next screen. Nothing leaves this phone.</string>
+    <!-- PDF viewer -->
+    <string name="viewer_label">PDF viewer</string>
+    <string name="viewer_page_of">Page %1$d of %2$d</string>
+    <string name="viewer_go_to_page">Go to page</string>
+    <string name="viewer_page_range">Page (1 to %1$d)</string>
+    <string name="viewer_go">Go</string>
+    <string name="viewer_open_with">Open with</string>
+    <string name="viewer_dark_pages">Dark pages</string>
+    <string name="viewer_cant_open">Can\'t open this PDF. It may be damaged, or not a PDF.</string>
+    <string name="viewer_protected">This PDF is protected with a password.</string>
+    <string name="viewer_password_title">Password needed</string>
+    <string name="viewer_password_text">Enter the password to open this PDF.</string>
+    <string name="viewer_password">Password</string>
+    <string name="viewer_password_wrong">That password isn\'t right</string>
+    <string name="viewer_open">Open</string>
 </resources>

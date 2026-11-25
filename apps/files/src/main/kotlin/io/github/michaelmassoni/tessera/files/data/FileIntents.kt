@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
+import io.github.michaelmassoni.tessera.files.viewer.ViewerActivity
 import java.io.File
 
 /** Opening and sharing through FileProvider, so other apps get a temporary grant, not a path. */
@@ -18,11 +19,16 @@ object FileIntents {
         file: File,
     ) = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
 
-    /** @return false if no app can open it. */
+    /** PDFs open in Files' own viewer; anything else in whichever app handles it. @return false if no app can open it. */
     fun open(
         context: Context,
         file: File,
     ): Boolean {
+        if (mimeType(file) == ViewerActivity.PDF) {
+            val viewer = runCatching { ViewerActivity.intent(context, uri(context, file)) }.getOrNull() ?: return false
+            context.startActivity(viewer)
+            return true
+        }
         val intent =
             Intent(Intent.ACTION_VIEW)
                 .setDataAndType(uri(context, file), mimeType(file))
