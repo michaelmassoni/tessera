@@ -25,6 +25,10 @@ telephoto = "0.19.0"
 media3 = "1.11.1"
 okhttp = "5.5.1"
 reorderable = "3.1.0"
+# Exception to "latest stable": androidx.pdf has no stable release. 1.0.0-beta01 (2026-08-26) is the
+# first beta and has the Compose PdfViewer (still @ExperimentalPdfApi). Files uses it for its PDF
+# viewer. Move to 1.0.0 stable when it ships. See docs/decisions.md.
+androidx-pdf = "1.0.0-beta01"
 glance = "1.2.0"
 work = "2.12.0"
 exifinterface = "1.4.2"
@@ -75,6 +79,8 @@ media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref 
 media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 media3-datasource = { module = "androidx.media3:media3-datasource", version.ref = "media3" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+pdf-compose = { module = "androidx.pdf:pdf-compose", version.ref = "androidx-pdf" }
+pdf-document-service = { module = "androidx.pdf:pdf-document-service", version.ref = "androidx-pdf" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp" }
 media3-database = { module = "androidx.media3:media3-database", version.ref = "media3" }

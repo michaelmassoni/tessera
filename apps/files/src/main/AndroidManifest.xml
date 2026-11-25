@@ -22,6 +22,18 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+        <!-- PDF viewer: for Files and for any app's PDFs (docs/files.md, "PDF viewer"). -->
+        <activity
+            android:name=".viewer.ViewerActivity"
+            android:exported="true"
+            android:label="@string/viewer_label">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+        </activity>
 
 
         <provider

@@ -65,8 +65,9 @@ The app never uploads, indexes in the background, or scans storage when nobody i
 
 ### File actions
 
-- **Open:** `ACTION_VIEW` through `FileProvider`, with the MIME type from the extension. If no
-  app can open the file, a message says so. APKs go to the system package installer, which needs
+- **Open:** PDFs open in Files' own viewer (below). Anything else goes out through `ACTION_VIEW`
+  and `FileProvider`, with the MIME type from the extension. If no app can open the file, a
+  message says so. APKs go to the system package installer, which needs
   `REQUEST_INSTALL_PACKAGES` and only acts when the user taps the file.
 - **Share:** one or several files (`ACTION_SEND` or `ACTION_SEND_MULTIPLE`).
 - **Selection:** long-press starts selection mode, which has a contextual top bar showing the
@@ -97,6 +98,29 @@ The app never uploads, indexes in the background, or scans storage when nobody i
 - **Search:** searches the current folder and its subfolders by name, case- and
   accent-insensitively. It starts 250 ms after typing pauses, not on every key. Results stream in as they're found. The search stops at 1,000 results
   and skips `Android/data` and `Android/obb`.
+
+## PDF viewer (0.5)
+
+A viewer inside Files (`ViewerActivity`), as on Files by Google, rather than a separate app. See
+docs/decisions.md (2026-11-25) for the library.
+
+- **Opening:** from Files, and from any app: the activity handles `ACTION_VIEW` for
+  `application/pdf` `content:` URIs (mail attachments, downloads, Messages). It needs no storage
+  permission (the sender grants read access to that one file) and skips Files' first-run setup.
+- **Rendering:** `androidx.pdf`. Parsing happens in an isolated process (`SandboxedPdfLoader`), so
+  a hostile PDF can't reach the app's data.
+- **Viewing:** pages in a scrolling column, pinch to zoom, a fast scroller, links, text selection
+  with Copy. The top bar shows the file name and "Page 3 of 12".
+- **Actions:** Go to page (a dialog that accepts 1 to the page count, `PageJump`, unit tested),
+  Share, Open with (another app), and Dark pages.
+- **Dark pages:** inverts the page colours for reading at night (images invert too, as in other
+  readers). Off by default; remembered.
+- **Passwords:** a password-protected PDF asks for its password; a wrong one says so and asks
+  again.
+- **Errors:** a file that isn't a readable PDF shows "Can't open this PDF" with Open with.
+- **Rotation and returning:** the open document lives in a ViewModel, and the page is kept, so
+  rotating doesn't reload it or lose your place.
+- **Not yet:** search, annotations, form filling, printing.
 
 ## Engine (`FileOperations`, pure Kotlin on `java.io`/`java.nio.file`, unit tested)
 
