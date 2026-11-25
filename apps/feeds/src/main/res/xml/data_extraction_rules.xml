@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Feeds and article states are in backups; content and icons are fetched again, and the yarr
+     sign-in (its password only decrypts on this phone) is left out. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="feeds.json" />
+        <include domain="sharedpref" path="settings.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="feeds.json" />
+        <include domain="sharedpref" path="settings.xml" />
+    </device-transfer>
+</data-extraction-rules>
