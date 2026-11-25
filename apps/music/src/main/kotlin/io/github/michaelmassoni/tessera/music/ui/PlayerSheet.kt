@@ -32,17 +32,17 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
 
 /**
- * The full player as a sheet over [content]: [content] opens it (the mini player), and it slides
- * up from the bottom. It follows a finger dragged down (from its top bar, or from anywhere once
- * its content is scrolled to the top) and a predictive back gesture, and on release slides away or
- * back depending on how far and how fast it went.
+ * The full player as a sheet over [content]: [content] opens it (the mini player, by a tap or a
+ * drag up), and it slides up from the bottom. It follows a finger dragged up from the mini player or
+ * down (from its top bar, or from anywhere once its content is scrolled to the top) and a predictive
+ * back gesture, and on release slides open or closed depending on how far and how fast it went.
  */
 @Composable
 internal fun PlayerSheet(
     hasMedia: Boolean,
     player: @Composable (onClose: () -> Unit, modifier: Modifier) -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable (openPlayer: () -> Unit) -> Unit,
+    content: @Composable (openPlayer: () -> Unit, dragUp: Modifier) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
     // 0 is closed (below the screen), 1 is open.
@@ -77,19 +77,28 @@ internal fun PlayerSheet(
             fraction = (fraction - dy / height).coerceIn(0f, 1f)
         }
 
-        // Released: a quick flick decides; otherwise more than a quarter of the way down closes it.
+        // Released: a quick flick decides; otherwise a quarter of the way is enough, down from open
+        // (closes) or up from the mini player (opens).
         fun release(velocityY: Float) {
             val target =
                 when {
                     velocityY > FLING -> 0f
                     velocityY < -FLING -> 1f
-                    fraction < 0.75f -> 0f
-                    else -> 1f
+                    open -> if (fraction < 0.75f) 0f else 1f
+                    else -> if (fraction > 0.25f) 1f else 0f
                 }
             slideTo(target, -velocityY / height)
         }
 
-        content { slideTo(1f) }
+        // The mini player opens it by a tap or by being dragged up: the sheet follows the finger.
+        val dragUp =
+            Modifier.draggable(
+                rememberDraggableState { dragBy(it) },
+                Orientation.Vertical,
+                enabled = hasMedia,
+                onDragStopped = { release(it) },
+            )
+        content({ slideTo(1f) }, dragUp)
 
         if (hasMedia && fraction > 0f) {
             PredictiveBackHandler(enabled = open) { events ->

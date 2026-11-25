@@ -187,6 +187,9 @@ Asked for by the maintainer after using 0.4 with their Navidrome library.
   tab; search: not a button). The queue keeps the source's id (`PlayingFrom.id`, also in the
   session's playlist metadata and `queue.json`); a queue saved before 0.9 is matched by name, only
   when one album, artist or playlist has it (`sourceId`, unit tested).
+- **Swipe up (0.9):** dragging the mini player up brings the full player up with the finger; let go
+  a quarter of the way up (or flick) and it opens, less and it drops back. Dragging the open player
+  down still needs to go a quarter of the way (or a flick) to close it.
 - **Explicit (0.8):** an "E" badge after the title of a song the server marks explicit (OpenSubsonic
   `explicitStatus`), in song lists and the full player; TalkBack reads "Explicit". Music on the
   phone has no badge: MediaStore has no explicit field, and reading every file's tags isn't worth it.

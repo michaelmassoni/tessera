@@ -364,7 +364,7 @@ fun MusicApp(
                     ),
             )
         },
-    ) { openPlayer ->
+    ) { openPlayer, dragUp ->
         // A phone on its side is short: a rail beside the library leaves it the height a bottom bar would take.
         val adaptive = currentWindowAdaptiveInfoV2()
         val layout =
@@ -471,7 +471,7 @@ fun MusicApp(
                         }
                     }
                 }
-                if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = openPlayer)
+                if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = openPlayer, modifier = dragUp)
             }
         }
     }
