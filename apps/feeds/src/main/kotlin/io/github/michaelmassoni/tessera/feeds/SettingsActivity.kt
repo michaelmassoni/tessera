@@ -27,7 +27,6 @@ import androidx.work.WorkManager
 import io.github.michaelmassoni.tessera.core.dav.SyncInterval
 import io.github.michaelmassoni.tessera.core.dav.SyncPrefs
 import io.github.michaelmassoni.tessera.core.dav.SyncSettings
-import io.github.michaelmassoni.tessera.core.dav.label
 import io.github.michaelmassoni.tessera.core.settings.ChoiceSetting
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
@@ -66,18 +65,20 @@ class SettingsActivity : TesseraSettingsActivity() {
         var keep by remember { mutableIntStateOf(FeedsPrefs.keepReadDays(context)) }
         var scale by remember { mutableFloatStateOf(FeedsPrefs.textScale(context)) }
         val sourceLabel = stringResource(if (source is Source.Yarr) R.string.source_yarr else R.string.source_phone)
-        val interval =
-            when (prefs.interval) {
-                SyncInterval.Manual -> stringResource(R.string.settings_sync_manual)
-                SyncInterval.Day -> prefs.interval.label()
-                else -> stringResource(R.string.settings_sync_every, prefs.interval.label())
+        val minutes = prefs.interval.minutes.toInt()
+        val syncSummary =
+            when {
+                prefs.interval == SyncInterval.Manual -> stringResource(R.string.settings_sync_summary_manual, sourceLabel)
+                prefs.interval == SyncInterval.Day -> stringResource(R.string.settings_sync_summary_day, sourceLabel)
+                minutes < 60 -> pluralStringResource(R.plurals.settings_sync_summary_minutes, minutes, sourceLabel, minutes)
+                else -> pluralStringResource(R.plurals.settings_sync_summary_hours, minutes / 60, sourceLabel, minutes / 60)
             }
         return listOf(
             SettingsCategory(
                 key = "sync",
                 title = stringResource(R.string.settings_source_sync),
                 icon = DesignR.drawable.ic_sync,
-                summary = "$sourceLabel · $interval",
+                summary = syncSummary,
             ) {
                 SourceAndSync(
                     store = store,

@@ -117,8 +117,16 @@
     <string name="settings_source">Source</string>
     <string name="settings_source_sync">Source &amp; sync</string>
     <string name="settings_reading">Reading</string>
-    <string name="settings_sync_manual">Manual sync</string>
-    <string name="settings_sync_every">Every %s</string>
+    <string name="settings_sync_summary_manual">%1$s · manually</string>
+    <string name="settings_sync_summary_day">%1$s · once a day</string>
+    <plurals name="settings_sync_summary_minutes">
+        <item quantity="one">%1$s · every minute</item>
+        <item quantity="other">%1$s · every %2$d minutes</item>
+    </plurals>
+    <plurals name="settings_sync_summary_hours">
+        <item quantity="one">%1$s · every hour</item>
+        <item quantity="other">%1$s · every %2$d hours</item>
+    </plurals>
     <string name="keep_read">Keep read articles for</string>
     <plurals name="days">
         <item quantity="one">%d day</item>
