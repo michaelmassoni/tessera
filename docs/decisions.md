@@ -22,6 +22,26 @@ imports from it. They picked the name Feeds and "sync plus local".
   from `core:dav`.
 - **Podcasts** (a separate app, built alongside) has its own feed parser for now; one shared
   `core:feed` module can follow once both are merged.
+## 2026-11-25: Podcasts app (Accepted)
+
+The maintainer asked for a podcast app to join the suite, kept simple in the manner of Apple
+Podcasts and the old Google Podcasts (they aren't a heavy podcast listener).
+
+- **Finding shows: Apple's iTunes Search API and fyyd**, searched together, plus "Add by URL"
+  (a feed or an Apple Podcasts link) and OPML import. Both directories are keyless; only the
+  search words are sent. Apple's is the most complete directory (AntennaPod uses it too); fyyd is
+  an open one. Searching a proprietary service makes the app NonFreeNet on F-Droid, which the
+  maintainer accepted. Podcast Index was set aside because it needs an API key in the app.
+- **No sync server in 0.1** (gPodder / Nextcloud gPodder Sync can come later).
+- **Streaming, manual downloads and automatic downloads of new episodes on Wi-Fi**, into the
+  app's own external folder (no storage permission). Downloads are WorkManager foreground work
+  (`dataSync`).
+- **Cleartext HTTP is allowed** in this app only: many feeds and audio files are still plain
+  HTTP.
+- **Our own feed parser** (SAX through `javax.xml`, streaming), no new dependency. Feeds, built
+  at the same time, has its own (XmlPullParser); a shared `core:` module for both can be
+  considered later.
+- Icon colour 7B3FB5 (violet, between Clock's and Gallery's hues).
 
 ## 2026-11-23: Weather fills BOM's gaps from Open-Meteo; no pollen outside Europe (Accepted)
 

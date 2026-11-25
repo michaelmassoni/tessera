@@ -119,6 +119,14 @@
       "name": "Tessera Feeds",
       "preferredApkIndex": 0,
       "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Feeds \",\"apkFilterRegEx\":\"^tessera-feeds-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Feeds\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.podcasts",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Podcasts",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Podcasts \",\"apkFilterRegEx\":\"^tessera-podcasts-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Podcasts\"}"
     }
   ]
 }
