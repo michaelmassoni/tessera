@@ -8,11 +8,13 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.files"
-        versionCode = 7
-        versionName = "0.4.1"
+        versionCode = 8
+        versionName = "0.5.0"
     }
 }
 
 dependencies {
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.pdf.compose)
+    implementation(libs.pdf.document.service)
 }
