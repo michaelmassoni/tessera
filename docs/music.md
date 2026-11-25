@@ -106,7 +106,7 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
 
 - **Choosing:** first-run setup asks where the music is: "On this phone" (as before, asks for
   audio access) or "On a server" (asks for the server's address, username and password, then
-  checks them). Settings > Source > Music source changes it later. One source at a time: the library,
+  checks them). Settings > Source changes it later. One source at a time: the library,
   search and playlists show that source's music.
 - **Library:** every song is fetched with `search3` (an empty query pages through the whole
   library, 500 songs a request), falling back to `getAlbumList2` + `getAlbum` for servers that
