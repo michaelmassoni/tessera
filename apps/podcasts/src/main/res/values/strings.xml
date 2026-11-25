@@ -101,7 +101,11 @@
     <string name="settings_delete_played_summary">Free up space once you\'ve listened</string>
     <string name="settings_mobile_downloads">Download on mobile data</string>
     <string name="settings_mobile_downloads_summary">Episodes you download yourself don\'t wait for Wi-Fi</string>
-    <string name="settings_subscriptions">Shows</string>
+    <string name="settings_downloads_auto">New episodes</string>
+    <string name="settings_downloads_manual">Manual</string>
+    <string name="settings_downloads_wifi">Wi-Fi only</string>
+    <string name="settings_downloads_mobile">Mobile data too</string>
+    <string name="settings_downloads_delete">Delete played</string>
     <string name="settings_import">Import shows</string>
     <string name="settings_import_summary">From an OPML file exported by another podcast app</string>
     <string name="importing">Importing…</string>
