@@ -112,7 +112,16 @@ private fun ServerLibraryPreview() {
 private fun FullPlayerPreview() {
     TesseraTheme(
         dynamicColor = false,
-    ) { FullPlayer(playing, { progress }, NoPlayer, onClose = {}, lyrics = LyricsState.Found(previewLyrics)) }
+    ) {
+        FullPlayer(
+            playing,
+            { progress },
+            NoPlayer,
+            onClose = {},
+            lyrics = LyricsState.Found(previewLyrics),
+            links = NowPlayingLinks(onAlbum = {}, onArtist = {}),
+        )
+    }
 }
 
 // A playlist's page: count, Play and Shuffle, and its songs, in both themes.

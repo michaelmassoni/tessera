@@ -48,7 +48,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -59,6 +62,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -75,6 +79,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
@@ -199,7 +204,36 @@ private sealed interface Page {
 private data class Screen(
     val tab: Int,
     val stack: List<Page> = emptyList(),
-)
+) {
+    companion object {
+        // Kept across rotation: the tab, then each page as its kind (0 album, 1 artist, 2 playlist) and id.
+        val Saver =
+            listSaver<Screen, Long>(
+                save = { s ->
+                    listOf(s.tab.toLong()) +
+                        s.stack.flatMap { p ->
+                            when (p) {
+                                is Page.AlbumPage -> listOf(0L, p.id)
+                                is Page.ArtistPage -> listOf(1L, p.id)
+                                is Page.PlaylistPage -> listOf(2L, p.id)
+                            }
+                        }
+                },
+                restore = { saved ->
+                    Screen(
+                        saved.first().toInt(),
+                        saved.drop(1).chunked(2).map { (kind, id) ->
+                            when (kind) {
+                                0L -> Page.AlbumPage(id)
+                                1L -> Page.ArtistPage(id)
+                                else -> Page.PlaylistPage(id)
+                            }
+                        },
+                    )
+                },
+            )
+    }
+}
 
 /**
  * How the library pages are sorted and shown, remembered between visits. Changes are saved as
@@ -243,7 +277,7 @@ fun MusicApp(
 ) {
     val context = LocalContext.current
     val view = remember { LibraryView(MusicSettings(context)) }
-    var screen by remember { mutableStateOf(Screen(0)) }
+    var screen by rememberSaveable(stateSaver = Screen.Saver) { mutableStateOf(Screen(0)) }
     // How far a predictive back gesture has gone on a page, 0 to 1.
     var backProgress by remember { mutableFloatStateOf(0f) }
     PredictiveBackHandler(enabled = screen.stack.isNotEmpty()) { events ->
@@ -256,8 +290,20 @@ fun MusicApp(
     }
 
     fun open(page: Page) {
-        screen = screen.copy(stack = screen.stack + page)
+        // Already there (Go to album from that album's page): stay.
+        if (screen.stack.lastOrNull() != page) screen = screen.copy(stack = screen.stack + page)
     }
+    val openAlbum: (Long) -> Unit = { open(Page.AlbumPage(it)) }
+    val openArtist: (Long) -> Unit = { open(Page.ArtistPage(it)) }
+    // The pages the full player links to.
+    val playingAlbum =
+        remember(playback.songId, playback.albumId, library.albums) {
+            Library.albumOf(library.byId[playback.songId], playback.albumId, library.albums)?.id
+        }
+    val playingArtist =
+        remember(playback.songId, playback.artist, library.artists) {
+            Library.artistOf(library.byId[playback.songId], playback.artist, library.artists)?.id
+        }
     val back: () -> Unit = { screen = screen.copy(stack = screen.stack.dropLast(1)) }
 
     PlayerSheet(
@@ -273,10 +319,36 @@ fun MusicApp(
                 lyrics = lyrics,
                 playlists = library.playlists,
                 libraryActions = libraryActions,
+                links =
+                    NowPlayingLinks(
+                        onAlbum =
+                            playingAlbum?.let { id ->
+                                {
+                                    onClose()
+                                    openAlbum(id)
+                                }
+                            },
+                        onArtist =
+                            playingArtist?.let { id ->
+                                {
+                                    onClose()
+                                    openArtist(id)
+                                }
+                            },
+                    ),
             )
         },
     ) { openPlayer ->
+        // A phone on its side is short: a rail beside the library leaves it the height a bottom bar would take.
+        val adaptive = currentWindowAdaptiveInfoV2()
+        val layout =
+            if (adaptive.windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND)) {
+                NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(adaptive)
+            } else {
+                NavigationSuiteType.NavigationRail
+            }
         NavigationSuiteScaffold(
+            layoutType = layout,
             navigationSuiteItems = {
                 Tab.entries.forEach { t ->
                     item(
@@ -326,12 +398,20 @@ fun MusicApp(
                             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
                                 when (val p = s.stack.lastOrNull()) {
                                     is Page.AlbumPage -> {
-                                        library.albums.firstOrNull { it.id == p.id }?.let { AlbumScreen(it, libraryActions, back) }
+                                        library.albums.firstOrNull { it.id == p.id }?.let {
+                                            AlbumScreen(
+                                                it,
+                                                library.playlists,
+                                                libraryActions,
+                                                openArtist,
+                                                back,
+                                            )
+                                        }
                                     }
 
                                     is Page.ArtistPage -> {
                                         (library.albumArtists + library.artists).firstOrNull { it.id == p.id }?.let {
-                                            ArtistScreen(it, libraryActions, { id -> open(Page.AlbumPage(id)) }, back)
+                                            ArtistScreen(it, library.playlists, libraryActions, openAlbum, back)
                                         }
                                     }
 
@@ -343,6 +423,8 @@ fun MusicApp(
                                                 library.playlists,
                                                 libraryActions,
                                                 back,
+                                                onAlbum = openAlbum,
+                                                onArtist = openArtist,
                                             )
                                         }
                                     }
@@ -353,8 +435,8 @@ fun MusicApp(
                                             library,
                                             view,
                                             libraryActions,
-                                            { open(Page.AlbumPage(it)) },
-                                            { open(Page.ArtistPage(it)) },
+                                            openAlbum,
+                                            openArtist,
                                             { open(Page.PlaylistPage(it)) },
                                         )
                                     }
@@ -381,7 +463,9 @@ private fun LibraryScreen(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var options by remember { mutableStateOf<Song?>(null) }
-    options?.let { song -> SongOptions(song, library.playlists, actions, onDismiss = { options = null }) }
+    options?.let { song ->
+        SongOptions(song, library.playlists, actions, onDismiss = { options = null }, onAlbum = onAlbum, onArtist = onArtist)
+    }
     val onLongClick: (Int, Song) -> Unit = { _, song -> options = song }
     Scaffold(
         topBar = {
@@ -550,9 +634,13 @@ internal fun SongList(
 @Composable
 private fun AlbumScreen(
     album: Album,
+    playlists: List<Playlist>,
     actions: LibraryActions,
+    onArtist: (Long) -> Unit,
     onBack: () -> Unit,
 ) {
+    var options by remember { mutableStateOf<Song?>(null) }
+    options?.let { song -> SongOptions(song, playlists, actions, onDismiss = { options = null }, onArtist = onArtist) }
     Scaffold(topBar = { BackBar(album.title, onBack) }) { padding ->
         Box(Modifier.padding(padding)) {
             SongList(
@@ -564,6 +652,7 @@ private fun AlbumScreen(
                 ),
                 showShuffle = false,
                 showArt = false,
+                onLongClick = { _, song -> options = song },
                 header = {
                     item(key = "header") {
                         Column(
@@ -593,63 +682,73 @@ private fun AlbumScreen(
 @Composable
 private fun ArtistScreen(
     artist: Artist,
+    playlists: List<Playlist>,
     actions: LibraryActions,
     onAlbum: (Long) -> Unit,
     onBack: () -> Unit,
 ) {
+    var options by remember { mutableStateOf<Song?>(null) }
+    options?.let { song -> SongOptions(song, playlists, actions, onDismiss = { options = null }, onAlbum = onAlbum) }
     Scaffold(topBar = { BackBar(artist.name, onBack) }) { padding ->
         Box(Modifier.padding(padding)) {
-            SongList(artist.songs, actions, PlayingFrom(PlayingFrom.Kind.Artist, artist.name), showShuffle = true, header = {
-                item(key = "header") {
-                    Column(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AlbumArt(
-                            artist.albums.firstOrNull()?.id ?: 0,
-                            size = 160.dp,
-                            modifier = Modifier.clip(CircleShape).sharedArt("artist-${artist.id}"),
-                        )
+            SongList(
+                artist.songs,
+                actions,
+                PlayingFrom(PlayingFrom.Kind.Artist, artist.name),
+                showShuffle = true,
+                onLongClick = { _, song -> options = song },
+                header = {
+                    item(key = "header") {
+                        Column(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            AlbumArt(
+                                artist.albums.firstOrNull()?.id ?: 0,
+                                size = 160.dp,
+                                modifier = Modifier.clip(CircleShape).sharedArt("artist-${artist.id}"),
+                            )
+                            Text(
+                                artist.name.ifBlank { stringResource(R.string.unknown_artist) },
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                    item(key = "albums") {
                         Text(
-                            artist.name.ifBlank { stringResource(R.string.unknown_artist) },
-                            style = MaterialTheme.typography.headlineSmall,
-                            textAlign = TextAlign.Center,
+                            stringResource(R.string.tab_albums),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(16.dp),
                         )
                     }
-                }
-                item(key = "albums") {
-                    Text(
-                        stringResource(R.string.tab_albums),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-                artist.albums.forEach { album ->
-                    item(key = "a${album.id}") {
-                        ListItem(
-                            onClick = { onAlbum(album.id) },
-                            leadingContent = { AlbumArt(album.id, size = 56.dp) },
-                            supportingContent = {
-                                Text(
-                                    album.year
-                                        .takeIf { it > 0 }
-                                        ?.toString()
-                                        .orEmpty(),
-                                )
-                            },
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                        ) { Text(album.title) }
+                    artist.albums.forEach { album ->
+                        item(key = "a${album.id}") {
+                            ListItem(
+                                onClick = { onAlbum(album.id) },
+                                leadingContent = { AlbumArt(album.id, size = 56.dp) },
+                                supportingContent = {
+                                    Text(
+                                        album.year
+                                            .takeIf { it > 0 }
+                                            ?.toString()
+                                            .orEmpty(),
+                                    )
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                            ) { Text(album.title) }
+                        }
                     }
-                }
-                item(key = "songs") {
-                    Text(
-                        stringResource(R.string.tab_songs),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-            })
+                    item(key = "songs") {
+                        Text(
+                            stringResource(R.string.tab_songs),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                },
+            )
         }
     }
 }

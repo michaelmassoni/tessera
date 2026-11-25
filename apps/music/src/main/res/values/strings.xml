@@ -41,6 +41,8 @@
     <string name="empty_playlists">Long-press a song to add it to a playlist.</string>
     <string name="empty_playlist">No songs yet. Long-press a song anywhere to add it.</string>
     <string name="more">More options</string>
+    <string name="go_to_album">Go to album</string>
+    <string name="go_to_artist">Go to artist</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>

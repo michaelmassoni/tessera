@@ -113,6 +113,25 @@ object Library {
                 )
             }.sortedBy { sortKey(it.name) }
 
+    /**
+     * The album of the song playing: the library song's, else the album id the player has (a queue
+     * saved before a rescan may hold songs the library no longer knows by that id).
+     */
+    fun albumOf(
+        song: Song?,
+        albumId: Long,
+        albums: List<Album>,
+    ): Album? = albums.firstOrNull { it.id == (song?.albumId ?: albumId) }
+
+    /** The track artist of the song playing: by the library song's artist id, else by name. */
+    fun artistOf(
+        song: Song?,
+        name: String,
+        artists: List<Artist>,
+    ): Artist? =
+        song?.let { s -> artists.firstOrNull { it.id == s.artistId } }
+            ?: name.takeIf { it.isNotBlank() }?.let { n -> artists.firstOrNull { normalize(it.name.trim()) == normalize(n.trim()) } }
+
     /** A stable id for an album artist (FNV-1a of the name), apart from track artists' ids. */
     fun albumArtistId(name: String): Long {
         var hash = -0x340d631b7bdddcdbL
