@@ -9,6 +9,7 @@ import io.github.michaelmassoni.tessera.clock.MainActivity
 import io.github.michaelmassoni.tessera.clock.alarm.AlarmSchedule
 import io.github.michaelmassoni.tessera.clock.ringing.ClockNotifications
 import io.github.michaelmassoni.tessera.clock.ringing.ClockReceiver
+import io.github.michaelmassoni.tessera.clock.sleep.BedtimeSchedule
 import io.github.michaelmassoni.tessera.clock.timer.TimerSchedule
 
 /**
@@ -21,7 +22,8 @@ import io.github.michaelmassoni.tessera.clock.timer.TimerSchedule
 class AndroidScheduler(
     private val context: Context,
 ) : AlarmSchedule,
-    TimerSchedule {
+    TimerSchedule,
+    BedtimeSchedule {
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
     private val notifications = context.getSystemService(NotificationManager::class.java)
 
@@ -72,6 +74,28 @@ class AndroidScheduler(
 
     override fun cancelTimer(id: Int) = alarmManager.cancel(timerIntent(id))
 
+    // The bedtime reminder: exact, but not an alarm clock (it isn't the "next alarm" on the lock screen).
+    override fun scheduleBedtime(atMillis: Long) {
+        if (canScheduleExactAlarms()) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, bedtimeIntent())
+        } else {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, bedtimeIntent())
+        }
+    }
+
+    override fun cancelBedtime() {
+        alarmManager.cancel(bedtimeIntent())
+        notifications.cancel(ClockNotifications.BEDTIME_NOTIFICATION_ID)
+    }
+
+    private fun bedtimeIntent() =
+        PendingIntent.getBroadcast(
+            context,
+            BEDTIME_REQUEST_CODE,
+            Intent(context, ClockReceiver::class.java).setAction(ClockReceiver.ACTION_BEDTIME),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
     private fun alarmIntent(id: Int) =
         PendingIntent.getBroadcast(
             context,
@@ -108,6 +132,9 @@ class AndroidScheduler(
 
         /** Keeps upcoming-alarm request codes apart from alarms and timers. */
         const val UPCOMING_REQUEST_OFFSET = 2_000_000
+
+        /** The bedtime reminder's request code, apart from all of those. */
+        const val BEDTIME_REQUEST_CODE = 3_000_000
 
         /** How long before an alarm the upcoming notification appears, as on Pixel. */
         const val UPCOMING_MILLIS = 2 * 60 * 60_000L

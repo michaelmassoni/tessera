@@ -115,6 +115,44 @@ fun ClockRoot(
         onUndoRemoveCity = viewModel::restoreCity,
     )
 
+    var sleeping by rememberSaveable { mutableStateOf(false) }
+    if (sleeping) {
+        androidx.activity.compose.BackHandler { sleeping = false }
+        val nowMillis by rememberTicker(60_000) { System.currentTimeMillis() }
+        val settings by viewModel.settings.collectAsStateWithLifecycle()
+        val bedtime by viewModel.bedtime.collectAsStateWithLifecycle()
+        SleepScreen(
+            now =
+                java.time.Instant
+                    .ofEpochMilli(nowMillis)
+                    .atZone(java.time.ZoneId.systemDefault()),
+            settings = settings,
+            alarms = alarms,
+            reminder = bedtime,
+            actions =
+                object : SleepActions {
+                    override fun onSetAlarm(wake: java.time.ZonedDateTime) {
+                        ensureNotifications()
+                        viewModel.setWakeAlarm(wake.hour, wake.minute)
+                    }
+
+                    override fun onSetBedtime(
+                        bedtime: java.time.ZonedDateTime,
+                        wake: java.time.ZonedDateTime?,
+                    ) {
+                        ensureNotifications()
+                        viewModel.setBedtime(bedtime.toInstant().toEpochMilli(), wake?.toInstant()?.toEpochMilli())
+                    }
+
+                    override fun onCancelBedtime() = viewModel.cancelBedtime()
+                },
+            onBack = { sleeping = false },
+            modifier = modifier,
+            snackbar = snackbar,
+        )
+        return
+    }
+
     NavigationSuiteScaffold(
         modifier = modifier,
         navigationSuiteItems = {
@@ -133,6 +171,14 @@ fun ClockRoot(
                 TopAppBar(
                     title = { Text(stringResource(current.title)) },
                     actions = {
+                        if (current == ClockTab.Alarms) {
+                            IconButton(onClick = { sleeping = true }) {
+                                Icon(
+                                    painterResource(R.drawable.ic_bedtime),
+                                    contentDescription = stringResource(R.string.sleep_calculator),
+                                )
+                            }
+                        }
                         IconButton(onClick = onOpenSettings) {
                             Icon(
                                 painterResource(DesignR.drawable.ic_settings),
@@ -323,6 +369,7 @@ private fun EventSnackbars(
 ) {
     val resources = androidx.compose.ui.platform.LocalResources.current
     val undo = stringResource(R.string.action_undo)
+    val context = LocalContext.current
     LaunchedEffect(events, resources) {
         events.collect { event ->
             when (event) {
@@ -361,6 +408,14 @@ private fun EventSnackbars(
                             duration = SnackbarDuration.Long,
                         )
                     if (result == SnackbarResult.ActionPerformed) onUndoDelete(event.alarm)
+                }
+
+                is ClockEvent.BedtimeSet -> {
+                    val time =
+                        android.text.format.DateFormat
+                            .getTimeFormat(context)
+                            .format(java.util.Date(event.atMillis))
+                    snackbar.showSnackbar(resources.getString(R.string.bedtime_set_for, time))
                 }
 
                 is ClockEvent.CityRemoved -> {
