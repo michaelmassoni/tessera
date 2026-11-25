@@ -512,6 +512,7 @@ class PlaybackService : MediaLibraryService() {
         private const val POSITION_SAVE_MS = 10_000L
 
         private const val EXTRA_FROM_KIND = "from_kind"
+        private const val EXTRA_FROM_ID = "from_id"
 
         /** "Playing from" travels as the queue's (playlist) metadata, which every controller sees. */
         fun playlistMetadata(from: PlayingFrom?): MediaMetadata =
@@ -521,15 +522,19 @@ class PlaybackService : MediaLibraryService() {
                 MediaMetadata
                     .Builder()
                     .setTitle(from.name)
-                    .setExtras(Bundle().apply { putString(EXTRA_FROM_KIND, from.kind.name) })
-                    .build()
+                    .setExtras(
+                        Bundle().apply {
+                            putString(EXTRA_FROM_KIND, from.kind.name)
+                            putLong(EXTRA_FROM_ID, from.id)
+                        },
+                    ).build()
             }
 
         fun playingFrom(metadata: MediaMetadata): PlayingFrom? {
             val kind = metadata.extras?.getString(EXTRA_FROM_KIND) ?: return null
             return PlayingFrom.Kind.entries
                 .firstOrNull { it.name == kind }
-                ?.let { PlayingFrom(it, metadata.title?.toString().orEmpty()) }
+                ?.let { PlayingFrom(it, metadata.title?.toString().orEmpty(), metadata.extras?.getLong(EXTRA_FROM_ID) ?: 0) }
         }
 
         fun mediaItem(item: SavedItem): MediaItem =

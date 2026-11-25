@@ -94,6 +94,7 @@ import io.github.michaelmassoni.tessera.music.engine.Playlists
 import io.github.michaelmassoni.tessera.music.engine.Song
 import io.github.michaelmassoni.tessera.music.engine.Sorts
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
+import io.github.michaelmassoni.tessera.music.engine.sourceId
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 data class LibraryState(
@@ -304,6 +305,10 @@ fun MusicApp(
         remember(playback.songId, playback.artist, library.artists) {
             Library.artistOf(library.byId[playback.songId], playback.artist, library.artists)?.id
         }
+    val playingSource =
+        remember(playback.from, library.albums, library.artists, library.albumArtists, library.playlists) {
+            playback.from?.sourceId(library.albums, library.albumArtists + library.artists, library.playlists)
+        }
     val back: () -> Unit = { screen = screen.copy(stack = screen.stack.dropLast(1)) }
 
     PlayerSheet(
@@ -336,10 +341,30 @@ fun MusicApp(
                                     openArtist(id)
                                 }
                             },
+                        onSource =
+                            playback.from?.let { from ->
+                                val go: ((Long) -> Unit)? =
+                                    when (from.kind) {
+                                        PlayingFrom.Kind.Album -> openAlbum
+                                        PlayingFrom.Kind.Artist -> openArtist
+                                        PlayingFrom.Kind.Playlist -> { id -> open(Page.PlaylistPage(id)) }
+                                        PlayingFrom.Kind.Songs -> { _ -> screen = Screen(Tab.Songs.ordinal) }
+                                        PlayingFrom.Kind.Search -> null
+                                    }
+                                val id = if (from.kind == PlayingFrom.Kind.Songs) 0L else playingSource
+                                if (go != null && id != null) {
+                                    {
+                                        onClose()
+                                        go(id)
+                                    }
+                                } else {
+                                    null
+                                }
+                            },
                     ),
             )
         },
-    ) { openPlayer ->
+    ) { openPlayer, dragUp ->
         // A phone on its side is short: a rail beside the library leaves it the height a bottom bar would take.
         val adaptive = currentWindowAdaptiveInfoV2()
         val layout =
@@ -446,7 +471,7 @@ fun MusicApp(
                         }
                     }
                 }
-                if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = openPlayer)
+                if (playback.hasMedia) MiniPlayer(playback, progress, playerActions, onOpen = openPlayer, modifier = dragUp)
             }
         }
     }
@@ -648,10 +673,7 @@ private fun AlbumScreen(
             SongList(
                 album.songs,
                 actions,
-                PlayingFrom(
-                    PlayingFrom.Kind.Album,
-                    album.title,
-                ),
+                PlayingFrom(PlayingFrom.Kind.Album, album.title, album.id),
                 showShuffle = false,
                 showArt = false,
                 onLongClick = { _, song -> options = song },
@@ -668,7 +690,7 @@ private fun AlbumScreen(
                                 listOfNotNull(album.artist.ifBlank { null }, album.year.takeIf { it > 0 }?.toString()).joinToString(" · "),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Button(onClick = { actions.play(album.songs, 0, PlayingFrom(PlayingFrom.Kind.Album, album.title)) }) {
+                            Button(onClick = { actions.play(album.songs, 0, PlayingFrom(PlayingFrom.Kind.Album, album.title, album.id)) }) {
                                 Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
                                 Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
                             }
@@ -696,7 +718,7 @@ private fun ArtistScreen(
             SongList(
                 artist.songs,
                 actions,
-                PlayingFrom(PlayingFrom.Kind.Artist, artist.name),
+                PlayingFrom(PlayingFrom.Kind.Artist, artist.name, artist.id),
                 showShuffle = true,
                 onLongClick = { _, song -> options = song },
                 header = {

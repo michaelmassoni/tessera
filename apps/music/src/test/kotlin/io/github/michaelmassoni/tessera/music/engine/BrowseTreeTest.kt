@@ -39,7 +39,7 @@ class BrowseTreeTest {
         val q = tree.queueFor(pick.id)!!
         assertEquals(listOf(1L, 2L), q.songs.map { it.id })
         assertEquals(1, q.start)
-        assertEquals(PlayingFrom(PlayingFrom.Kind.Album, "Northern Lights"), q.from)
+        assertEquals(PlayingFrom(PlayingFrom.Kind.Album, "Northern Lights", 10), q.from)
     }
 
     @Test
