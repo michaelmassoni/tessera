@@ -219,6 +219,8 @@ object Subsonic {
                     ?: "",
             addedAt = time(o.string("created")),
             playedAt = time(o.string("played")),
+            // OpenSubsonic: "explicit", "clean" or blank; some servers abbreviate to "e" / "c".
+            explicit = o.string("explicitStatus")?.lowercase() in setOf("explicit", "e"),
         )
     }
 

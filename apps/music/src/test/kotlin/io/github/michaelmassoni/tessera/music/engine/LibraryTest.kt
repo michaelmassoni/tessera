@@ -58,4 +58,17 @@ class LibraryTest {
         assertEquals("3:05", formatDuration(185_000))
         assertEquals("1:02:03", formatDuration(3_723_000))
     }
+
+    @Test fun `the song playing leads to its album and track artist`() {
+        val albums = Library.albums(songs)
+        val artists = Library.artists(songs)
+        val playing = songs[4]
+        assertEquals("Help!", Library.albumOf(playing, 0, albums)?.title)
+        assertEquals("The Beatles", Library.artistOf(playing, "", artists)?.name)
+        // Not in the library by id (a saved queue from before a rescan): the album id and the artist's name.
+        assertEquals("Brat", Library.albumOf(null, 40, albums)?.title)
+        assertEquals("Ana Moura", Library.artistOf(null, " ana moura", artists)?.name)
+        assertEquals(null, Library.albumOf(null, 99, albums))
+        assertEquals(null, Library.artistOf(null, "", artists))
+    }
 }
