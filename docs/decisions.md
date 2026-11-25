@@ -4,6 +4,25 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-26: Feeds, an RSS reader that syncs with yarr (Accepted)
+
+The maintainer reads feeds in yarr on their NAS and asked for a Tessera app that works with it or
+imports from it. They picked the name Feeds and "sync plus local".
+
+- **yarr's own JSON API, not its Fever API.** Fever works only when yarr runs with `-auth`, and it
+  can't add or remove feeds or folders. The JSON API works with or without a login (a cookie from
+  `/login`) and covers everything the web page does, including readability ("Full article").
+  Fever (and Google Reader for Miniflux and FreshRSS) can come later behind the same sync code.
+- **jsoup** (MIT, Maven Central) parses feeds and article HTML. Feeds in the wild are often broken
+  XML, which strict parsers reject, and articles are shown natively in Compose rather than in a
+  WebView (no View-based UI), so the HTML has to be parsed into blocks anyway.
+- **Article content is stored apart** from the article list (`files/articles/`), so marking one
+  read doesn't rewrite megabytes of JSON.
+- **Refresh defaults to every hour** (the DAV apps default to 4) and uses the shared sync settings
+  from `core:dav`.
+- **Podcasts** (a separate app, built alongside) has its own feed parser for now; one shared
+  `core:feed` module can follow once both are merged.
+
 ## 2026-11-23: Weather fills BOM's gaps from Open-Meteo; no pollen outside Europe (Accepted)
 
 The maintainer noticed no visibility, pressure, air quality or pollen for Melbourne.
