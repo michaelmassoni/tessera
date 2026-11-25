@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
-import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.notes.engine.Backup
@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.time.LocalDate
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -43,8 +44,28 @@ class SettingsActivity : TesseraSettingsActivity() {
     }
 
     @Composable
-    override fun ColumnScope.AppSettings() {
+    override fun categories(): List<SettingsCategory> {
         var checked by remember { mutableStateOf(checkedLast) }
+        return listOf(
+            SettingsCategory(
+                key = "editing",
+                title = stringResource(R.string.settings_editing),
+                icon = DesignR.drawable.ic_edit,
+                summary = stringResource(if (checked) R.string.settings_checked_last_on else R.string.settings_checked_last_off),
+            ) {
+                SwitchSetting(
+                    title = stringResource(R.string.settings_checked_last),
+                    checked = checked,
+                    onCheckedChange = {
+                        checked = it
+                        checkedLast = it
+                    },
+                )
+            },
+        )
+    }
+
+    override val importExport: @Composable ColumnScope.() -> Unit = {
         val scope = rememberCoroutineScope()
         val export =
             rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -54,26 +75,17 @@ class SettingsActivity : TesseraSettingsActivity() {
             rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                 if (uri != null) scope.launch { toast(readImport(uri)) }
             }
-
-        SettingsHeader(stringResource(R.string.settings_editing))
-        SwitchSetting(
-            title = stringResource(R.string.settings_checked_last),
-            checked = checked,
-            onCheckedChange = {
-                checked = it
-                checkedLast = it
-            },
-        )
-        SettingsHeader(stringResource(R.string.settings_backup))
         InfoSetting(
             title = stringResource(R.string.settings_export),
             summary = stringResource(R.string.settings_export_summary),
             onClick = { export.launch("tessera-notes-${LocalDate.now()}.json") },
+            external = false,
         )
         InfoSetting(
             title = stringResource(R.string.settings_import),
             summary = stringResource(R.string.settings_import_summary),
             onClick = { import.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+            external = false,
         )
     }
 

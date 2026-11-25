@@ -90,11 +90,12 @@
     <string name="notice_unreachable">Can\'t reach your music server. Songs played before still play.</string>
     <string name="sign_in">Sign in</string>
     <string name="retry">Retry</string>
-    <string name="settings_source">Music source</string>
+    <string name="settings_source">Source</string>
     <string name="settings_server">Server</string>
     <string name="settings_server_summary">%1$s at %2$s</string>
     <string name="settings_quality">Streaming quality</string>
     <string name="quality_original">Original</string>
+    <string name="quality_original_summary">Original quality</string>
     <string name="quality_kbps">Up to %1$d kbps</string>
     <string name="settings_cache">Offline cache</string>
     <string name="settings_clear_cache">Clear offline cache</string>
@@ -122,6 +123,8 @@
     <string name="no_lyrics">No lyrics for this song.</string>
     <string name="online_lyrics_explain">Tessera can look for lyrics on LRCLIB, an open lyrics database. It sends the song\'s title, artist, album and length, nothing else.</string>
     <string name="look_up_lyrics">Look up lyrics online</string>
+    <string name="lyrics_online_on">Looked up online when a song has none</string>
+    <string name="lyrics_online_off">Only the songs\' own lyrics</string>
     <string name="lyrics_from_server">Lyrics from your server</string>
     <string name="lyrics_from_lrclib">Lyrics from LRCLIB</string>
     <string name="online_lyrics_summary">When a song has none of its own, search LRCLIB (lrclib.net) with its title, artist, album and length</string>

@@ -115,7 +115,10 @@
 
     <!-- Settings -->
     <string name="settings_source">Source</string>
-    <string name="settings_articles">Articles</string>
+    <string name="settings_source_sync">Source &amp; sync</string>
+    <string name="settings_reading">Reading</string>
+    <string name="settings_sync_manual">Manual sync</string>
+    <string name="settings_sync_every">Every %s</string>
     <string name="keep_read">Keep read articles for</string>
     <plurals name="days">
         <item quantity="one">%d day</item>
