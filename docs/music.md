@@ -175,6 +175,21 @@ Asked for by the maintainer after using 0.4 with their Navidrome library.
 - **Queue:** drag a song by its handle to move it; swipe it away to remove it; tap to play it.
   TalkBack has Move up, Move down and Remove actions. Songs' long-press menu adds **Play next**
   and **Add to queue**.
+- **Go to album and artist (0.8):** the full player's overflow menu has **Go to album** and **Go to
+  artist**, and the artist and album names under the title are links to the same pages (the menu is
+  the dependable target; the names are small). Either closes the player and opens the page over
+  the current tab. The page is found from the library song (`Library.albumOf` / `artistOf`), else
+  by the album id and artist name the player has, so a restored queue still links; with no match
+  the entry isn't shown. Artist means the track artist, as shown. A song's long-press menu (Songs,
+  search, playlists, an album, an artist) has the same two entries, less the page you're on.
+- **Explicit (0.8):** an "E" badge after the title of a song the server marks explicit (OpenSubsonic
+  `explicitStatus`), in song lists and the full player; TalkBack reads "Explicit". Music on the
+  phone has no badge: MediaStore has no explicit field, and reading every file's tags isn't worth it.
+- **Landscape (0.8):** when the window is wider than tall (at least 560dp), the full player puts
+  the art on the left at the full height and the title, seek bar, controls and lyrics card beside
+  it, centred, scrolling if they don't fit. Content is kept clear of a display cutout. In a short
+  window (under 480dp tall) the library uses a navigation rail instead of the bottom bar. The open
+  album, artist or playlist page survives rotation.
 - **Save to playlist:** a button beside the song title (ticked when the song is in one of your
   playlists) opens the playlists with checkboxes: tick to add, untick to remove, or make a new one.
 - **Server playlists:** with a server, the Playlists tab shows the server's playlists (`getPlaylists`

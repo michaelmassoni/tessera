@@ -102,6 +102,22 @@ class SubsonicTest {
     }
 
     @Test
+    fun `explicit songs are marked`() {
+        val reply =
+            Subsonic.response(
+                """
+                {"subsonic-response":{"status":"ok","album":{"song":[
+                  {"id":"a","title":"Loud","explicitStatus":"explicit"},
+                  {"id":"b","title":"Radio edit","explicitStatus":"clean"},
+                  {"id":"c","title":"Short","explicitStatus":"e"},
+                  {"id":"d","title":"Untagged"}
+                ]}}}
+                """.trimIndent(),
+            )
+        assertEquals(listOf(true, false, true, false), Subsonic.albumSongs(reply).map { it.explicit })
+    }
+
+    @Test
     fun `a single result object is a list of one`() {
         val reply = Subsonic.response("""{"subsonic-response":{"status":"ok","album":{"song":{"id":"x","title":"Only"}}}}""")
         assertEquals(listOf("Only"), Subsonic.albumSongs(reply).map { it.title })

@@ -117,6 +117,8 @@ internal fun PlaylistScreen(
     playlists: List<Playlist>,
     actions: LibraryActions,
     onBack: () -> Unit,
+    onAlbum: ((Long) -> Unit)? = null,
+    onArtist: ((Long) -> Unit)? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -189,9 +191,29 @@ internal fun PlaylistScreen(
         }
     }
     options?.let { (index, song) ->
-        SongOptions(song, playlists, actions, onDismiss = {
-            options = null
-        }, onRemove = if (playlist.readOnly) null else ({ actions.removeFromPlaylist(playlist.id, index) }))
+        SongOptions(
+            song,
+            playlists,
+            actions,
+            onDismiss = {
+                options = null
+            },
+            onRemove =
+                if (playlist.readOnly) {
+                    null
+                } else {
+                    (
+                        {
+                            actions.removeFromPlaylist(
+                                playlist.id,
+                                index,
+                            )
+                        }
+                    )
+                },
+            onAlbum = onAlbum,
+            onArtist = onArtist,
+        )
     }
     if (renaming) {
         NameDialog(R.string.rename, playlist.name, onDismiss = { renaming = false }) { name ->
@@ -217,8 +239,8 @@ internal fun PlaylistScreen(
 }
 
 /**
- * What a long press on a song offers: add it to a playlist (or a new one), and, inside a
- * playlist, remove it from there.
+ * What a long press on a song offers: play it next or queue it, add it to a playlist (or a new
+ * one), go to its album or artist (where given), and, inside a playlist, remove it from there.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -228,6 +250,8 @@ internal fun SongOptions(
     actions: LibraryActions,
     onDismiss: () -> Unit,
     onRemove: (() -> Unit)? = null,
+    onAlbum: ((Long) -> Unit)? = null,
+    onArtist: ((Long) -> Unit)? = null,
 ) {
     var picking by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
@@ -292,6 +316,24 @@ internal fun SongOptions(
                         onClick = { picking = true },
                         leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
                     ) { Text(stringResource(R.string.add_to_playlist)) }
+                    if (onAlbum != null) {
+                        ListItem(
+                            onClick = {
+                                onDismiss()
+                                onAlbum(song.albumId)
+                            },
+                            leadingContent = { Icon(painterResource(DesignR.drawable.ic_album), contentDescription = null) },
+                        ) { Text(stringResource(R.string.go_to_album)) }
+                    }
+                    if (onArtist != null) {
+                        ListItem(
+                            onClick = {
+                                onDismiss()
+                                onArtist(song.artistId)
+                            },
+                            leadingContent = { Icon(painterResource(DesignR.drawable.ic_artist), contentDescription = null) },
+                        ) { Text(stringResource(R.string.go_to_artist)) }
+                    }
                     if (onRemove != null) {
                         ListItem(
                             onClick = {

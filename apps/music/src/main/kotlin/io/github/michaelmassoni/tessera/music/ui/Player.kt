@@ -9,12 +9,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +27,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -59,8 +65,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
@@ -180,6 +191,38 @@ fun AlbumArt(
     }
 }
 
+/** The "E" after an explicit song's title. */
+@Composable
+fun ExplicitBadge(
+    modifier: Modifier = Modifier,
+    size: Dp = 16.dp,
+) {
+    Icon(
+        painterResource(R.drawable.ic_explicit),
+        contentDescription = stringResource(R.string.explicit),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.size(size),
+    )
+}
+
+/** A song title with the explicit badge after it; the title gives way (ellipsis) before the badge. */
+@Composable
+fun TitleWithBadge(
+    title: @Composable (Modifier) -> Unit,
+    explicit: Boolean,
+    modifier: Modifier = Modifier,
+    badgeSize: Dp = 16.dp,
+) {
+    if (!explicit) {
+        title(modifier)
+        return
+    }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        title(Modifier.weight(1f, fill = false))
+        ExplicitBadge(size = badgeSize)
+    }
+}
+
 /** The bar above the navigation while something is loaded. */
 @Composable
 fun MiniPlayer(
@@ -240,7 +283,13 @@ private fun PlayPause(
     }
 }
 
-/** The full-screen player. */
+/** Where the full player can take you: the playing song's album and artist pages. */
+class NowPlayingLinks(
+    val onAlbum: (() -> Unit)? = null,
+    val onArtist: (() -> Unit)? = null,
+)
+
+/** The full-screen player: one column, or the art beside the rest when the screen is wider than tall. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullPlayer(
@@ -252,13 +301,18 @@ fun FullPlayer(
     lyrics: LyricsState = LyricsState.None(false),
     playlists: List<Playlist> = emptyList(),
     libraryActions: LibraryActions? = null,
+    links: NowPlayingLinks = NowPlayingLinks(),
+    explicit: Boolean = false,
 ) {
     var queue by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
     var saving by rememberSaveable { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
     BackHandler(showLyrics) { showLyrics = false }
     Box(modifier) {
         Scaffold(
+            // Clear of the camera cutout too: on its side, a phone's cutout is beside the art.
+            contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { state.from?.let { PlayingFromTitle(it) } },
@@ -274,51 +328,45 @@ fun FullPlayer(
                         IconButton(onClick = { queue = true }) {
                             Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = stringResource(R.string.queue))
                         }
+                        if (links.onAlbum != null || links.onArtist != null) {
+                            Box {
+                                IconButton(onClick = { menu = true }) {
+                                    Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
+                                }
+                                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                    links.onAlbum?.let { go ->
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.go_to_album)) },
+                                            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_album), contentDescription = null) },
+                                            onClick = {
+                                                menu = false
+                                                go()
+                                            },
+                                        )
+                                    }
+                                    links.onArtist?.let { go ->
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.go_to_artist)) },
+                                            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_artist), contentDescription = null) },
+                                            onClick = {
+                                                menu = false
+                                                go()
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     },
                 )
             },
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-                Column(
-                    Modifier
-                        .widthIn(max = 520.dp)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                state.title,
-                                style = MaterialTheme.typography.headlineSmall,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                listOf(state.artist, state.album).filter { it.isNotBlank() }.joinToString(" · "),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        if (libraryActions != null && state.songId != 0L) {
-                            val saved = playlists.any { !it.readOnly && state.songId in it.songIds }
-                            IconButton(onClick = { saving = true }) {
-                                Icon(
-                                    painterResource(
-                                        if (saved) DesignR.drawable.ic_playlist_add_check else DesignR.drawable.ic_playlist_add,
-                                    ),
-                                    contentDescription = stringResource(R.string.save_to_playlist),
-                                    tint = if (saved) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                                )
-                            }
-                        }
-                    }
+            BoxWithConstraints(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+                val art: @Composable (Modifier) -> Unit = { m ->
+                    AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = m)
+                }
+                val details: @Composable () -> Unit = {
+                    TitleRow(state, explicit, playlists, libraryActions, links, onSave = { saving = true })
                     SeekBar(progress, actions)
                     Controls(state, actions)
                     LyricsCard(
@@ -329,6 +377,39 @@ fun FullPlayer(
                         onLookOnline = actions::lookUpLyricsOnline,
                     )
                 }
+                if (maxWidth > maxHeight && maxWidth >= 560.dp) {
+                    // Landscape: the art fills the height on the left, everything else scrolls beside it.
+                    val side = minOf(maxHeight - 24.dp, maxWidth * 0.42f)
+                    Row(
+                        Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterHorizontally),
+                    ) {
+                        Box(Modifier.fillMaxHeight().padding(bottom = 24.dp), contentAlignment = Alignment.Center) {
+                            art(Modifier.size(side))
+                        }
+                        // Centred beside the art when it fits; scrolls from the top when it doesn't.
+                        Box(Modifier.weight(1f, fill = false).widthIn(max = 520.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Column(
+                                Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) { details() }
+                        }
+                    }
+                } else {
+                    Column(
+                        Modifier
+                            .widthIn(max = 520.dp)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp)
+                            .padding(bottom = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        art(Modifier.fillMaxWidth().aspectRatio(1f))
+                        details()
+                    }
+                }
             }
         }
         if (queue) QueueSheet(state.queue, state.index, actions, onDismiss = { queue = false })
@@ -337,6 +418,73 @@ fun FullPlayer(
         }
         if (showLyrics && lyrics is LyricsState.Found) {
             LyricsScreen(lyrics.lyrics, state, progress, actions, onClose = { showLyrics = false })
+        }
+    }
+}
+
+/** Title, then "Artist · Album" (each a link to its page when it has one), and save to playlist. */
+@Composable
+private fun TitleRow(
+    state: PlaybackState,
+    explicit: Boolean,
+    playlists: List<Playlist>,
+    libraryActions: LibraryActions?,
+    links: NowPlayingLinks,
+    onSave: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            TitleWithBadge(
+                { m ->
+                    Text(
+                        state.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = m,
+                    )
+                },
+                explicit,
+                badgeSize = 20.dp,
+            )
+            val linkStyle = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant))
+            val line =
+                buildAnnotatedString {
+                    fun part(
+                        text: String,
+                        tag: String,
+                        go: (() -> Unit)?,
+                    ) {
+                        if (text.isBlank()) return
+                        if (length > 0) append(" · ")
+                        if (go != null) {
+                            withLink(LinkAnnotation.Clickable(tag, linkStyle) { go() }) { append(text) }
+                        } else {
+                            append(text)
+                        }
+                    }
+                    part(state.artist, "artist", links.onArtist)
+                    part(state.album, "album", links.onAlbum)
+                }
+            Text(
+                line,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (libraryActions != null && state.songId != 0L) {
+            val saved = playlists.any { !it.readOnly && state.songId in it.songIds }
+            IconButton(onClick = onSave) {
+                Icon(
+                    painterResource(
+                        if (saved) DesignR.drawable.ic_playlist_add_check else DesignR.drawable.ic_playlist_add,
+                    ),
+                    contentDescription = stringResource(R.string.save_to_playlist),
+                    tint = if (saved) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                )
+            }
         }
     }
 }
