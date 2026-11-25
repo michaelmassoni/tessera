@@ -67,6 +67,10 @@
 
     <!-- Live scores -->
     <string name="channel_live">Live games</string>
+    <string name="settings_scores">Scores</string>
+    <string name="settings_scores_summary_live_on">Live scores on</string>
+    <string name="settings_scores_summary_live_off">Live scores off</string>
+    <string name="settings_scores_summary_hidden">Scores hidden</string>
     <string name="settings_live">Live scores</string>
     <string name="settings_live_summary">While your team plays, the score in a notification, updated about every 15 seconds</string>
     <!-- live score: each team beside its own score, away first: "Rockets 115 · Nuggets 117" -->
