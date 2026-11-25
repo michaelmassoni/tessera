@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The library (shows followed, progress, Up Next) and settings; feeds are fetched again and
+     downloads stay on this phone. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="library.json" />
+        <include domain="sharedpref" path="settings.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="library.json" />
+        <include domain="sharedpref" path="settings.xml" />
+    </device-transfer>
+</data-extraction-rules>

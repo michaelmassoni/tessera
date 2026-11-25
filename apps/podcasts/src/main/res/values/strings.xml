@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Podcasts</string>
+
+    <!-- Navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_library">Library</string>
+    <string name="tab_search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="more_options">More options</string>
+
+    <!-- Home -->
+    <string name="up_next">Up Next</string>
+    <string name="new_episodes">New episodes</string>
+    <string name="no_new_episodes">No new episodes in the last two weeks</string>
+    <string name="home_empty_title">Nothing here yet</string>
+    <string name="home_empty_text">Follow shows to see their new episodes here</string>
+    <string name="find_podcasts">Find podcasts</string>
+    <string name="reorder">Reorder</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+
+    <!-- Library -->
+    <string name="downloaded">Downloaded</string>
+    <string name="library_empty_title">No shows yet</string>
+    <string name="library_empty_text">Shows you follow appear here</string>
+    <string name="downloads_empty_title">No downloads</string>
+    <string name="downloads_empty_text">Download episodes to listen without a connection</string>
+    <plurals name="episodes">
+        <item quantity="one">%d episode</item>
+        <item quantity="other">%d episodes</item>
+    </plurals>
+
+    <!-- Search -->
+    <string name="search_hint">Search podcasts</string>
+    <string name="search_intro">Search by show name or topic. Results come from the Apple Podcasts and fyyd directories; only your search words are sent.</string>
+    <string name="search_failed">Couldn\'t search. Check your connection.</string>
+    <string name="search_none">No shows found</string>
+    <string name="clear">Clear</string>
+    <string name="add_by_url">Add by URL</string>
+    <string name="feed_url">Feed or Apple Podcasts link</string>
+    <string name="feed_url_help">For example https://example.com/feed.xml</string>
+    <string name="open">Open</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="cant_open_title">Couldn\'t open that show</string>
+    <string name="cant_open_offline">It couldn\'t be reached. Check your connection and the address.</string>
+    <string name="cant_open_not_feed">This doesn\'t look like a podcast feed.</string>
+
+    <!-- Show -->
+    <string name="follow">Follow</string>
+    <string name="following">Following</string>
+    <string name="unfollow">Unfollow</string>
+    <string name="unfollow_title">Unfollow %1$s?</string>
+    <string name="unfollow_text">Its downloads and your progress in its episodes will be deleted.</string>
+    <string name="show_more">Show more</string>
+    <string name="show_less">Show less</string>
+
+    <!-- Episodes -->
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="download">Download</string>
+    <string name="cancel_download">Cancel download</string>
+    <string name="downloading">Downloading</string>
+    <string name="played">Played</string>
+    <string name="in_up_next">In Up Next</string>
+    <string name="play_next">Play next</string>
+    <string name="add_to_up_next">Add to Up Next</string>
+    <string name="remove_from_up_next">Remove from Up Next</string>
+    <string name="mark_played">Mark as played</string>
+    <string name="mark_unplayed">Mark as not played</string>
+    <string name="delete_download">Delete download</string>
+    <string name="go_to_show">Go to show</string>
+    <!-- Durations: "45 min", "2 hr", "1 hr 5 min"; "12 min left". -->
+    <string name="duration_min">%1$d min</string>
+    <string name="duration_hr">%1$d hr</string>
+    <string name="duration_hr_min">%1$d hr %2$d min</string>
+    <string name="time_left">%1$s left</string>
+
+    <!-- Player -->
+    <string name="open_player">Open player</string>
+    <string name="close_player">Close player</string>
+    <string name="back_10">Back 10 seconds</string>
+    <string name="forward_30">Forward 30 seconds</string>
+    <string name="cant_play">Couldn\'t play this episode</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <plurals name="sleep_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="sleep_in">Stops in %1$d min</string>
+    <string name="sleep_end_of_episode">End of episode</string>
+    <string name="sleep_off">Turn off timer</string>
+
+    <!-- Settings -->
+    <string name="settings_downloads">Downloads</string>
+    <string name="settings_auto_download">Download new episodes</string>
+    <string name="settings_auto_download_summary">New episodes of shows you follow download on Wi-Fi</string>
+    <string name="settings_delete_played">Delete played downloads</string>
+    <string name="settings_delete_played_summary">Free up space once you\'ve listened</string>
+    <string name="settings_mobile_downloads">Download on mobile data</string>
+    <string name="settings_mobile_downloads_summary">Episodes you download yourself don\'t wait for Wi-Fi</string>
+    <string name="settings_subscriptions">Shows</string>
+    <string name="settings_import">Import shows</string>
+    <string name="settings_import_summary">From an OPML file exported by another podcast app</string>
+    <string name="importing">Importing…</string>
+    <string name="settings_export">Export shows</string>
+    <string name="settings_export_summary">As an OPML file other podcast apps can import</string>
+    <plurals name="imported">
+        <item quantity="one">Followed %d show</item>
+        <item quantity="other">Followed %d shows</item>
+    </plurals>
+    <string name="import_failed">Couldn\'t read that file</string>
+    <string name="exported">Shows exported</string>
+    <string name="export_failed">Couldn\'t save the file</string>
+
+    <!-- Notifications -->
+    <string name="channel_downloads">Downloads</string>
+
+    <!-- First run -->
+    <string name="setup_notifications_title">Notifications</string>
+    <string name="setup_notifications_text">Shows the progress of episode downloads. Playback controls work without it.</string>
+</resources>
