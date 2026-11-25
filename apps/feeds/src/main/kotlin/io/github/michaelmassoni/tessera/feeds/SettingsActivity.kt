@@ -24,12 +24,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import io.github.michaelmassoni.tessera.core.dav.SyncInterval
 import io.github.michaelmassoni.tessera.core.dav.SyncPrefs
 import io.github.michaelmassoni.tessera.core.dav.SyncSettings
+import io.github.michaelmassoni.tessera.core.dav.label
+import io.github.michaelmassoni.tessera.core.settings.ChoiceSetting
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
-import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.feeds.data.AccountStore
 import io.github.michaelmassoni.tessera.feeds.data.FeedsPrefs
@@ -40,6 +43,7 @@ import io.github.michaelmassoni.tessera.feeds.ui.YarrSignInDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -53,23 +57,166 @@ class SettingsActivity : TesseraSettingsActivity() {
         )
 
     @Composable
-    override fun ColumnScope.AppSettings() {
+    override fun categories(): List<SettingsCategory> {
         val context = LocalContext.current
-        val scope = rememberCoroutineScope()
         val store = remember { AccountStore(context) }
         val subscriptions = remember { Subscriptions(context) }
         var source by remember { mutableStateOf(store.source) }
         var prefs by remember { mutableStateOf(SyncPrefs.load(context)) }
+        var keep by remember { mutableIntStateOf(FeedsPrefs.keepReadDays(context)) }
+        var scale by remember { mutableFloatStateOf(FeedsPrefs.textScale(context)) }
+        val sourceLabel = stringResource(if (source is Source.Yarr) R.string.source_yarr else R.string.source_phone)
+        val interval =
+            when (prefs.interval) {
+                SyncInterval.Manual -> stringResource(R.string.settings_sync_manual)
+                SyncInterval.Day -> prefs.interval.label()
+                else -> stringResource(R.string.settings_sync_every, prefs.interval.label())
+            }
+        return listOf(
+            SettingsCategory(
+                key = "sync",
+                title = stringResource(R.string.settings_source_sync),
+                icon = DesignR.drawable.ic_sync,
+                summary = "$sourceLabel · $interval",
+            ) {
+                SourceAndSync(
+                    store = store,
+                    subscriptions = subscriptions,
+                    source = source,
+                    onSourceChange = { source = it },
+                    prefs = prefs,
+                    onPrefsChange = { prefs = it },
+                )
+            },
+            SettingsCategory(
+                key = "reading",
+                title = stringResource(R.string.settings_reading),
+                icon = DesignR.drawable.ic_article,
+                summary = "${pluralStringResource(R.plurals.days, keep, keep)} · ${scaleLabel(scale)}",
+            ) {
+                ChoiceSetting(
+                    title = stringResource(R.string.keep_read),
+                    options = FeedsPrefs.KEEP_CHOICES,
+                    selected = keep,
+                    label = { pluralStringResource(R.plurals.days, it, it) },
+                    onSelect = {
+                        keep = it
+                        FeedsPrefs.setKeepReadDays(context, it)
+                    },
+                )
+                ChoiceSetting(
+                    title = stringResource(R.string.text_size),
+                    options = FeedsPrefs.TEXT_SCALES,
+                    selected = scale,
+                    label = { scaleLabel(it) },
+                    onSelect = {
+                        scale = it
+                        FeedsPrefs.setTextScale(context, it)
+                    },
+                )
+            },
+        )
+    }
+
+    @Composable
+    private fun SourceAndSync(
+        store: AccountStore,
+        subscriptions: Subscriptions,
+        source: Source,
+        onSourceChange: (Source) -> Unit,
+        prefs: SyncPrefs,
+        onPrefsChange: (SyncPrefs) -> Unit,
+    ) {
+        val context = LocalContext.current
         var choosingSource by rememberSaveable { mutableStateOf(false) }
         var signingIn by rememberSaveable { mutableStateOf(false) }
         var confirmPhone by rememberSaveable { mutableStateOf(false) }
-        var choosingKeep by rememberSaveable { mutableStateOf(false) }
-        var choosingSize by rememberSaveable { mutableStateOf(false) }
-        var keep by remember { mutableIntStateOf(FeedsPrefs.keepReadDays(context)) }
-        var scale by remember { mutableFloatStateOf(FeedsPrefs.textScale(context)) }
         val work by remember { WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(SyncWorker.schedule.soonName) }
             .collectAsStateWithLifecycle(emptyList())
         val syncing = work.any { it.state == WorkInfo.State.RUNNING }
+
+        Column {
+            InfoSetting(
+                title = stringResource(if (source is Source.Yarr) R.string.source_yarr else R.string.source_phone),
+                summary =
+                    when (source) {
+                        is Source.Yarr -> {
+                            source.username?.let { stringResource(R.string.source_yarr_user, it, source.address) }
+                                ?: source.address
+                        }
+
+                        Source.Phone -> {
+                            stringResource(R.string.source_phone_summary)
+                        }
+                    },
+                onClick = { choosingSource = true },
+                external = false,
+            )
+            SyncSettings(
+                prefs = prefs,
+                onChange = {
+                    onPrefsChange(it)
+                    SyncPrefs.save(context, it)
+                    SyncWorker.schedule.apply(context)
+                },
+                lastSync = remember(work) { store.lastSync },
+                lastProblem = remember(work) { store.lastProblem },
+                syncing = syncing,
+                onSyncNow = { SyncWorker.schedule.soon(context, delaySeconds = 0) },
+            )
+        }
+
+        if (choosingSource) {
+            AlertDialog(
+                onDismissRequest = { choosingSource = false },
+                title = { Text(stringResource(R.string.settings_source)) },
+                text = {
+                    Column {
+                        RadioSetting(stringResource(R.string.source_yarr), selected = source is Source.Yarr, onSelect = {
+                            choosingSource = false
+                            signingIn = true
+                        })
+                        RadioSetting(stringResource(R.string.source_phone), selected = source == Source.Phone, onSelect = {
+                            choosingSource = false
+                            if (source != Source.Phone) confirmPhone = true
+                        })
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { choosingSource = false }) { Text(stringResource(R.string.cancel)) } },
+            )
+        }
+        if (signingIn) {
+            YarrSignInDialog(
+                signIn = { subscriptions.useYarr(it.address, it.username, it.password) },
+                onDismiss = { signingIn = false },
+                onSignedIn = {
+                    signingIn = false
+                    onSourceChange(store.source)
+                },
+            )
+        }
+        if (confirmPhone) {
+            AlertDialog(
+                onDismissRequest = { confirmPhone = false },
+                title = { Text(stringResource(R.string.use_phone_title)) },
+                text = { Text(stringResource(R.string.use_phone_text)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmPhone = false
+                        subscriptions.usePhone()
+                        onSourceChange(store.source)
+                    }) { Text(stringResource(R.string.use_phone)) }
+                },
+                dismissButton = { TextButton(onClick = { confirmPhone = false }) { Text(stringResource(R.string.cancel)) } },
+            )
+        }
+    }
+
+    override val importExport: @Composable ColumnScope.() -> Unit = {
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        val subscriptions = remember { Subscriptions(context) }
         val importFailed = stringResource(R.string.import_failed)
         val exportFailed = stringResource(R.string.export_failed)
         val res = LocalResources.current
@@ -101,41 +248,6 @@ class SettingsActivity : TesseraSettingsActivity() {
                 }
             }
 
-        SettingsHeader(stringResource(R.string.settings_source))
-        val s = source
-        InfoSetting(
-            title = stringResource(if (s is Source.Yarr) R.string.source_yarr else R.string.source_phone),
-            summary =
-                when (s) {
-                    is Source.Yarr -> s.username?.let { stringResource(R.string.source_yarr_user, it, s.address) } ?: s.address
-                    Source.Phone -> stringResource(R.string.source_phone_summary)
-                },
-            onClick = { choosingSource = true },
-            external = false,
-        )
-        SyncSettings(
-            prefs = prefs,
-            onChange = {
-                prefs = it
-                SyncPrefs.save(context, it)
-                SyncWorker.schedule.apply(context)
-            },
-            lastSync = remember(work) { store.lastSync },
-            lastProblem = remember(work) { store.lastProblem },
-            syncing = syncing,
-            onSyncNow = { SyncWorker.schedule.soon(context, delaySeconds = 0) },
-        )
-
-        SettingsHeader(stringResource(R.string.settings_articles))
-        InfoSetting(
-            stringResource(R.string.keep_read),
-            pluralStringResource(R.plurals.days, keep, keep),
-            onClick = { choosingKeep = true },
-            external = false,
-        )
-        InfoSetting(stringResource(R.string.text_size), scaleLabel(scale), onClick = { choosingSize = true }, external = false)
-
-        SettingsHeader(stringResource(R.string.feeds))
         InfoSetting(
             stringResource(R.string.import_opml),
             stringResource(R.string.import_opml_summary),
@@ -148,74 +260,6 @@ class SettingsActivity : TesseraSettingsActivity() {
             onClick = { exporter.launch("feeds.opml") },
             external = false,
         )
-
-        if (choosingSource) {
-            AlertDialog(
-                onDismissRequest = { choosingSource = false },
-                title = { Text(stringResource(R.string.settings_source)) },
-                text = {
-                    Column {
-                        RadioSetting(stringResource(R.string.source_yarr), selected = s is Source.Yarr, onSelect = {
-                            choosingSource = false
-                            signingIn = true
-                        })
-                        RadioSetting(stringResource(R.string.source_phone), selected = s == Source.Phone, onSelect = {
-                            choosingSource = false
-                            if (s != Source.Phone) confirmPhone = true
-                        })
-                    }
-                },
-                confirmButton = {},
-                dismissButton = { TextButton(onClick = { choosingSource = false }) { Text(stringResource(R.string.cancel)) } },
-            )
-        }
-        if (signingIn) {
-            YarrSignInDialog(
-                signIn = { subscriptions.useYarr(it.address, it.username, it.password) },
-                onDismiss = { signingIn = false },
-                onSignedIn = {
-                    signingIn = false
-                    source = store.source
-                },
-            )
-        }
-        if (confirmPhone) {
-            AlertDialog(
-                onDismissRequest = { confirmPhone = false },
-                title = { Text(stringResource(R.string.use_phone_title)) },
-                text = { Text(stringResource(R.string.use_phone_text)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        confirmPhone = false
-                        subscriptions.usePhone()
-                        source = store.source
-                    }) { Text(stringResource(R.string.use_phone)) }
-                },
-                dismissButton = { TextButton(onClick = { confirmPhone = false }) { Text(stringResource(R.string.cancel)) } },
-            )
-        }
-        if (choosingKeep) {
-            Choose(stringResource(R.string.keep_read), onDismiss = { choosingKeep = false }) {
-                FeedsPrefs.KEEP_CHOICES.forEach { d ->
-                    RadioSetting(pluralStringResource(R.plurals.days, d, d), selected = keep == d, onSelect = {
-                        keep = d
-                        FeedsPrefs.setKeepReadDays(context, d)
-                        choosingKeep = false
-                    })
-                }
-            }
-        }
-        if (choosingSize) {
-            Choose(stringResource(R.string.text_size), onDismiss = { choosingSize = false }) {
-                FeedsPrefs.TEXT_SCALES.forEach { f ->
-                    RadioSetting(scaleLabel(f), selected = scale == f, onSelect = {
-                        scale = f
-                        FeedsPrefs.setTextScale(context, f)
-                        choosingSize = false
-                    })
-                }
-            }
-        }
     }
 
     @Composable
@@ -228,19 +272,4 @@ class SettingsActivity : TesseraSettingsActivity() {
                 else -> R.string.text_largest
             },
         )
-
-    @Composable
-    private fun Choose(
-        title: String,
-        onDismiss: () -> Unit,
-        content: @Composable () -> Unit,
-    ) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(title) },
-            text = { Column { content() } },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-        )
-    }
 }
