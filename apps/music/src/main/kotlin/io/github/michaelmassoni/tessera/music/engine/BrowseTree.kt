@@ -121,19 +121,19 @@ class BrowseTree(
 
                 context.startsWith("album:") -> {
                     albums.firstOrNull { it.id.toString() == context.removePrefix("album:") }?.let {
-                        it.songs to PlayingFrom(PlayingFrom.Kind.Album, it.title)
+                        it.songs to PlayingFrom(PlayingFrom.Kind.Album, it.title, it.id)
                     } ?: return null
                 }
 
                 context.startsWith("artist:") -> {
                     artists.firstOrNull { it.id.toString() == context.removePrefix("artist:") }?.let {
-                        it.songs to PlayingFrom(PlayingFrom.Kind.Artist, it.name)
+                        it.songs to PlayingFrom(PlayingFrom.Kind.Artist, it.name, it.id)
                     } ?: return null
                 }
 
                 context.startsWith("playlist:") -> {
                     playlists.firstOrNull { it.id.toString() == context.removePrefix("playlist:") }?.let {
-                        songsOf(it) to PlayingFrom(PlayingFrom.Kind.Playlist, it.name)
+                        songsOf(it) to PlayingFrom(PlayingFrom.Kind.Playlist, it.name, it.id)
                     } ?: return null
                 }
 
@@ -156,11 +156,11 @@ class BrowseTree(
         albums
             .firstOrNull {
                 Library.normalize(it.title) == q
-            }?.let { return Queue(it.songs, 0, false, PlayingFrom(PlayingFrom.Kind.Album, it.title)) }
+            }?.let { return Queue(it.songs, 0, false, PlayingFrom(PlayingFrom.Kind.Album, it.title, it.id)) }
         artists
             .firstOrNull {
                 Library.normalize(it.name) == q
-            }?.let { return Queue(it.songs, 0, true, PlayingFrom(PlayingFrom.Kind.Artist, it.name)) }
+            }?.let { return Queue(it.songs, 0, true, PlayingFrom(PlayingFrom.Kind.Artist, it.name, it.id)) }
         val songs = Library.search(allSongs, query)
         return if (songs.isEmpty()) null else Queue(songs, 0, false, PlayingFrom(PlayingFrom.Kind.Search, query))
     }

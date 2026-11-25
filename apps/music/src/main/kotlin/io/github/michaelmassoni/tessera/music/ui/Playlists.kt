@@ -157,37 +157,57 @@ internal fun PlaylistScreen(
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
-            SongList(songs, actions, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name), showShuffle = false, onLongClick = { i, s ->
-                options =
-                    i to s
-            }, header = {
-                item(key = "header") {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            pluralStringResource(R.plurals.song_count, songs.size, songs.size),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(
-                                onClick = { actions.play(songs, 0, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name)) },
-                                enabled = songs.isNotEmpty(),
-                            ) {
-                                Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
-                                Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
+            SongList(
+                songs,
+                actions,
+                PlayingFrom(
+                    PlayingFrom.Kind.Playlist,
+                    playlist.name,
+                    playlist.id,
+                ),
+                showShuffle = false,
+                onLongClick = {
+                    i,
+                    s,
+                    ->
+                    options =
+                        i to s
+                },
+                header = {
+                    item(key = "header") {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                pluralStringResource(R.plurals.song_count, songs.size, songs.size),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Button(
+                                    onClick = {
+                                        actions.play(
+                                            songs,
+                                            0,
+                                            PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name, playlist.id),
+                                        )
+                                    },
+                                    enabled = songs.isNotEmpty(),
+                                ) {
+                                    Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
+                                    Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
+                                }
+                                FilledTonalButton(onClick = {
+                                    actions.shuffle(songs, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name, playlist.id))
+                                }, enabled = songs.isNotEmpty()) {
+                                    Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
+                                    Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 8.dp))
+                                }
                             }
-                            FilledTonalButton(onClick = {
-                                actions.shuffle(songs, PlayingFrom(PlayingFrom.Kind.Playlist, playlist.name))
-                            }, enabled = songs.isNotEmpty()) {
-                                Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
-                                Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 8.dp))
+                            if (songs.isEmpty()) {
+                                Text(stringResource(R.string.empty_playlist), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        }
-                        if (songs.isEmpty()) {
-                            Text(stringResource(R.string.empty_playlist), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                }
-            })
+                },
+            )
         }
     }
     options?.let { (index, song) ->
