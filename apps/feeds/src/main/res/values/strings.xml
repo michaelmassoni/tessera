@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Feeds</string>
+
+    <!-- Drawer and list -->
+    <string name="unread">Unread</string>
+    <string name="starred">Starred</string>
+    <string name="all_articles">All articles</string>
+    <string name="feeds">Feeds</string>
+    <string name="manage_feeds">Manage feeds</string>
+    <string name="settings">Settings</string>
+    <string name="expand">Show feeds</string>
+    <string name="collapse">Hide feeds</string>
+    <string name="open_drawer">Open navigation</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Search articles</string>
+    <string name="close_search">Close search</string>
+    <string name="more">More options</string>
+    <string name="mark_all_read">Mark all as read</string>
+    <string name="refresh">Refresh</string>
+    <string name="undo">Undo</string>
+    <string name="mark_read">Mark as read</string>
+    <string name="mark_unread">Mark as unread</string>
+    <string name="star">Star</string>
+    <string name="unstar">Remove star</string>
+    <string name="pick_article">Choose an article to read</string>
+    <string name="all_caught_up">You\'re all caught up</string>
+    <string name="empty_no_feeds">No feeds yet. Add one in Manage feeds, or import an OPML file in Settings.</string>
+    <string name="empty_starred">Star articles to keep them here</string>
+    <string name="empty_articles">No articles</string>
+    <string name="empty_search">No articles match</string>
+    <plurals name="marked_read">
+        <item quantity="one">%d article marked as read</item>
+        <item quantity="other">%d articles marked as read</item>
+    </plurals>
+    <string name="sync_failed">Couldn\'t refresh</string>
+    <string name="sync_failed_login">Couldn\'t sign in to the server. Check the username and password in Settings.</string>
+    <string name="sync_failed_unreachable">Couldn\'t reach the server</string>
+
+    <!-- Article -->
+    <string name="back">Back</string>
+    <string name="share">Share</string>
+    <string name="open_in_browser">Open in browser</string>
+    <string name="full_article">Full article</string>
+    <string name="feed_text">Show the feed\'s text</string>
+    <string name="full_article_failed">Couldn\'t load the full article</string>
+    <string name="open_embed">Open %1$s</string>
+    <string name="no_browser">No app can open this link</string>
+
+    <!-- Manage feeds -->
+    <string name="add_feed">Add feed</string>
+    <string name="add">Add</string>
+    <string name="choose_feed">Choose a feed</string>
+    <string name="feed_address">Feed or website address</string>
+    <string name="feed_address_hint">example.com/feed</string>
+    <string name="add_not_found">No feed found at that address</string>
+    <string name="add_unreachable">Couldn\'t reach that address</string>
+    <string name="new_folder">New folder</string>
+    <string name="create">Create</string>
+    <string name="rename">Rename</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_folder">No folder</string>
+    <string name="move_to_folder">Move to folder</string>
+    <string name="notify_turn_on">Notify on new articles</string>
+    <string name="notify_turn_off">Stop notifications</string>
+    <string name="notify_on">Notifications on</string>
+    <string name="unsubscribe">Unsubscribe</string>
+    <string name="unsubscribe_title">Unsubscribe from %1$s?</string>
+    <string name="unsubscribe_text">Its articles are removed, including starred ones.</string>
+    <string name="delete_folder_title">Delete %1$s?</string>
+    <string name="delete_folder_text">Its feeds stay, outside any folder.</string>
+    <string name="feed_options">Options for %1$s</string>
+    <string name="folder_options">Options for %1$s</string>
+    <string name="feed_error">Last refresh failed: %1$s</string>
+    <string name="server_unreachable">Couldn\'t reach the server. Try again when it\'s online.</string>
+
+    <!-- Source and sign-in -->
+    <string name="source_yarr">yarr server</string>
+    <string name="source_yarr_text">Sync with your own yarr: read and starred articles stay in step</string>
+    <string name="source_yarr_user">%1$s on %2$s</string>
+    <string name="source_phone">On this phone</string>
+    <string name="source_phone_text">This phone fetches your feeds itself</string>
+    <string name="source_phone_summary">This phone fetches the feeds</string>
+    <string name="connect_yarr">Connect to yarr</string>
+    <string name="connect_yarr_text">Enter your yarr server\'s address. If it asks for a login (yarr\'s -auth), enter that too.</string>
+    <string name="connect">Connect</string>
+    <string name="server_address">Server address</string>
+    <string name="server_address_hint">yarr.example.com</string>
+    <string name="username">Username</string>
+    <string name="username_hint">Leave empty if your server has no login</string>
+    <string name="password">Password</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="problem_bad_address">That isn\'t a web address</string>
+    <string name="problem_insecure">Use https://, or a private network or Tailscale address for http://</string>
+    <string name="problem_unreachable">Couldn\'t reach the server. Check the address and your connection.</string>
+    <string name="problem_wrong_login">The server didn\'t accept that username and password</string>
+    <string name="problem_needs_login">This server needs a username and password</string>
+    <string name="problem_not_yarr">That address doesn\'t look like a yarr server</string>
+    <string name="problem_other">Something went wrong. Try again.</string>
+    <string name="use_phone">Use this phone</string>
+    <string name="use_phone_title">Fetch feeds on this phone?</string>
+    <string name="use_phone_text">Your feeds and folders stay, but articles from the server are removed from this phone. Read and starred articles stop syncing.</string>
+
+    <!-- Setup -->
+    <string name="setup_source_title">Where are your feeds?</string>
+    <string name="setup_source_text">Feeds can sync with a yarr server, or fetch feeds on this phone.</string>
+    <string name="setup_phone_text">Import your feeds from an OPML file (yarr, and most readers, can export one), or start with none and add feeds later.</string>
+    <string name="start_empty">Start with no feeds</string>
+    <string name="next">Next</string>
+    <string name="setup_notifications_title">New articles</string>
+    <string name="setup_notifications_text">Feeds can let you know about new articles from the feeds you choose.</string>
+
+    <!-- Settings -->
+    <string name="settings_source">Source</string>
+    <string name="settings_articles">Articles</string>
+    <string name="keep_read">Keep read articles for</string>
+    <plurals name="days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <string name="text_size">Article text size</string>
+    <string name="text_small">Small</string>
+    <string name="text_default">Default</string>
+    <string name="text_large">Large</string>
+    <string name="text_largest">Largest</string>
+    <string name="import_opml">Import OPML</string>
+    <string name="import_opml_summary">Add the feeds from another reader\'s export</string>
+    <string name="export_opml">Export OPML</string>
+    <string name="export_opml_summary">Save your feeds to a file</string>
+    <string name="import_failed">That file isn\'t an OPML list of feeds</string>
+    <string name="export_failed">Couldn\'t save the file</string>
+    <plurals name="imported">
+        <item quantity="one">%d feed added</item>
+        <item quantity="other">%d feeds added</item>
+    </plurals>
+
+    <!-- Notifications and widget -->
+    <string name="channel_new">New articles</string>
+    <string name="channel_new_description">New articles from the feeds you turn notifications on for</string>
+    <plurals name="new_articles">
+        <item quantity="one">%d new article</item>
+        <item quantity="other">%d new articles</item>
+    </plurals>
+    <string name="widget_name">Latest articles</string>
+    <string name="widget_description">Your newest unread articles</string>
+    <string name="widget_title_count">Unread · %1$d</string>
+</resources>
