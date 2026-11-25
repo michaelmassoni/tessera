@@ -1,5 +1,13 @@
 package io.github.michaelmassoni.tessera.core.settings
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,14 +16,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -46,6 +57,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
@@ -86,10 +98,10 @@ data class AboutInfo(
 )
 
 /**
- * The settings screen shared by every Tessera app: the app's own sections first, then
- * Appearance, App icon and About. Stateless, so it is previewed and screenshot tested.
+ * The settings screen shared by every Tessera app: a list of categories (the app's own
+ * [categories], then Appearance, Backup and About), each opening a page. Stateless, so it is
+ * previewed and screenshot tested: [category] is the open page's key, or null for the list.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     shared: SharedState,
@@ -98,18 +110,56 @@ fun SettingsScreen(
     customPinned: Boolean,
     about: AboutInfo,
     actions: SettingsActions,
+    category: String?,
+    onOpen: (String) -> Unit,
+    onClose: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
-    appSettings: @Composable ColumnScope.() -> Unit = {},
+    categories: List<SettingsCategory> = emptyList(),
+    importExport: (@Composable ColumnScope.() -> Unit)? = null,
+) {
+    val sharedCategories = sharedCategories(shared, icon, launcherIcon, customPinned, about, actions, importExport)
+    val page = (categories + sharedCategories).firstOrNull { it.key == category }
+    BackHandler(enabled = page != null, onBack = onClose)
+    AnimatedContent(
+        targetState = page,
+        transitionSpec = {
+            val forward = targetState != null
+            val slide = { full: Int -> if (forward) full / 4 else -full / 4 }
+            (slideInHorizontally { slide(it) } + fadeIn()) togetherWith (slideOutHorizontally { -slide(it) } + fadeOut())
+        },
+        contentKey = { it?.key },
+        modifier = modifier,
+        label = "settings",
+    ) { shown ->
+        if (shown == null) {
+            SettingsPage(stringResource(R.string.settings_title), onBack, snackbar) {
+                categories.forEach { CategoryRow(it) { onOpen(it.key) } }
+                if (categories.isNotEmpty()) HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                sharedCategories.forEach { CategoryRow(it) { onOpen(it.key) } }
+            }
+        } else {
+            SettingsPage(shown.title, onClose, snackbar) { shown.content(this) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsPage(
+    title: String,
+    onBack: () -> Unit,
+    snackbar: SnackbarHostState,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = modifier.nestedScroll(scroll.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             LargeTopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.settings_back))
@@ -126,16 +176,84 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 24.dp),
-            ) {
-                appSettings()
-                AppearanceSection(shared, actions)
-                AppIconSection(icon, launcherIcon, customPinned, actions)
-                BackupSection(actions)
-                AboutSection(about, actions)
-            }
+                content = content,
+            )
         }
     }
 }
+
+/** A category on the list: its icon in a tonal circle, title and current values. */
+@Composable
+private fun CategoryRow(
+    category: SettingsCategory,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        onClick = onClick,
+        leadingContent = {
+            Box(
+                Modifier.size(40.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(category.icon),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        },
+        supportingContent = category.summary?.let { { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) } },
+    ) { Text(category.title) }
+}
+
+@Composable
+private fun sharedCategories(
+    shared: SharedState,
+    icon: IconSettings,
+    launcherIcon: LauncherIcon,
+    customPinned: Boolean,
+    about: AboutInfo,
+    actions: SettingsActions,
+    importExport: (@Composable ColumnScope.() -> Unit)?,
+): List<SettingsCategory> =
+    listOf(
+        SettingsCategory(
+            key = SettingsCategory.APPEARANCE,
+            title = stringResource(R.string.settings_appearance),
+            icon = DesignR.drawable.ic_palette,
+            summary =
+                stringResource(
+                    R.string.settings_appearance_summary,
+                    stringResource(shared.theme.mode.label()),
+                    stringResource(icon.style.label()),
+                ),
+        ) {
+            AppearanceSection(shared, actions)
+            AppIconSection(icon, launcherIcon, customPinned, actions)
+        },
+        SettingsCategory(
+            key = SettingsCategory.BACKUP,
+            title = stringResource(if (importExport == null) R.string.settings_backup else R.string.settings_backup_import),
+            icon = DesignR.drawable.ic_settings_backup_restore,
+            summary =
+                stringResource(
+                    if (importExport == null) R.string.settings_backup_summary else R.string.settings_backup_import_summary,
+                ),
+        ) { BackupSection(actions, importExport) },
+        SettingsCategory(
+            key = SettingsCategory.ABOUT,
+            title = stringResource(R.string.settings_about),
+            icon = DesignR.drawable.ic_info,
+            summary = stringResource(R.string.settings_about_summary, about.versionName),
+        ) { AboutSection(about, actions) },
+    )
+
+private fun ThemeMode.label() =
+    when (this) {
+        ThemeMode.System -> R.string.settings_theme_system
+        ThemeMode.Light -> R.string.settings_theme_light
+        ThemeMode.Dark -> R.string.settings_theme_dark
+    }
 
 /** A section heading in the primary colour, like system Settings. */
 @Composable
@@ -222,12 +340,7 @@ private fun AppearanceSection(
 ) {
     Column {
         val theme = shared.theme
-        SettingsHeader(stringResource(R.string.settings_appearance))
-        Text(
-            stringResource(R.string.settings_theme),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        SettingsHeader(stringResource(R.string.settings_theme))
         val modes =
             listOf(
                 Triple(ThemeMode.System, R.string.settings_theme_system, DesignR.drawable.ic_brightness_auto),
@@ -351,9 +464,11 @@ private fun IconStyle.label() =
     }
 
 @Composable
-private fun BackupSection(actions: SettingsActions) {
+private fun BackupSection(
+    actions: SettingsActions,
+    importExport: (@Composable ColumnScope.() -> Unit)?,
+) {
     Column {
-        SettingsHeader(stringResource(R.string.settings_backup))
         InfoSetting(
             stringResource(R.string.backup_this),
             stringResource(R.string.backup_this_summary),
@@ -378,6 +493,10 @@ private fun BackupSection(actions: SettingsActions) {
             onClick = actions::restoreAll,
             external = false,
         )
+        if (importExport != null) {
+            SettingsHeader(stringResource(R.string.settings_import_export))
+            importExport()
+        }
     }
 }
 
@@ -387,7 +506,6 @@ private fun AboutSection(
     actions: SettingsActions,
 ) {
     Column {
-        SettingsHeader(stringResource(R.string.settings_about))
         InfoSetting(stringResource(R.string.settings_version), about.versionName)
         InfoSetting(
             stringResource(R.string.settings_source),
@@ -433,9 +551,21 @@ private val previewIcon =
         darkForeground = android.R.color.holo_blue_light,
     )
 
-@TesseraPreviews
+private val previewCategories =
+    listOf(
+        SettingsCategory("units", "Units", DesignR.drawable.ic_straighten, "°C · km/h · mm") {
+            ChoiceSetting("Temperature", listOf("°C", "°F"), "°C", { it }, {})
+        },
+        SettingsCategory("notifications", "Notifications", DesignR.drawable.ic_notifications, "Morning forecast, rain") {
+            SwitchSetting("An app setting", checked = true, onCheckedChange = {}, summary = "What it does")
+        },
+    )
+
 @Composable
-private fun SettingsScreenPreview() {
+private fun SettingsPreview(
+    category: String?,
+    importExport: (@Composable ColumnScope.() -> Unit)? = null,
+) {
     TesseraTheme(dynamicColor = false) {
         SettingsScreen(
             shared = SharedState(syncAll = true),
@@ -444,13 +574,30 @@ private fun SettingsScreenPreview() {
             customPinned = false,
             about = AboutInfo("0.2.0"),
             actions = PreviewActions,
+            category = category,
+            onOpen = {},
+            onClose = {},
             onBack = {},
-        ) {
-            SettingsHeader("App")
-            SwitchSetting("An app setting", checked = true, onCheckedChange = {}, summary = "What it does")
-        }
+            categories = previewCategories,
+            importExport = importExport,
+        )
     }
 }
+
+@TesseraPreviews
+@Composable
+private fun SettingsScreenPreview() = SettingsPreview(category = null)
+
+@TesseraPreviews
+@Composable
+private fun SettingsAppearancePreview() = SettingsPreview(category = SettingsCategory.APPEARANCE)
+
+@TesseraPreviews
+@Composable
+private fun SettingsBackupPreview() =
+    SettingsPreview(category = SettingsCategory.BACKUP) {
+        InfoSetting("Export subscriptions", "Save your shows as an OPML file", onClick = {}, external = false)
+    }
 
 @Preview(showBackground = true)
 @Composable

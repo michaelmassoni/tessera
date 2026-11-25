@@ -2,8 +2,10 @@
 <resources>
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
+    <string name="settings_cancel">Cancel</string>
 
     <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_summary">%1$s theme · %2$s icon</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
@@ -43,6 +45,7 @@
     <string name="action_cancel">Cancel</string>
 
     <string name="settings_about">About</string>
+    <string name="settings_about_summary">Version %1$s</string>
     <string name="settings_version">Version</string>
     <string name="settings_source">Source code</string>
     <string name="settings_source_summary">github.com/michaelmassoni/tessera</string>
@@ -50,6 +53,10 @@
     <string name="settings_licence_summary">GNU General Public License v3.0</string>
     <string name="settings_no_browser">No app can open web links</string>
     <string name="settings_backup">Backup</string>
+    <string name="settings_backup_summary">Back up and restore your data</string>
+    <string name="settings_backup_import">Backup &amp; import</string>
+    <string name="settings_backup_import_summary">Back up, restore, import and export</string>
+    <string name="settings_import_export">Import &amp; export</string>
     <string name="backup_this">Back up</string>
     <string name="backup_this_summary">Save this app\'s data to a file</string>
     <string name="restore_this">Restore</string>
