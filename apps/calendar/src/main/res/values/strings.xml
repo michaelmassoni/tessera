@@ -154,6 +154,17 @@
     <!-- Sync with a CalDAV server (docs/sync.md) -->
     <string name="account_label">Tessera Calendar</string>
     <string name="settings_sync">Sync</string>
+    <string name="settings_sync_summary_off">Off</string>
+    <string name="settings_sync_summary_manual">%1$s · manually</string>
+    <string name="settings_sync_summary_day">%1$s · once a day</string>
+    <plurals name="settings_sync_summary_minutes">
+        <item quantity="one">%1$s · every minute</item>
+        <item quantity="other">%1$s · every %2$d minutes</item>
+    </plurals>
+    <plurals name="settings_sync_summary_hours">
+        <item quantity="one">%1$s · every hour</item>
+        <item quantity="other">%1$s · every %2$d hours</item>
+    </plurals>
     <string name="sync_with_server">Sync with a server</string>
     <string name="settings_sync_off">Off. Calendars come from the accounts on this phone.</string>
     <string name="settings_sync_needs_access">Open Calendar and allow calendar access first</string>
