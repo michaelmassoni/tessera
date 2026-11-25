@@ -79,9 +79,12 @@ docs/decisions.md dated decision log
   - **Theme:** start each activity with `setTesseraContent { }` from `core:settings`, never
     `setContent { TesseraTheme { } }`. It applies the user's theme and theme sync. A screen
     shown before unlock may use `TesseraAppTheme { }`.
-  - **Settings:** a `SettingsActivity : TesseraSettingsActivity()` that adds the app's own
-    settings. Declare it with an `APPLICATION_PREFERENCES` intent filter and link to it from
-    the app's main screen.
+  - **Settings:** a `SettingsActivity : TesseraSettingsActivity()` that lists the app's own
+    settings as `categories()` (each a short page, before the shared Appearance, Backup and
+    About), with import/export in its own formats in `importExport`. Name categories the same
+    way across apps (Sync, Downloads, Notifications, Units…) and use `ChoiceSetting` for a
+    choice of more than three options. Declare it with an `APPLICATION_PREFERENCES` intent
+    filter and link to it from the app's main screen.
   - **Launcher icon:** `MainActivity` has no LAUNCHER filter. Launching goes through the
     `.LauncherDefault`, `.LauncherLight` and `.LauncherDark` activity-aliases (copy them from an
     existing manifest). Generate the icons with `scripts/launcher-icons.sh <app> <RRGGBB>`.
