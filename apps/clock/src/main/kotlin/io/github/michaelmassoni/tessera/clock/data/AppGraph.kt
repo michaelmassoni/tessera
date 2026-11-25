@@ -5,6 +5,8 @@ import io.github.michaelmassoni.tessera.clock.alarm.Alarm
 import io.github.michaelmassoni.tessera.clock.alarm.AlarmController
 import io.github.michaelmassoni.tessera.clock.ringing.ClockNotifications
 import io.github.michaelmassoni.tessera.clock.ringing.Ringing
+import io.github.michaelmassoni.tessera.clock.sleep.BedtimeController
+import io.github.michaelmassoni.tessera.clock.sleep.BedtimeReminder
 import io.github.michaelmassoni.tessera.clock.stopwatch.Stopwatch
 import io.github.michaelmassoni.tessera.clock.stopwatch.StopwatchController
 import io.github.michaelmassoni.tessera.clock.timer.ClockTimer
@@ -59,6 +61,14 @@ class AppGraph(
             File(storage, "ringing.json"),
             Ringing.serializer().nullable,
             null,
+        )
+
+    /** The bedtime reminder from the sleep calculator, if one is set. */
+    val bedtime =
+        BedtimeController(
+            store = JsonStore(File(storage, "bedtime.json"), BedtimeReminder.serializer().nullable, null),
+            schedule = scheduler,
+            time = time,
         )
 
     /** IANA zone ids of the cities on the world clock tab, in display order. */

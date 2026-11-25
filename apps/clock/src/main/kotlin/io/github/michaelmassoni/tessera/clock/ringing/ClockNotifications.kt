@@ -51,6 +51,11 @@ class ClockNotifications(
                     context.getString(R.string.channel_missed),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ),
+                NotificationChannel(
+                    CHANNEL_BEDTIME,
+                    context.getString(R.string.channel_bedtime),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
             ),
         )
     }
@@ -177,6 +182,26 @@ class ClockNotifications(
                 .addAction(broadcast(R.string.action_dismiss_now, ClockReceiver.ACTION_ALARM_DISMISS_UPCOMING, alarm.id))
                 .build()
         manager.notify(UPCOMING_NOTIFICATION_BASE + alarm.id, notification)
+    }
+
+    /** The sleep calculator's bedtime reminder: "Time for bed", and when to wake up for. */
+    fun showBedtime(reminder: io.github.michaelmassoni.tessera.clock.sleep.BedtimeReminder) {
+        if (!canPost()) return
+        val wake = reminder.wakeMillis?.let { DateFormat.getTimeFormat(context).format(java.util.Date(it)) }
+        val notification =
+            Notification
+                .Builder(context, CHANNEL_BEDTIME)
+                .setSmallIcon(R.drawable.ic_bedtime)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setContentTitle(context.getString(R.string.bedtime_title))
+                .setContentText(
+                    if (wake != null) context.getString(R.string.bedtime_text_wake, wake) else context.getString(R.string.bedtime_text),
+                ).setWhen(reminder.atMillis)
+                .setShowWhen(true)
+                .setAutoCancel(true)
+                .setContentIntent(openTab(MainActivity.TAB_ALARMS))
+                .build()
+        manager.notify(BEDTIME_NOTIFICATION_ID, notification)
     }
 
     /** One ongoing notification per running or paused timer, with a live countdown. */
@@ -314,9 +339,11 @@ class ClockNotifications(
         private val LEGACY_CHANNELS = listOf("timers", "stopwatch")
         const val CHANNEL_MISSED = "missed"
         const val CHANNEL_UPCOMING = "upcoming"
+        const val CHANNEL_BEDTIME = "bedtime"
 
         const val RINGING_NOTIFICATION_ID = 1
         const val STOPWATCH_NOTIFICATION_ID = 2
+        const val BEDTIME_NOTIFICATION_ID = 3
         const val TIMER_NOTIFICATION_BASE = 10_000
         const val MISSED_NOTIFICATION_BASE = 20_000
         const val UPCOMING_NOTIFICATION_BASE = 30_000

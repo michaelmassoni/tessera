@@ -6,6 +6,7 @@ import io.github.michaelmassoni.tessera.clock.alarm.Alarm
 import io.github.michaelmassoni.tessera.clock.alarm.TimeUntil
 import io.github.michaelmassoni.tessera.clock.data.AppGraph
 import io.github.michaelmassoni.tessera.clock.data.ClockSettings
+import io.github.michaelmassoni.tessera.clock.sleep.BedtimeReminder
 import io.github.michaelmassoni.tessera.clock.stopwatch.Stopwatch
 import io.github.michaelmassoni.tessera.clock.timer.ClockTimer
 import kotlinx.coroutines.CoroutineDispatcher
@@ -30,6 +31,10 @@ sealed interface ClockEvent {
         val zoneId: String,
         val index: Int,
     ) : ClockEvent
+
+    data class BedtimeSet(
+        val atMillis: Long,
+    ) : ClockEvent
 }
 
 /**
@@ -44,6 +49,8 @@ class ClockViewModel(
     val timers: StateFlow<List<ClockTimer>> = graph.timers.timers
     val stopwatch: StateFlow<Stopwatch> = graph.stopwatch.stopwatch
     val cities: StateFlow<List<String>> = graph.cities.state
+    val settings: StateFlow<ClockSettings> = graph.settings.state
+    val bedtime: StateFlow<BedtimeReminder?> = graph.bedtime.reminder
     val time = graph.time
 
     private val eventChannel = Channel<ClockEvent>(Channel.BUFFERED)
@@ -106,6 +113,35 @@ class ClockViewModel(
         val trigger = graph.alarms.nextTrigger(graph.alarms.get(alarm.id) ?: return) ?: return
         eventChannel.trySend(ClockEvent.AlarmSet(TimeUntil.between(time.now(), trigger)))
     }
+
+    // ------------------------------------------------------------------ sleep calculator
+
+    /** A one-off alarm for a wake-up time: an existing one-off alarm at that time is switched on instead of duplicated. */
+    fun setWakeAlarm(
+        hour: Int,
+        minute: Int,
+    ) = background {
+        val existing =
+            graph.alarms.alarms.value
+                .firstOrNull { it.hour == hour && it.minute == minute && !it.repeats }
+        val alarm =
+            if (existing == null) {
+                graph.alarms.add(hour, minute)
+            } else {
+                existing.copy(enabled = true).also(graph.alarms::update)
+            }
+        announce(alarm)
+    }
+
+    fun setBedtime(
+        atMillis: Long,
+        wakeMillis: Long?,
+    ) = background {
+        graph.bedtime.set(atMillis, wakeMillis)
+        eventChannel.trySend(ClockEvent.BedtimeSet(atMillis))
+    }
+
+    fun cancelBedtime() = background { graph.bedtime.cancel() }
 
     // ------------------------------------------------------------------ timers
 
