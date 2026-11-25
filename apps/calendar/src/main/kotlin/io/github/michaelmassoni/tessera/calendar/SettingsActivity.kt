@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -27,17 +26,20 @@ import io.github.michaelmassoni.tessera.calendar.sync.CalendarAccounts
 import io.github.michaelmassoni.tessera.calendar.sync.CalendarDavStore
 import io.github.michaelmassoni.tessera.calendar.sync.CalendarSyncWorker
 import io.github.michaelmassoni.tessera.core.dav.CollectionsDialog
+import io.github.michaelmassoni.tessera.core.dav.DavAccount
 import io.github.michaelmassoni.tessera.core.dav.RemoteCollection
 import io.github.michaelmassoni.tessera.core.dav.SignInDialog
+import io.github.michaelmassoni.tessera.core.dav.SyncInterval
 import io.github.michaelmassoni.tessera.core.dav.SyncPrefs
 import io.github.michaelmassoni.tessera.core.dav.SyncSettings
+import io.github.michaelmassoni.tessera.core.settings.ChoiceSetting
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
-import io.github.michaelmassoni.tessera.core.settings.RadioSetting
-import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import kotlinx.coroutines.launch
 import java.net.URI
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -51,16 +53,53 @@ class SettingsActivity : TesseraSettingsActivity() {
         )
 
     @Composable
-    override fun ColumnScope.AppSettings() {
+    override fun categories(): List<SettingsCategory> {
         val context = LocalContext.current
-        val scope = rememberCoroutineScope()
         val store = remember { CalendarDavStore(context) }
         var dav by remember { mutableStateOf(store.account) }
         var prefs by remember { mutableStateOf(SyncPrefs.load(context)) }
+        val access = context.checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        // Signed in, with access to the system database the sync writes to.
+        val a = dav.takeIf { access }
+        return listOf(
+            SettingsCategory(
+                key = SYNC,
+                title = stringResource(R.string.settings_sync),
+                icon = DesignR.drawable.ic_sync,
+                summary =
+                    if (a == null) {
+                        stringResource(R.string.settings_sync_summary_off)
+                    } else {
+                        syncSummary(a.username, prefs.interval)
+                    },
+            ) {
+                SyncPage(
+                    store = store,
+                    access = access,
+                    dav = dav,
+                    onDav = { dav = it },
+                    prefs = prefs,
+                    onPrefs = { prefs = it },
+                )
+            },
+        )
+    }
+
+    /** Sync with a CalDAV server (docs/sync.md), with its dialogs. */
+    @Composable
+    private fun ColumnScope.SyncPage(
+        store: CalendarDavStore,
+        access: Boolean,
+        dav: DavAccount?,
+        onDav: (DavAccount?) -> Unit,
+        prefs: SyncPrefs,
+        onPrefs: (SyncPrefs) -> Unit,
+    ) {
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         var pastDays by remember { mutableIntStateOf(CalendarAccounts.pastDays(context)) }
         var signingIn by rememberSaveable { mutableStateOf(false) }
         var picking by remember { mutableStateOf<List<RemoteCollection>?>(null) }
-        var choosingPast by rememberSaveable { mutableStateOf(false) }
         var signingOut by remember { mutableStateOf(false) }
         val work by remember { WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(CalendarSyncWorker.schedule.soonName) }
             .collectAsStateWithLifecycle(emptyList())
@@ -68,9 +107,6 @@ class SettingsActivity : TesseraSettingsActivity() {
         val alsoDavx5 = stringResource(R.string.sync_also_davx5)
         val alsoOther = stringResource(R.string.sync_also_other)
 
-        SettingsHeader(stringResource(R.string.settings_sync))
-        val a = dav
-        val access = context.checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
         if (!access) {
             // Synced calendars go into the system calendar database, which needs calendar access.
             InfoSetting(
@@ -79,7 +115,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                 onClick = { startActivity(Intent(context, MainActivity::class.java)) },
                 external = false,
             )
-        } else if (a == null) {
+        } else if (dav == null) {
             InfoSetting(
                 stringResource(R.string.sync_with_server),
                 stringResource(R.string.settings_sync_off),
@@ -87,7 +123,10 @@ class SettingsActivity : TesseraSettingsActivity() {
                 external = false,
             )
         } else {
-            InfoSetting(stringResource(R.string.settings_server), stringResource(R.string.settings_server_summary, a.username, a.address))
+            InfoSetting(
+                stringResource(R.string.settings_server),
+                stringResource(R.string.settings_server_summary, dav.username, dav.address),
+            )
             InfoSetting(stringResource(R.string.settings_calendars), stringResource(R.string.settings_calendars_summary), onClick = {
                 scope.launch {
                     picking =
@@ -98,11 +137,21 @@ class SettingsActivity : TesseraSettingsActivity() {
                         }.getOrDefault(emptyList()).withNotes(context, alsoDavx5, alsoOther)
                 }
             }, external = false)
-            InfoSetting(stringResource(R.string.settings_past), pastLabel(pastDays), onClick = { choosingPast = true }, external = false)
+            ChoiceSetting(
+                title = stringResource(R.string.settings_past),
+                options = listOf(30, 90, 180, 365, 0),
+                selected = pastDays,
+                label = { pastLabel(it) },
+                onSelect = { d ->
+                    pastDays = d
+                    CalendarAccounts.setPastDays(context, d)
+                    CalendarSyncWorker.schedule.soon(context, delaySeconds = 0)
+                },
+            )
             SyncSettings(
                 prefs = prefs,
                 onChange = {
-                    prefs = it
+                    onPrefs(it)
                     SyncPrefs.save(context, it)
                     CalendarSyncWorker.schedule.apply(context)
                     CalendarAccounts.applyAutoSync(context)
@@ -127,7 +176,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                 onDismiss = { signingIn = false },
             ) { calendars ->
                 signingIn = false
-                dav = store.account
+                onDav(store.account)
                 picking = calendars.withNotes(context, alsoDavx5, alsoOther)
             }
         }
@@ -147,26 +196,6 @@ class SettingsActivity : TesseraSettingsActivity() {
                 onDismiss = { picking = null },
             )
         }
-        if (choosingPast) {
-            AlertDialog(
-                onDismissRequest = { choosingPast = false },
-                title = { Text(stringResource(R.string.settings_past)) },
-                text = {
-                    Column {
-                        listOf(30, 90, 180, 365, 0).forEach { d ->
-                            RadioSetting(pastLabel(d), selected = pastDays == d, onSelect = {
-                                pastDays = d
-                                CalendarAccounts.setPastDays(context, d)
-                                choosingPast = false
-                                CalendarSyncWorker.schedule.soon(context, delaySeconds = 0)
-                            })
-                        }
-                    }
-                },
-                confirmButton = {},
-                dismissButton = { TextButton(onClick = { choosingPast = false }) { Text(stringResource(R.string.cancel)) } },
-            )
-        }
         if (signingOut) {
             AlertDialog(
                 onDismissRequest = { signingOut = false },
@@ -175,7 +204,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                 confirmButton = {
                     TextButton(onClick = {
                         CalendarAccounts.signOut(context)
-                        dav = null
+                        onDav(null)
                         signingOut = false
                     }) { Text(stringResource(R.string.sign_out)) }
                 },
@@ -184,9 +213,29 @@ class SettingsActivity : TesseraSettingsActivity() {
         }
     }
 
+    /** "michael · every hour": who syncs and how often, under Sync on the settings list. */
+    @Composable
+    private fun syncSummary(
+        user: String,
+        interval: SyncInterval,
+    ): String {
+        val minutes = interval.minutes.toInt()
+        return when {
+            interval == SyncInterval.Manual -> stringResource(R.string.settings_sync_summary_manual, user)
+            interval == SyncInterval.Day -> stringResource(R.string.settings_sync_summary_day, user)
+            minutes < 60 -> pluralStringResource(R.plurals.settings_sync_summary_minutes, minutes, user, minutes)
+            else -> pluralStringResource(R.plurals.settings_sync_summary_hours, minutes / 60, user, minutes / 60)
+        }
+    }
+
     @Composable
     private fun pastLabel(days: Int): String =
         if (days == 0) stringResource(R.string.past_keep_all) else pluralStringResource(R.plurals.past_days, days, days)
+
+    companion object {
+        /** The Sync category's key, to open settings straight on it. */
+        const val SYNC = "sync"
+    }
 }
 
 /** Marks calendars another app (DAVx5) already syncs from the same server. */
