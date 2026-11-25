@@ -18,7 +18,7 @@ private val songs =
     listOf(
         Song(1, "u1", "Northern Lights", "Aurora Bay", 1, "Polar", 10, 241_000, 1001, 2024),
         Song(2, "u2", "Slow Tide", "Aurora Bay", 1, "Polar", 10, 198_000, 1002, 2024),
-        Song(3, "u3", "City at Dawn", "The Night Shift", 2, "Overtime", 20, 305_000, 1001, 2022),
+        Song(3, "u3", "City at Dawn", "The Night Shift", 2, "Overtime", 20, 305_000, 1001, 2022, explicit = true),
         Song(4, "u4", "Paper Planes", "Juniper", 3, "Fold", 30, 187_000, 1001, 2021),
         Song(5, "u5", "Lanterns", "Juniper", 3, "Fold", 30, 222_000, 1002, 2021),
     )
@@ -120,6 +120,7 @@ private fun FullPlayerPreview() {
             onClose = {},
             lyrics = LyricsState.Found(previewLyrics),
             links = NowPlayingLinks(onAlbum = {}, onArtist = {}),
+            explicit = true,
         )
     }
 }

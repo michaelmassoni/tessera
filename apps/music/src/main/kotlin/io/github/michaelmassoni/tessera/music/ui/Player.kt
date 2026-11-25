@@ -191,6 +191,38 @@ fun AlbumArt(
     }
 }
 
+/** The "E" after an explicit song's title. */
+@Composable
+fun ExplicitBadge(
+    modifier: Modifier = Modifier,
+    size: Dp = 16.dp,
+) {
+    Icon(
+        painterResource(R.drawable.ic_explicit),
+        contentDescription = stringResource(R.string.explicit),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.size(size),
+    )
+}
+
+/** A song title with the explicit badge after it; the title gives way (ellipsis) before the badge. */
+@Composable
+fun TitleWithBadge(
+    title: @Composable (Modifier) -> Unit,
+    explicit: Boolean,
+    modifier: Modifier = Modifier,
+    badgeSize: Dp = 16.dp,
+) {
+    if (!explicit) {
+        title(modifier)
+        return
+    }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        title(Modifier.weight(1f, fill = false))
+        ExplicitBadge(size = badgeSize)
+    }
+}
+
 /** The bar above the navigation while something is loaded. */
 @Composable
 fun MiniPlayer(
@@ -270,6 +302,7 @@ fun FullPlayer(
     playlists: List<Playlist> = emptyList(),
     libraryActions: LibraryActions? = null,
     links: NowPlayingLinks = NowPlayingLinks(),
+    explicit: Boolean = false,
 ) {
     var queue by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
@@ -333,7 +366,7 @@ fun FullPlayer(
                     AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = m)
                 }
                 val details: @Composable () -> Unit = {
-                    TitleRow(state, playlists, libraryActions, links, onSave = { saving = true })
+                    TitleRow(state, explicit, playlists, libraryActions, links, onSave = { saving = true })
                     SeekBar(progress, actions)
                     Controls(state, actions)
                     LyricsCard(
@@ -393,6 +426,7 @@ fun FullPlayer(
 @Composable
 private fun TitleRow(
     state: PlaybackState,
+    explicit: Boolean,
     playlists: List<Playlist>,
     libraryActions: LibraryActions?,
     links: NowPlayingLinks,
@@ -400,11 +434,18 @@ private fun TitleRow(
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(
-                state.title,
-                style = MaterialTheme.typography.headlineSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            TitleWithBadge(
+                { m ->
+                    Text(
+                        state.title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = m,
+                    )
+                },
+                explicit,
+                badgeSize = 20.dp,
             )
             val linkStyle = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant))
             val line =

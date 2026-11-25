@@ -25,6 +25,8 @@ data class Song(
     val addedAt: Long = 0,
     /** When the server last saw it played, ms (0 if never or unknown). */
     val playedAt: Long = 0,
+    /** Marked explicit (OpenSubsonic `explicitStatus`). Only servers say; MediaStore has no such field. */
+    val explicit: Boolean = false,
 )
 
 data class Album(

@@ -43,6 +43,7 @@
     <string name="more">More options</string>
     <string name="go_to_album">Go to album</string>
     <string name="go_to_artist">Go to artist</string>
+    <string name="explicit">Explicit</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>

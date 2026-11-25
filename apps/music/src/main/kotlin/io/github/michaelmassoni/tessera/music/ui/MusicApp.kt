@@ -319,6 +319,7 @@ fun MusicApp(
                 lyrics = lyrics,
                 playlists = library.playlists,
                 libraryActions = libraryActions,
+                explicit = library.byId[playback.songId]?.explicit == true,
                 links =
                     NowPlayingLinks(
                         onAlbum =
@@ -616,7 +617,8 @@ internal fun SongList(
         }
         itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->
             val artist = song.artist.ifBlank { stringResource(R.string.unknown_artist) }
-            val description = "${song.title}, $artist, ${formatDuration(song.durationMillis)}"
+            val explicit = if (song.explicit) ", " + stringResource(R.string.explicit) else ""
+            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}"
             ListItem(
                 onClick = { actions.play(songs, i, from) },
                 onLongClick = onLongClick?.let { { it(i, song) } },
@@ -625,7 +627,7 @@ internal fun SongList(
                 supportingContent = { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 trailingContent = { Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium) },
                 modifier = Modifier.padding(horizontal = 8.dp).semantics(mergeDescendants = true) { contentDescription = description },
-            ) { Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            ) { TitleWithBadge({ m -> Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = m) }, song.explicit) }
         }
     }
 }
