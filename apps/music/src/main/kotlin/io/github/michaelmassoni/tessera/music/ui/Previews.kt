@@ -119,7 +119,7 @@ private fun FullPlayerPreview() {
             NoPlayer,
             onClose = {},
             lyrics = LyricsState.Found(previewLyrics),
-            links = NowPlayingLinks(onAlbum = {}, onArtist = {}),
+            links = NowPlayingLinks(onAlbum = {}, onArtist = {}, onSource = {}),
             explicit = true,
         )
     }

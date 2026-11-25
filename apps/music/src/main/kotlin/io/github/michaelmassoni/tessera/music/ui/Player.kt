@@ -283,10 +283,12 @@ private fun PlayPause(
     }
 }
 
-/** Where the full player can take you: the playing song's album and artist pages. */
+/** Where the full player can take you: the playing song's album and artist pages, and where it plays from. */
 class NowPlayingLinks(
     val onAlbum: (() -> Unit)? = null,
     val onArtist: (() -> Unit)? = null,
+    /** "Playing from": the album, artist or playlist the queue came from, or all songs. */
+    val onSource: (() -> Unit)? = null,
 )
 
 /** The full-screen player: one column, or the art beside the rest when the screen is wider than tall. */
@@ -315,7 +317,7 @@ fun FullPlayer(
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { state.from?.let { PlayingFromTitle(it) } },
+                    title = { state.from?.let { PlayingFromTitle(it, links.onSource) } },
                     navigationIcon = {
                         IconButton(onClick = onClose) {
                             Icon(
@@ -489,10 +491,23 @@ private fun TitleRow(
     }
 }
 
-/** "Playing from album" over the album's name. */
+/** "Playing from album" over the album's name; tapping it opens that album (or artist, playlist, songs). */
 @Composable
-private fun PlayingFromTitle(from: PlayingFrom) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun PlayingFromTitle(
+    from: PlayingFrom,
+    onClick: (() -> Unit)?,
+) {
+    // The whole title is the button, a bigger target than the name alone.
+    val tap =
+        if (onClick == null) {
+            Modifier
+        } else {
+            Modifier
+                .clip(MaterialTheme.shapes.medium)
+                .clickable(onClickLabel = stringResource(R.string.open_source), onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 2.dp)
+        }
+    Column(tap, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             stringResource(
                 when (from.kind) {
