@@ -125,5 +125,6 @@ gitignored.
 6. Tasks (added 2026-11-22 at the maintainer's request)
 7. Recorder (added 2026-11-23 at the maintainer's request)
 8. Feeds (added 2026-11-26 at the maintainer's request)
+9. Podcasts (added 2026-11-25 at the maintainer's request)
 
 Out of scope: Keyboard, Launcher and Camera (dropped 2026-11-19, see docs/decisions.md), Maps, cloud Photos and Gmail-style services (no offline equivalent).
