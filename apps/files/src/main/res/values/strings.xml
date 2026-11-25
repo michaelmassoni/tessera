@@ -33,6 +33,8 @@
     <string name="settings_browsing">Browsing</string>
     <string name="settings_show_hidden">Show hidden files</string>
     <string name="settings_show_hidden_summary">Files and folders whose names start with a dot</string>
+    <string name="settings_hidden_shown">Hidden files shown</string>
+    <string name="settings_hidden_not_shown">Hidden files not shown</string>
     <string name="settings_access">All files access</string>
     <string name="settings_access_summary">Change in system settings</string>
     <string name="show_hidden">Show hidden files</string>
