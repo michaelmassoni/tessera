@@ -123,6 +123,7 @@
     <string name="channel_timers">Running timers</string>
     <string name="channel_stopwatch">Stopwatch</string>
     <string name="channel_missed">Missed alarms</string>
+    <string name="channel_bedtime">Bedtime</string>
     <string name="channel_upcoming">Upcoming alarms</string>
     <string name="upcoming_alarm">Upcoming alarm</string>
     <string name="snoozed_alarm">Snoozed alarm</string>
@@ -136,4 +137,38 @@
     <string name="setup_notifications_text">So alarms and timers can ring and show on screen. Without them Android may keep them silent.</string>
     <string name="setup_full_screen_title">Alarms over the lock screen</string>
     <string name="setup_full_screen_text">So a ringing alarm fills the screen, even when the phone is locked.</string>
+    <!-- Sleep calculator -->
+    <string name="sleep_calculator">Sleep calculator</string>
+    <string name="sleep_mode_now">Sleep now</string>
+    <string name="sleep_mode_wake">Wake at</string>
+    <string name="sleep_mode_bed">Bed at</string>
+    <string name="sleep_intro_now">Go to bed now and you\'ll be asleep by %1$s. Wake up at one of these times:</string>
+    <string name="sleep_intro_wake">To wake up at %1$s, go to bed at one of these times:</string>
+    <string name="sleep_intro_bed">Go to bed at %1$s and wake up at one of these times:</string>
+    <string name="sleep_change_time">Change time</string>
+    <string name="sleep_pick_wake">Wake-up time</string>
+    <string name="sleep_pick_bed">Bedtime</string>
+    <string name="sleep_too_late">It\'s too late for 3 full sleep cycles before %1$s.</string>
+    <string name="sleep_recommended">Recommended</string>
+    <string name="sleep_hours">%1$s of sleep</string>
+    <plurals name="sleep_cycles">
+        <item quantity="one">%d cycle</item>
+        <item quantity="other">%d cycles</item>
+    </plurals>
+    <string name="sleep_alarm_on">Alarm on</string>
+    <string name="sleep_set_alarm">Set alarm</string>
+    <string name="sleep_too_far">More than a day away</string>
+    <string name="sleep_footnote">Based on sleep cycles of %1$s, and %2$s to fall asleep. You can change these in Settings.</string>
+    <string name="sleep_remind_me">Remind me at %1$s</string>
+    <string name="sleep_set_alarm_for">Set an alarm for %1$s</string>
+    <string name="sleep_bedtime_title">Bedtime %1$s</string>
+    <string name="sleep_set">Set</string>
+    <string name="sleep_reminder_at">Bedtime reminder at %1$s</string>
+    <string name="bedtime_set_for">Bedtime reminder set for %1$s</string>
+    <string name="bedtime_title">Time for bed</string>
+    <string name="bedtime_text">Go to sleep now to get your full sleep cycles.</string>
+    <string name="bedtime_text_wake">Go to sleep now to wake up at %1$s.</string>
+    <string name="settings_sleep_cycle">Sleep cycle length</string>
+    <string name="settings_fall_asleep">Time to fall asleep</string>
+    <string name="settings_none">None</string>
 </resources>

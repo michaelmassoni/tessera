@@ -425,6 +425,7 @@ fun TimePickerDialog(
     initial: LocalTime,
     onDismiss: () -> Unit,
     onConfirm: (hour: Int, minute: Int) -> Unit,
+    title: Int = R.string.alarm_select_time,
 ) {
     val formatter = rememberClockFormatter()
     val state =
@@ -436,7 +437,7 @@ fun TimePickerDialog(
     var keyboard by rememberSaveable { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.alarm_select_time)) },
+        title = { Text(stringResource(title)) },
         text = {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 if (keyboard) TimeInput(state) else TimePicker(state)

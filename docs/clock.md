@@ -160,10 +160,44 @@ grid (two or more columns).
   redrawn only on `NEXT_ALARM_CLOCK_CHANGED` and `LOCALE_CHANGED`. Colours are the system
   dynamic palette, with a values-night set for dark mode.
 
+## Sleep calculator (0.5)
+
+For waking between sleep cycles rather than in the middle of one, as apps like Sleep Time do.
+
+- **Opening it:** a moon button in the Alarms tab's top bar opens a full-screen page (back
+  closes it).
+- **Modes** (a segmented button):
+  - **Sleep now:** wake-up times if you go to bed now. Follows the clock, minute by minute.
+  - **Wake at:** pick a wake-up time (the next enabled alarm's time by default, else 07:00);
+    shows bedtimes. Bedtimes already past are left out; if none are left, it says so.
+  - **Bed at:** pick a bedtime (23:00 by default); shows wake-up times, with a "Remind me at
+    23:00" button for the bedtime itself.
+- **The maths** (`SleepCycles`, pure Kotlin, unit tested): asleep = bedtime + time to fall
+  asleep; wake = asleep + n × cycle, for n = 3 to 6 (4.5 to 9 hours with 90-minute cycles).
+  Times are instants in the current zone, so a night across a daylight-saving change still gets
+  the real number of hours. A picked time means its next occurrence after now.
+- **Each suggestion** shows the time, the number of cycles and the hours of sleep. 5 and 6
+  cycles are marked Recommended (7.5 to 9 hours, what adults are advised to get).
+- **Tapping a wake-up time** sets a one-off alarm for it (or switches on an existing one-off
+  alarm at that time, rather than adding a duplicate), with the usual "Alarm set for 7 hours
+  30 minutes from now" snackbar. One already on shows a tick. A wake-up time more than a day
+  away (a far-off bedtime) can't be a one-off alarm, so it isn't tappable.
+- **Tapping a bedtime** asks what to set: a bedtime reminder, an alarm for the wake-up time, or
+  both (both ticked, the alarm unticked if it's already on).
+- **Bedtime reminder:** one notification at that time ("Time for bed: go to sleep now to wake
+  up at 06:30"), on its own "Bedtime" channel (default importance, so it makes a sound). One at
+  a time: a new one replaces it. The page shows it with Cancel. It's an exact alarm
+  (`setExactAndAllowWhileIdle`, `RTC_WAKEUP`), kept in `bedtime.json` and rescheduled after a
+  reboot or a clock change; one already past is dropped.
+- **Footnote** on the page: the cycle length and falling-asleep time in use, and that they can
+  be changed in Settings.
+
 ## Settings (overflow menu, then Settings)
 
 - Snooze length: 5, 10, 15 or 20 minutes.
 - Silence after: 5, 10 or 15 minutes, or Never.
+- Sleep calculator: sleep cycle length (80, 90 or 100 minutes; 90 by default) and time to fall
+  asleep (0, 5, 10, 15, 20 or 30 minutes; 15 by default).
 - Permission and status checks, with links to the system settings: exact alarms, full-screen
   intents, notifications, and battery optimization (shown for information only; it isn't
   needed with `setAlarmClock`).
@@ -172,8 +206,8 @@ grid (two or more columns).
 
 | Permission | Why |
 |------------|-----|
-| `USE_EXACT_ALARM` (33+) / `SCHEDULE_EXACT_ALARM` (≤32) | Alarms and timers must fire at an exact time |
-| `POST_NOTIFICATIONS` | Ringing UI, timer countdown, missed alarms |
+| `USE_EXACT_ALARM` (33+) / `SCHEDULE_EXACT_ALARM` (≤32) | Alarms, timers and bedtime reminders must fire at an exact time |
+| `POST_NOTIFICATIONS` | Ringing UI, timer countdown, missed alarms, bedtime reminders |
 | `POST_PROMOTED_NOTIFICATIONS` | Timer and stopwatch as Live Updates (Android 16 QPR1+; normal permission) |
 | `USE_FULL_SCREEN_INTENT` | Show the ringing alarm over the lock screen |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` | Keep sound and vibration going while an alarm or timer rings |

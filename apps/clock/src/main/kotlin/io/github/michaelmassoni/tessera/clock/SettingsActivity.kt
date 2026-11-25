@@ -58,5 +58,30 @@ class SettingsActivity : TesseraSettingsActivity() {
                 )
             }
         }
+        SettingsHeader(stringResource(R.string.settings_sleep_cycle))
+        Column(Modifier.selectableGroup()) {
+            ClockSettings.CYCLE_CHOICES.forEach { minutes ->
+                RadioSetting(
+                    title = pluralStringResource(R.plurals.duration_minutes, minutes, minutes),
+                    selected = settings.sleepCycleMinutes == minutes,
+                    onSelect = { update { it.copy(sleepCycleMinutes = minutes) } },
+                )
+            }
+        }
+        SettingsHeader(stringResource(R.string.settings_fall_asleep))
+        Column(Modifier.selectableGroup()) {
+            ClockSettings.FALL_ASLEEP_CHOICES.forEach { minutes ->
+                RadioSetting(
+                    title =
+                        if (minutes == 0) {
+                            stringResource(R.string.settings_none)
+                        } else {
+                            pluralStringResource(R.plurals.duration_minutes, minutes, minutes)
+                        },
+                    selected = settings.fallAsleepMinutes == minutes,
+                    onSelect = { update { it.copy(fallAsleepMinutes = minutes) } },
+                )
+            }
+        }
     }
 }

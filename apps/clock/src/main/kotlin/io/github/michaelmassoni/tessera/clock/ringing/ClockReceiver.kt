@@ -40,6 +40,11 @@ class ClockReceiver : BroadcastReceiver() {
                 graph.alarms.dismissUpcoming(id)
             }
 
+            ACTION_BEDTIME -> {
+                val reminder = graph.bedtime.onFired() ?: return
+                graph.notifications.showBedtime(reminder)
+            }
+
             ACTION_TIMER_EXPIRED -> {
                 graph.timers.expire(id) ?: return
                 startRinging(context, RingingService.ringTimer(context, id))
@@ -48,6 +53,7 @@ class ClockReceiver : BroadcastReceiver() {
             Intent.ACTION_LOCKED_BOOT_COMPLETED, Intent.ACTION_BOOT_COMPLETED -> {
                 graph.alarms.rescheduleAll()
                 graph.timers.restoreAfterBoot()
+                graph.bedtime.reschedule()
                 // The elapsed clock restarted, so a running stopwatch can't be recovered.
                 if (graph.stopwatch.stopwatch.value.running) graph.stopwatch.reset()
             }
@@ -57,10 +63,12 @@ class ClockReceiver : BroadcastReceiver() {
             -> {
                 graph.alarms.rescheduleAll()
                 graph.timers.rescheduleRunning()
+                graph.bedtime.reschedule()
             }
 
             Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> {
                 graph.alarms.rescheduleAll()
+                graph.bedtime.reschedule()
                 graph.timers.onWallClockChanged()
             }
 
@@ -106,6 +114,7 @@ class ClockReceiver : BroadcastReceiver() {
         const val ACTION_ALARM_FIRED = "io.github.michaelmassoni.tessera.clock.ALARM_FIRED"
         const val ACTION_ALARM_UPCOMING = "io.github.michaelmassoni.tessera.clock.ALARM_UPCOMING"
         const val ACTION_ALARM_DISMISS_UPCOMING = "io.github.michaelmassoni.tessera.clock.ALARM_DISMISS_UPCOMING"
+        const val ACTION_BEDTIME = "io.github.michaelmassoni.tessera.clock.BEDTIME"
         const val ACTION_TIMER_EXPIRED = "io.github.michaelmassoni.tessera.clock.TIMER_EXPIRED"
         const val ACTION_TIMER_PAUSE = "io.github.michaelmassoni.tessera.clock.TIMER_PAUSE"
         const val ACTION_TIMER_RESUME = "io.github.michaelmassoni.tessera.clock.TIMER_RESUME"
