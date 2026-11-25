@@ -13,6 +13,7 @@ import io.github.michaelmassoni.tessera.feeds.engine.FeedData
 import io.github.michaelmassoni.tessera.feeds.engine.Folder
 import io.github.michaelmassoni.tessera.feeds.engine.Opml
 import io.github.michaelmassoni.tessera.feeds.sync.AddResult
+import io.github.michaelmassoni.tessera.feeds.sync.Fetched
 import io.github.michaelmassoni.tessera.feeds.sync.LocalFetcher
 import io.github.michaelmassoni.tessera.feeds.sync.SyncWorker
 import io.github.michaelmassoni.tessera.feeds.sync.YarrClient
@@ -130,7 +131,8 @@ class Subscriptions(
         if (accounts.yarr != null) {
             val remoteFolder = folderId?.let { data.folder(it)?.remoteId }
             return try {
-                when (val r = server { it.addFeed(address.trim(), remoteFolder) }) {
+                val url = LocalFetcher.normalise(address) ?: return Adding.NotFound
+                when (val r = server { it.addFeed(url, remoteFolder) }) {
                     is AddResult.Added -> {
                         SyncWorker.schedule.soon(context, delaySeconds = 0)
                         Adding.Added(YarrMerge.feedId(r.feed.id))
@@ -165,7 +167,7 @@ class Subscriptions(
         }
     }
 
-    private fun addLocal(
+    private suspend fun addLocal(
         found: Discovery.Found,
         folderId: String?,
     ): String {
@@ -173,8 +175,11 @@ class Subscriptions(
             app.store.data.value.feeds
                 .firstOrNull { it.url == found.url }
         if (existing != null) return existing.id
+        // The feed's own title, rather than the page's name for the link ("RSS").
+        val fetched = withContext(Dispatchers.IO) { LocalFetcher().fetch(found.url, null, null) }
+        val title = (fetched as? Fetched.Fresh)?.feed?.title?.ifBlank { null } ?: found.title.ifBlank { found.url }
         val id = UUID.randomUUID().toString()
-        app.store.update { d -> d.copy(feeds = d.feeds + Feed(id, found.title, found.url, folderId = folderId)) }
+        app.store.update { d -> d.copy(feeds = d.feeds + Feed(id, title, found.url, folderId = folderId)) }
         SyncWorker.schedule.soon(context, delaySeconds = 0)
         return id
     }

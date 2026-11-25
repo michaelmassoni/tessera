@@ -111,6 +111,14 @@
       "name": "Tessera Recorder",
       "preferredApkIndex": 0,
       "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Recorder \",\"apkFilterRegEx\":\"^tessera-recorder-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Recorder\"}"
+    },
+    {
+      "id": "io.github.michaelmassoni.tessera.feeds",
+      "url": "https://github.com/michaelmassoni/tessera",
+      "author": "michaelmassoni",
+      "name": "Tessera Feeds",
+      "preferredApkIndex": 0,
+      "additionalSettings": "{\"includePrereleases\":false,\"fallbackToOlderReleases\":true,\"filterReleaseTitlesByRegEx\":\"^Tessera Feeds \",\"apkFilterRegEx\":\"^tessera-feeds-\",\"versionDetection\":true,\"autoApkFilterByArch\":true,\"appName\":\"Tessera Feeds\"}"
     }
   ]
 }

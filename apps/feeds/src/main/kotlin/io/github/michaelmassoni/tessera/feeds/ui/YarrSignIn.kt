@@ -104,12 +104,29 @@ fun YarrSignInForm(
             Text(
                 stringResource(
                     when (problem) {
-                        SignInProblem.BadAddress -> R.string.problem_bad_address
-                        SignInProblem.Insecure -> R.string.problem_insecure
-                        SignInProblem.Unreachable -> R.string.problem_unreachable
-                        SignInProblem.WrongLogin -> R.string.problem_wrong_login
-                        SignInProblem.NotCalDav -> R.string.problem_not_yarr
-                        SignInProblem.Other -> R.string.problem_other
+                        SignInProblem.BadAddress -> {
+                            R.string.problem_bad_address
+                        }
+
+                        SignInProblem.Insecure -> {
+                            R.string.problem_insecure
+                        }
+
+                        SignInProblem.Unreachable -> {
+                            R.string.problem_unreachable
+                        }
+
+                        SignInProblem.WrongLogin -> {
+                            if (fields.username.isBlank()) R.string.problem_needs_login else R.string.problem_wrong_login
+                        }
+
+                        SignInProblem.NotCalDav -> {
+                            R.string.problem_not_yarr
+                        }
+
+                        SignInProblem.Other -> {
+                            R.string.problem_other
+                        }
                     },
                 ),
                 color = MaterialTheme.colorScheme.error,

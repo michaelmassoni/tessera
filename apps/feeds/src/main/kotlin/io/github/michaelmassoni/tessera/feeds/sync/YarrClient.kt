@@ -327,7 +327,15 @@ class YarrClient(
 
     /** The page at [link], reduced to its main text by yarr's readability (`/page`). */
     fun fullArticle(link: String): String {
-        val obj = get<JsonObject>("page", mapOf("url" to link))
+        // yarr answers an empty 200 for pages it won't fetch (internal addresses).
+        val reply = call("GET", url("page", mapOf("url" to link)))
+        if (reply.body.isBlank()) throw SyncException(SyncProblem.Other, "no page")
+        val obj =
+            try {
+                json.parseToJsonElement(reply.body).jsonObject
+            } catch (e: IllegalArgumentException) {
+                throw SyncException(SyncProblem.Other, e.message)
+            }
         val content = (obj["content"] as? JsonPrimitive)?.content.orEmpty()
         if (content.startsWith("error:")) throw SyncException(SyncProblem.Other, content)
         return content

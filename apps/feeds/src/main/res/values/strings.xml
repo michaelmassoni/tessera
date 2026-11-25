@@ -97,6 +97,7 @@
     <string name="problem_insecure">Use https://, or a private network or Tailscale address for http://</string>
     <string name="problem_unreachable">Couldn\'t reach the server. Check the address and your connection.</string>
     <string name="problem_wrong_login">The server didn\'t accept that username and password</string>
+    <string name="problem_needs_login">This server needs a username and password</string>
     <string name="problem_not_yarr">That address doesn\'t look like a yarr server</string>
     <string name="problem_other">Something went wrong. Try again.</string>
     <string name="use_phone">Use this phone</string>

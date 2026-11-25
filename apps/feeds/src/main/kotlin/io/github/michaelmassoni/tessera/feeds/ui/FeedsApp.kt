@@ -116,73 +116,75 @@ fun FeedsApp(
             return@BoxWithConstraints
         }
         val article = openId?.let(state.data::article)
+        val drawer = rememberDrawerState(DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
         val drawerContent: @Composable () -> Unit = {
             Drawer(
                 state,
                 onSelect = {
                     actions.select(it)
                     if (!wide) openId = null
+                    scope.launch { drawer.close() }
                 },
-                onManage = { managing = true },
+                onManage = {
+                    managing = true
+                    scope.launch { drawer.close() }
+                },
                 onSettings = actions::openSettings,
             )
         }
-        if (wide) {
-            PermanentNavigationDrawer(drawerContent = { PermanentDrawerSheet(Modifier.width(300.dp)) { drawerContent() } }) {
-                Row(Modifier.fillMaxSize()) {
-                    ArticleList(
-                        state,
-                        actions,
-                        keep,
-                        onOpen = ::open,
-                        onKeep = { keep = keep + it },
-                        openDrawer = null,
-                        modifier = Modifier.width(LIST_WIDTH),
-                    )
-                    VerticalDivider()
-                    if (article != null) {
-                        ArticleScreen(article, state, actions, onBack = null, modifier = Modifier.weight(1f))
-                    } else {
-                        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.pick_article), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // The drawer stays open beside the panes only when there's room for all three.
+        val permanent = maxWidth >= PERMANENT_DRAWER
+        val openDrawer: (() -> Unit)? = if (permanent) null else ({ scope.launch { drawer.open() } })
+        val panes: @Composable () -> Unit = {
+            when {
+                wide -> {
+                    Row(Modifier.fillMaxSize()) {
+                        ArticleList(
+                            state,
+                            actions,
+                            keep,
+                            onOpen = ::open,
+                            onKeep = { keep = keep + it },
+                            openDrawer = openDrawer,
+                            modifier = Modifier.width(LIST_WIDTH),
+                        )
+                        VerticalDivider()
+                        if (article != null) {
+                            ArticleScreen(article, state, actions, onBack = null, modifier = Modifier.weight(1f))
+                        } else {
+                            Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                                Text(stringResource(R.string.pick_article), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
-            }
-        } else {
-            val drawer = rememberDrawerState(DrawerValue.Closed)
-            val scope = rememberCoroutineScope()
-            ModalNavigationDrawer(
-                drawerState = drawer,
-                gesturesEnabled = article == null,
-                drawerContent = {
-                    ModalDrawerSheet {
-                        drawerContent()
-                    }
-                },
-            ) {
-                if (article != null) {
+
+                article != null -> {
                     BackHandler { openId = null }
                     ArticleScreen(article, state, actions, onBack = { openId = null })
-                } else {
-                    BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
-                    ArticleList(
-                        state,
-                        actions,
-                        keep,
-                        onOpen = ::open,
-                        onKeep = { keep = keep + it },
-                        openDrawer = { scope.launch { drawer.open() } },
-                    )
+                }
+
+                else -> {
+                    ArticleList(state, actions, keep, onOpen = ::open, onKeep = { keep = keep + it }, openDrawer = openDrawer)
                 }
             }
-            // A choice in the drawer closes it.
-            LaunchedEffect(state.selection) { drawer.close() }
+        }
+        if (permanent) {
+            PermanentNavigationDrawer(drawerContent = { PermanentDrawerSheet(Modifier.width(300.dp)) { drawerContent() } }) { panes() }
+        } else {
+            ModalNavigationDrawer(
+                drawerState = drawer,
+                gesturesEnabled = wide || article == null,
+                drawerContent = { ModalDrawerSheet { drawerContent() } },
+            ) { panes() }
+            BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
         }
     }
 }
 
 private val WIDE = 840.dp
+private val PERMANENT_DRAWER = 1200.dp
 private val LIST_WIDTH = 400.dp
 
 @Composable
@@ -222,17 +224,19 @@ private fun Drawer(
             val feeds = data.feeds.filter { it.folderId == folder.id }.sortedBy { it.title.lowercase() }
             NavigationDrawerItem(
                 label = { Text(folder.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                icon = {
-                    IconButton(onClick = { expanded = if (open) expanded - folder.id else expanded + folder.id }) {
-                        Icon(
-                            painterResource(if (open) DesignR.drawable.ic_expand_less else DesignR.drawable.ic_expand_more),
-                            contentDescription = stringResource(if (open) R.string.collapse else R.string.expand),
-                        )
-                    }
-                },
+                icon = { Icon(painterResource(DesignR.drawable.ic_folder), contentDescription = null) },
                 badge = {
-                    val n = Library.unreadInFolder(data, folder.id, byFeed)
-                    if (n > 0) Text(n.toString())
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val n = Library.unreadInFolder(data, folder.id, byFeed)
+                        if (n > 0) Text(n.toString())
+                        // Shows the folder's feeds under it, without choosing the folder.
+                        IconButton(onClick = { expanded = if (open) expanded - folder.id else expanded + folder.id }) {
+                            Icon(
+                                painterResource(if (open) DesignR.drawable.ic_expand_less else DesignR.drawable.ic_expand_more),
+                                contentDescription = stringResource(if (open) R.string.collapse else R.string.expand),
+                            )
+                        }
+                    }
                 },
                 selected = state.selection == Selection.InFolder(folder.id),
                 onClick = { onSelect(Selection.InFolder(folder.id)) },

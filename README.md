@@ -5,12 +5,12 @@
 Tessera
 ===
 
-[![14 apps][apps badge]](#the-apps)
+[![15 apps][apps badge]](#the-apps)
 [![Android 12+][android badge]][releases]
 [![Built with Kotlin][kotlin badge]][kotlin]
 [![License: GPL-3.0][license badge]][license]
 
-Free, open-source replacements for the apps that come with your phone. Fourteen apps that look and feel
+Free, open-source replacements for the apps that come with your phone. Fifteen apps that look and feel
 first-party on current Android, with no ads, no tracking and no Google Play Services.
 
 [<img src="docs/badges/badge_obtainium.png" alt="Get it on Obtainium" height="48">](#install)
@@ -30,7 +30,8 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 - **Private by design.** No ads, trackers, analytics or crash reporters, and no internet access
   unless an app needs it. Weather (Bureau of Meteorology in Australia, Open-Meteo elsewhere) and
   Sports (scores from ESPN) fetch public data with no account or key. Music, Tasks, Calendar and
-  Contacts talk only to a server you add yourself (Subsonic, CalDAV or CardDAV), and Music looks up
+  Contacts talk only to a server you add yourself (Subsonic, CalDAV or CardDAV), Feeds fetches only
+  the feeds you subscribe to (or syncs with your own yarr server), and Music looks up
   lyrics only if you turn that on. Nothing about you is sent anywhere else.
 - **Works on de-Googled phones.** Nothing depends on Google Play Services, so the apps work the same
   on GrapheneOS, LineageOS or a stock phone.
@@ -55,6 +56,7 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 | <img src="docs/icons/sports.svg" width="48" alt=""/> | **Sports**<br/>Your teams' scores, fixtures and standings, team pages, a spoiler-free mode, a widget, and a live score on the lock screen while they play. | [![sports][v sports]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Sports to Obtainium">][obtainium sports] |
 | <img src="docs/icons/tasks.svg" width="48" alt=""/> | **Tasks**<br/>Lists, repeating tasks with on-time reminders, a home-screen widget you can set up, CalDAV sync with your own server. | [![tasks][v tasks]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Tasks to Obtainium">][obtainium tasks] |
 | <img src="docs/icons/recorder.svg" width="48" alt=""/> | **Recorder**<br/>Voice recordings with a live waveform, recording in the background, a Quick Settings tile, playback at any speed. | [![recorder][v recorder]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Recorder to Obtainium">][obtainium recorder] |
+| <img src="docs/icons/feeds.svg" width="48" alt=""/> | **Feeds**<br/>An RSS and Atom reader that syncs with your own yarr server or fetches feeds on the phone, with OPML import, notifications per feed and a widget. | [![feeds][v feeds]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Feeds to Obtainium">][obtainium feeds] |
 
 Each app has a short spec in [docs/](docs) describing what it does and why it asks for each
 permission.
@@ -82,6 +84,7 @@ permission.
 <td align="center"><img src="docs/screenshots/sports-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/sports-dark.png#gh-dark-mode-only" width="150"/><br/>Sports</td>
 <td align="center"><img src="docs/screenshots/tasks-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/tasks-dark.png#gh-dark-mode-only" width="150"/><br/>Tasks</td>
 <td align="center"><img src="docs/screenshots/recorder-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/recorder-dark.png#gh-dark-mode-only" width="150"/><br/>Recorder</td>
+<td align="center"><img src="docs/screenshots/feeds-light.png#gh-light-mode-only" width="150"/><img src="docs/screenshots/feeds-dark.png#gh-dark-mode-only" width="150"/><br/>Feeds</td>
 </tr>
 </table>
 </div>
@@ -116,6 +119,9 @@ Releases are signed with this certificate (SHA-256), if you want to check:
 - **Music and Tasks** can use your own server: Music any Subsonic-compatible server (Navidrome and
   others), Tasks a CalDAV server with task lists (tested with Radicale, which OpenCloud uses). Plain `http://` is
   only allowed on your home network or Tailscale.
+- **Feeds** syncs with [yarr](https://github.com/nkanaev/yarr) (with or without its login), keeping
+  read and starred articles in step with yarr's web page, or fetches feeds on the phone. Move
+  between readers with OPML import and export.
 - **Lots of GitHub checks in Obtainium?** GitHub limits checks without a token. Add a fine-grained
   personal access token with no permissions (public repositories, read-only) in Obtainium's
   settings under GitHub.
@@ -145,7 +151,7 @@ Bug reports and ideas are welcome in [Issues](../../issues).
 
 [GNU GPL v3.0](LICENSE).
 
-[apps badge]: https://img.shields.io/badge/Apps-14-5B4B8A?style=for-the-badge
+[apps badge]: https://img.shields.io/badge/Apps-15-5B4B8A?style=for-the-badge
 [releases]: https://github.com/michaelmassoni/tessera/releases
 [android badge]: https://img.shields.io/badge/Android-12%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white
 [kotlin badge]: https://img.shields.io/badge/Built%20with-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white
@@ -166,6 +172,7 @@ Bug reports and ideas are welcome in [Issues](../../issues).
 [v sports]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=sports-v*&label=&color=C62828&style=flat-square
 [v tasks]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=tasks-v*&label=&color=558B2F&style=flat-square
 [v recorder]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=recorder-v*&label=&color=AD1457&style=flat-square
+[v feeds]: https://img.shields.io/github/v/release/michaelmassoni/tessera?filter=feeds-v*&label=&color=BF360C&style=flat-square
 [obtainium calculator]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.calculator%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Calculator%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Calculator%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-calculator-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Calculator%5C%22%7D%22%7D
 [obtainium clock]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.clock%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Clock%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Clock%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-clock-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Clock%5C%22%7D%22%7D
 [obtainium files]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.files%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Files%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Files%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-files-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Files%5C%22%7D%22%7D
@@ -180,3 +187,4 @@ Bug reports and ideas are welcome in [Issues](../../issues).
 [obtainium sports]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.sports%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Sports%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Sports%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-sports-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Sports%5C%22%7D%22%7D
 [obtainium tasks]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.tasks%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Tasks%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Tasks%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-tasks-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Tasks%5C%22%7D%22%7D
 [obtainium recorder]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.recorder%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Recorder%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Recorder%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-recorder-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Recorder%5C%22%7D%22%7D
+[obtainium feeds]: https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22io.github.michaelmassoni.tessera.feeds%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fmichaelmassoni%2Ftessera%22%2C%22author%22%3A%22michaelmassoni%22%2C%22name%22%3A%22Tessera%20Feeds%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5ETessera%20Feeds%20%5C%22%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5Etessera-feeds-%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22Tessera%20Feeds%5C%22%7D%22%7D

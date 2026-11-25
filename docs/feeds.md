@@ -135,3 +135,19 @@ and the article list filters and counts.
 The Fever and Google Reader APIs (Miniflux, FreshRSS) behind the same sync interface. Full
 article on this phone (a readability port). Podcasts (Tessera Podcasts does that). JSON Feed.
 Swiping between articles. Per-widget settings.
+
+## Testing against yarr
+
+`YarrServerTest` runs against a real yarr when `YARR_URL` is set, and is skipped otherwise:
+
+```
+mkdir -p /tmp/yarr/www && echo 'tester:sesame-test' > /tmp/yarr/auth
+# /tmp/yarr/www: index.html linking feed.xml (3 items) and atom.xml with <link rel="alternate">
+nix shell nixpkgs#python3 -c python3 -m http.server 7071 --bind 127.0.0.1 --directory /tmp/yarr/www &
+nix run nixpkgs#yarr -- -addr 127.0.0.1:7070 -auth-file /tmp/yarr/auth -db /tmp/yarr/yarr.db &
+YARR_URL=http://127.0.0.1:7070 YARR_USER=tester YARR_PASSWORD=sesame-test YARR_FEED_SITE=http://127.0.0.1:7071 \
+  ./gradlew :apps:feeds:testDebugUnitTest --tests '*YarrServerTest*'
+```
+
+On the emulator, `adb reverse tcp:7070 tcp:7070` (and 7071) and sign in to `http://127.0.0.1:7070`.
+yarr's "Full article" refuses internal addresses, so it can only be tried with real feeds.
