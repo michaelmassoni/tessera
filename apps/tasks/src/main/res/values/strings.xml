@@ -107,6 +107,17 @@
     <string name="setup_pick_title">Which lists?</string>
     <string name="setup_pick_text">These task lists on your server will sync with this phone.</string>
     <string name="settings_sync">Sync</string>
+    <string name="settings_sync_summary_off">Off</string>
+    <string name="settings_sync_summary_manual">%1$s · manually</string>
+    <string name="settings_sync_summary_day">%1$s · once a day</string>
+    <plurals name="settings_sync_summary_minutes">
+        <item quantity="one">%1$s · every minute</item>
+        <item quantity="other">%1$s · every %2$d minutes</item>
+    </plurals>
+    <plurals name="settings_sync_summary_hours">
+        <item quantity="one">%1$s · every hour</item>
+        <item quantity="other">%1$s · every %2$d hours</item>
+    </plurals>
     <string name="settings_sync_off">Off. Tasks stay on this phone.</string>
     <string name="settings_server">Server</string>
     <string name="settings_server_summary">%1$s at %2$s</string>
@@ -121,6 +132,8 @@
     <string name="settings_tasks">Tasks</string>
     <string name="settings_stars">Starred tasks</string>
     <string name="settings_stars_summary">A star on each task and a Starred view. Off hides them; stars already set stay on the tasks.</string>
+    <string name="settings_stars_on">Starred tasks on</string>
+    <string name="settings_stars_off">Starred tasks off</string>
 
     <!-- Widget settings -->
     <string name="widget_settings">Widget settings</string>
