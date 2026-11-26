@@ -1,14 +1,20 @@
 package io.github.michaelmassoni.tessera.music.engine
 
 /**
- * The library as Android Auto (and other media browsers) sees it: a root with Playlists, Albums,
- * Artists and Songs, down to playable songs. A song's id says where it was picked from, so
- * playing it queues the rest of that album, playlist or artist after it. Pure, so it's unit tested.
+ * The library as Android Auto (and other media browsers) sees it, down to playable songs. Auto
+ * shows at most four root entries as tabs, so the root is Recent (recently played and recently
+ * added albums), Playlists (Liked songs and All songs first), Albums and Artists. A song's id says
+ * where it was picked from, so playing it queues the rest of that album, playlist or artist after
+ * it. Pure, so it's unit tested.
  */
 class BrowseTree(
     songs: List<Song>,
     private val playlists: List<Playlist>,
     albumArtists: Boolean,
+    /** This phone's play history (song id to ms), for Recently played. */
+    private val history: Map<Long, Long> = emptyMap(),
+    /** This phone's likes, for Liked songs ([Likes]). */
+    likes: Map<Long, LikeChange> = emptyMap(),
 ) {
     /** One entry in a browse list. */
     data class Node(
@@ -20,22 +26,57 @@ class BrowseTree(
         val song: Song? = null,
         /** Shown as a grid of covers (albums) rather than a list. */
         val grid: Boolean = false,
+        /** The heading this entry is listed under ([RECENTLY_PLAYED], [RECENTLY_ADDED]), blank for none. */
+        val group: String = "",
     )
-
-    enum class Section { Playlists, Albums, Artists, Songs }
 
     private val allSongs = Library.songs(songs)
     private val albums = Library.albums(songs)
     private val artists = if (albumArtists) Library.albumArtists(songs) else Library.artists(songs)
     private val byId = songs.associateBy { it.id }
+    private val liked = Likes.songs(songs, likes)
 
+    /** A song by id, for its like. */
+    fun song(id: Long): Song? = byId[id]
+
+    /** Titles are replaced with localised ones by the service (by id). */
     fun root(): List<Node> =
         listOf(
-            Node(PLAYLISTS, Section.Playlists.name),
-            Node(ALBUMS, Section.Albums.name, grid = true),
-            Node(ARTISTS, Section.Artists.name),
-            Node(SONGS, Section.Songs.name),
+            Node(RECENT, "Recent", grid = true),
+            Node(PLAYLISTS, "Playlists"),
+            Node(ALBUMS, "Albums", grid = true),
+            Node(ARTISTS, "Artists"),
         )
+
+    /** Recently played albums (that have been played), then recently added ones, [RECENT_COUNT] of each. */
+    private fun recent(): List<Node> {
+        // An album can be under both headings: Auto keys a list by id, so the second one gets a suffix.
+        fun node(
+            a: Album,
+            group: String,
+        ) = Node(
+            "$ALBUM${a.id}" +
+                if (group ==
+                    RECENTLY_ADDED
+                ) {
+                    ADDED_SUFFIX
+                } else {
+                    ""
+                },
+            a.title,
+            a.artist,
+            albumId = a.id,
+            grid = true,
+            group = group,
+        )
+        val played =
+            Sorts
+                .albums(albums, SortOrder.RecentlyPlayed, history)
+                .filter { a -> a.songs.any { maxOf(it.playedAt, history[it.id] ?: 0) > 0 } }
+                .take(RECENT_COUNT)
+        val added = Sorts.albums(albums, SortOrder.RecentlyAdded, history).filter { it.addedAt > 0 }.take(RECENT_COUNT)
+        return played.map { node(it, RECENTLY_PLAYED) } + added.map { node(it, RECENTLY_ADDED) }
+    }
 
     /** The entries under [id], or null for an id that isn't a list. */
     fun children(id: String): List<Node>? =
@@ -44,8 +85,19 @@ class BrowseTree(
                 root()
             }
 
+            id == RECENT -> {
+                recent()
+            }
+
             id == PLAYLISTS -> {
-                Playlists.sorted(playlists).map { Node("$PLAYLIST${it.id}", it.name, albumId = cover(it)) }
+                listOf(
+                    Node(LIKED, "Liked songs", albumId = liked.firstOrNull()?.albumId ?: 0),
+                    Node(SONGS, "All songs"),
+                ) + Playlists.sorted(playlists).map { Node("$PLAYLIST${it.id}", it.name, albumId = cover(it)) }
+            }
+
+            id == LIKED -> {
+                withShuffle("liked", liked)
             }
 
             id == ALBUMS -> {
@@ -61,7 +113,7 @@ class BrowseTree(
             }
 
             id.startsWith(ALBUM) -> {
-                albums.firstOrNull { "$ALBUM${it.id}" == id }?.let { playable("album:${it.id}", it.songs) }
+                albums.firstOrNull { "$ALBUM${it.id}" == id.removeSuffix(ADDED_SUFFIX) }?.let { playable("album:${it.id}", it.songs) }
             }
 
             id.startsWith(ARTIST) -> {
@@ -119,6 +171,10 @@ class BrowseTree(
                     allSongs to PlayingFrom(PlayingFrom.Kind.Songs)
                 }
 
+                context == "liked" -> {
+                    liked to PlayingFrom(PlayingFrom.Kind.Playlist, LIKED_TITLE)
+                }
+
                 context.startsWith("album:") -> {
                     albums.firstOrNull { it.id.toString() == context.removePrefix("album:") }?.let {
                         it.songs to PlayingFrom(PlayingFrom.Kind.Album, it.title, it.id)
@@ -170,6 +226,15 @@ class BrowseTree(
 
     companion object {
         const val ROOT = "root"
+        const val RECENT = "recent"
+        const val LIKED = "liked"
+        const val RECENTLY_PLAYED = "recently_played"
+        const val RECENTLY_ADDED = "recently_added"
+        const val RECENT_COUNT = 12
+        private const val ADDED_SUFFIX = "#added"
+
+        /** Replaced with the localised "Liked songs" by the service and the app. */
+        const val LIKED_TITLE = "Liked songs"
         const val PLAYLISTS = "playlists"
         const val ALBUMS = "albums"
         const val ARTISTS = "artists"

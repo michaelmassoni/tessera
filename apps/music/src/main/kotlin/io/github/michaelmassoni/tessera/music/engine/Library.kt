@@ -27,6 +27,8 @@ data class Song(
     val playedAt: Long = 0,
     /** Marked explicit (OpenSubsonic `explicitStatus`). Only servers say; MediaStore has no such field. */
     val explicit: Boolean = false,
+    /** When the server says it was starred (liked), ms; 0 if not starred. See [Likes]. */
+    val starredAt: Long = 0,
 )
 
 data class Album(

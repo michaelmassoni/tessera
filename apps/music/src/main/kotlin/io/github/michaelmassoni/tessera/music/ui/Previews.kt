@@ -126,6 +126,9 @@ private fun FullPlayerPreview() {
             lyrics = LyricsState.Found(previewLyrics),
             links = NowPlayingLinks(onAlbum = {}, onArtist = {}, onSource = {}),
             explicit = true,
+            // The heart (liked) and save to playlist, as with a library.
+            libraryActions = NoLibrary,
+            liked = true,
         )
     }
 }
