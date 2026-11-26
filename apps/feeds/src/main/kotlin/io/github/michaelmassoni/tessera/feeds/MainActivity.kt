@@ -29,6 +29,7 @@ import io.github.michaelmassoni.tessera.feeds.engine.Feed
 import io.github.michaelmassoni.tessera.feeds.engine.Folder
 import io.github.michaelmassoni.tessera.feeds.engine.Library
 import io.github.michaelmassoni.tessera.feeds.engine.Selection
+import io.github.michaelmassoni.tessera.feeds.engine.SwipeAction
 import io.github.michaelmassoni.tessera.feeds.notify.NewArticles
 import io.github.michaelmassoni.tessera.feeds.sync.SyncWorker
 import io.github.michaelmassoni.tessera.feeds.ui.FeedsActions
@@ -42,6 +43,8 @@ class MainActivity : ComponentActivity() {
     private var selection by mutableStateOf<Selection>(Selection.Unread)
     private var openArticle by mutableStateOf<String?>(null)
     private var textScale by mutableFloatStateOf(1f)
+    private var swipeRight by mutableStateOf(SwipeAction.ToggleRead)
+    private var swipeLeft by mutableStateOf(SwipeAction.ToggleStar)
     private var notice by mutableStateOf<String?>(null)
     private val accounts by lazy { AccountStore(this) }
     private val subscriptions by lazy { Subscriptions(this) }
@@ -78,6 +81,8 @@ class MainActivity : ComponentActivity() {
                         notice = notice,
                         icons = icons,
                         textScale = textScale,
+                        swipeRight = swipeRight,
+                        swipeLeft = swipeLeft,
                     ),
                     actions,
                     openArticle = openArticle,
@@ -108,6 +113,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         textScale = FeedsPrefs.textScale(this)
+        swipeRight = FeedsPrefs.swipeRight(this)
+        swipeLeft = FeedsPrefs.swipeLeft(this)
         // Opening the app brings what's new, unless it synced in the last few minutes.
         if (System.currentTimeMillis() - accounts.lastSync > RESYNC_AFTER_MS) SyncWorker.schedule.soon(this, delaySeconds = 0)
     }

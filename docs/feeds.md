@@ -30,7 +30,8 @@ run and changeable in Settings:
   unread count. On expanded widths the drawer is permanent and the article opens beside the list.
   - A row shows the feed's icon and name, how long ago, the title (bold while unread) and the
     first lines of text, with the article's first image as a thumbnail when it has one.
-  - Swipe a row to toggle read. Pull to refresh.
+  - Swipe a row right to mark it read or unread, left to star or unstar it (Settings > Reading >
+    Swipe actions changes either: mark read or unread, star or unstar, or nothing). Pull to refresh.
   - Top bar: search (titles and text of what's on the phone), **Mark all as read** (with Undo),
     Settings, and the drawer button.
 - **Article:** the feed name, title, author and date, then the content shown natively (Compose,

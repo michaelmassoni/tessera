@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.feeds.data
 import android.content.Context
 import androidx.core.content.edit
 import io.github.michaelmassoni.tessera.core.settings.SecretBox
+import io.github.michaelmassoni.tessera.feeds.engine.SwipeAction
 import io.github.michaelmassoni.tessera.feeds.sync.YarrClient
 
 /** Where the feeds come from. */
@@ -91,6 +92,22 @@ object FeedsPrefs {
         context: Context,
         days: Int,
     ) = prefs(context).edit { putInt("keep_read_days", days) }
+
+    /** Swiping an article row right: mark read or unread by default. */
+    fun swipeRight(context: Context) = SwipeAction.of(prefs(context).getString("swipe_right", null), SwipeAction.ToggleRead)
+
+    fun setSwipeRight(
+        context: Context,
+        action: SwipeAction,
+    ) = prefs(context).edit { putString("swipe_right", action.name) }
+
+    /** Swiping an article row left: star or unstar by default. */
+    fun swipeLeft(context: Context) = SwipeAction.of(prefs(context).getString("swipe_left", null), SwipeAction.ToggleStar)
+
+    fun setSwipeLeft(
+        context: Context,
+        action: SwipeAction,
+    ) = prefs(context).edit { putString("swipe_left", action.name) }
 
     /** Article text size, as a factor of the system's (0.85 to 1.4). */
     fun textScale(context: Context) = prefs(context).getFloat("text_scale", 1f)
