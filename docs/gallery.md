@@ -134,9 +134,16 @@ The viewer is always full-screen.
 - Every viewer action has a label.
 - Video controls are reachable without gestures.
 
+## Search (0.6)
+
+The search button on Photos opens a search field (keyboard up). Every word must match something
+about a photo or video: its file name, its album, the month it was taken (name, or three or more
+letters of it), the year, the day of the month, or "photo" / "video". Case and accents are
+ignored; no on-device AI. Results are a flat grid, newest first; tapping one opens the viewer,
+swiping through the results. `MediaSearch` (unit tested).
+
 ## Out of scope for v0.1
 
-- Search.
 - Hidden or locked folders.
 - Map and people views.
 - Slideshows.
