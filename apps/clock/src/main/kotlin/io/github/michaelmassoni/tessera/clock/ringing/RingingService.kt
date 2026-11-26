@@ -101,7 +101,7 @@ class RingingService : Service() {
         }
         acquireWakeLock()
         when (ringing) {
-            is Ringing.Alarm -> player.start(ringing.sound, ringing.vibrate)
+            is Ringing.Alarm -> player.start(ringing.sound, ringing.vibrate, graph.settings.value.crescendoSeconds * 1_000L)
             is Ringing.Timer -> player.start(sound = null, vibrate = true)
         }
         val minutes = graph.settings.value.silenceAfterMinutes
