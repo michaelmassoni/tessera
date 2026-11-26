@@ -139,12 +139,19 @@ A clean SMS and MMS app over the system message database. It works in two modes:
   - Encodes m-send-req (multipart/related with a generated SMIL layout), m-notifyresp-ind and
     m-acknowledge-ind.
 
+## Search and contact photos (0.7)
+
+- **Search** (the list's search) also finds messages anywhere in a conversation, not just the
+  latest: SMS bodies and MMS text containing the words (two characters or more, 250 ms after
+  typing stops). A match shows that message as the row's text.
+- **Contact photos** in the list for one-to-one conversations, read with the names in one
+  Contacts query (thumbnail URIs); groups keep the group icon, unknown numbers the person icon.
+
 ## Out of scope for v0.2
 
 - RCS.
 - Retrying a failed message (delete it and send again).
 - Delivery reports.
-- Searching message text.
 - Spam detection.
 - Choosing the SIM on dual-SIM phones (the system default is used).
 

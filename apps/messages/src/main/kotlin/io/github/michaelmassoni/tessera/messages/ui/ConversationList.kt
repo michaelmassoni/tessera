@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -54,6 +55,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.messages.R
 import io.github.michaelmassoni.tessera.messages.engine.Conversation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** What a conversation needs to be shown or acted on: its title and whether it's a group. */
@@ -86,11 +90,20 @@ internal fun ConversationList(
     BackHandler(selected.isEmpty() && searching) { closeSearch() }
     BackHandler(selected.isEmpty() && showArchived) { showArchived = false }
 
+    // Messages anywhere in a conversation that contain the query (not just its latest), shortly
+    // after typing stops; each conversation shows its newest matching message.
+    val hits by produceState(emptyMap<Long, String>(), query) {
+        value = emptyMap()
+        if (query.trim().length >= 2) {
+            delay(SEARCH_DELAY_MS)
+            value = withContext(Dispatchers.IO) { actions.searchMessages(query) }
+        }
+    }
     val shown =
         state.conversations
             .filter { (it.threadId in state.archived) == showArchived }
             .filter { c ->
-                query.isBlank() || c.snippet.contains(query, true) ||
+                query.isBlank() || c.snippet.contains(query, true) || c.threadId in hits ||
                     c.addresses.any { a -> a.contains(query) || state.names[a]?.contains(query, true) == true }
             }.sortedByDescending { it.threadId in state.pinned }
     // Drop selections that disappeared (deleted, or archived out of this view).
@@ -228,6 +241,8 @@ internal fun ConversationList(
                     ConversationRow(
                         c,
                         title = c.title(state.names, unknown),
+                        photo = c.addresses.singleOrNull()?.let { state.photos[it] },
+                        snippet = if (query.isNotBlank()) hits[c.threadId] ?: c.snippet else c.snippet,
                         time = DateUtils.getRelativeTimeSpanString(context, c.date, false).toString(),
                         pinned = c.threadId in state.pinned,
                         highlighted = isSelected || (selected.isEmpty() && c.threadId == open),
@@ -299,6 +314,8 @@ internal sealed interface ListDialog : java.io.Serializable {
 private fun ConversationRow(
     c: Conversation,
     title: String,
+    photo: String?,
+    snippet: String,
     time: String,
     pinned: Boolean,
     highlighted: Boolean,
@@ -318,7 +335,7 @@ private fun ConversationRow(
     ) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
             Box {
-                Avatar(title, group = c.addresses.size > 1)
+                Avatar(title, group = c.addresses.size > 1, photo = photo)
                 if (selected) {
                     Icon(
                         painterResource(DesignR.drawable.ic_check_circle),
@@ -331,7 +348,7 @@ private fun ConversationRow(
             Column(Modifier.weight(1f).padding(start = 16.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = weight, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
-                    c.snippet,
+                    snippet,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = weight,
@@ -409,3 +426,5 @@ private fun SearchBar(
         },
     )
 }
+
+private const val SEARCH_DELAY_MS = 250L

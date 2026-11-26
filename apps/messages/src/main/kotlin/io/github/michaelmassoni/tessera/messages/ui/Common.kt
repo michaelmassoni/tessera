@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.messages.R
+import io.github.michaelmassoni.tessera.core.design.Avatar as PhotoAvatar
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 @Composable
@@ -27,7 +28,14 @@ internal fun Avatar(
     name: String,
     modifier: Modifier = Modifier,
     group: Boolean = false,
+    // The contact's photo (thumbnail URI), shown instead of the letter.
+    photo: String? = null,
 ) {
+    if (photo != null && !group) {
+        io.github.michaelmassoni.tessera.core.design
+            .Avatar(name, key = name, photoUri = photo, modifier = modifier)
+        return
+    }
     Box(modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
         if (group) {
             Icon(painterResource(DesignR.drawable.ic_group), contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
