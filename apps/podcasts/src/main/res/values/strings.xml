@@ -23,6 +23,8 @@
 
     <!-- Library -->
     <string name="downloaded">Downloaded</string>
+    <!-- Android Auto: the followed shows, in the car's browse list. -->
+    <string name="browse_shows">Shows</string>
     <string name="library_empty_title">No shows yet</string>
     <string name="library_empty_text">Shows you follow appear here</string>
     <string name="downloads_empty_title">No downloads</string>

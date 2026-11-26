@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.podcasts
 
 import android.content.Intent
+import android.os.Bundle
 import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
@@ -16,19 +17,29 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaConstants
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionError
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import io.github.michaelmassoni.tessera.core.cast.Cast
 import io.github.michaelmassoni.tessera.core.cast.CastContent
 import io.github.michaelmassoni.tessera.core.cast.CastMedia
 import io.github.michaelmassoni.tessera.core.cast.RemotePlayer
+import io.github.michaelmassoni.tessera.podcasts.data.ArtProvider
 import io.github.michaelmassoni.tessera.podcasts.data.Downloads
 import io.github.michaelmassoni.tessera.podcasts.data.Net
 import io.github.michaelmassoni.tessera.podcasts.data.Podcasts
+import io.github.michaelmassoni.tessera.podcasts.engine.BrowseTree
 import io.github.michaelmassoni.tessera.podcasts.engine.Episodes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,10 +56,10 @@ import kotlinx.coroutines.launch
  * it's saved to the library whenever it changes, with each episode's position.
  *
  * Controllers send episodes by id only; [Callback.onAddMediaItems] builds the playable item (the
- * downloaded file, or the stream).
+ * downloaded file, or the stream). Android Auto browses the library through [BrowseTree].
  */
-class PlaybackService : MediaSessionService() {
-    private var session: MediaSession? = null
+class PlaybackService : MediaLibraryService() {
+    private var session: MediaLibrarySession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val podcasts by lazy { applicationContext.podcasts }
     private val store get() = podcasts.store
@@ -84,9 +95,8 @@ class PlaybackService : MediaSessionService() {
                 .build()
         player.setPlaybackSpeed(store.library.value.speed)
         session =
-            MediaSession
-                .Builder(this, player)
-                .setCallback(Callback())
+            MediaLibrarySession
+                .Builder(this, player, Callback())
                 .setMediaButtonPreferences(
                     listOf(
                         CommandButton
@@ -194,7 +204,7 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
     /** Stop when the app is swiped away while nothing is playing. */
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -370,14 +380,204 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    /** The library as browsers see it now, once the episodes have loaded. */
+    private suspend fun tree(): BrowseTree {
+        store.loaded.first { it }
+        return BrowseTree(store.library.value, store.episodes.value, System.currentTimeMillis())
+    }
+
+    /** Runs [block] on the service's scope and hands its result to Media3 as a future. */
+    private fun <T : Any> later(block: suspend () -> T): ListenableFuture<T> {
+        val future = SettableFuture.create<T>()
+        scope.launch {
+            try {
+                future.set(block())
+            } catch (e: CancellationException) {
+                future.cancel(false)
+                throw e
+            } catch (e: Exception) {
+                future.setException(e)
+            }
+        }
+        return future
+    }
+
+    private fun sectionTitle(node: BrowseTree.Node): String =
+        when (node.id) {
+            BrowseTree.UP_NEXT -> getString(R.string.up_next)
+            BrowseTree.NEW -> getString(R.string.new_episodes)
+            BrowseTree.SHOWS -> getString(R.string.browse_shows)
+            BrowseTree.DOWNLOADS -> getString(R.string.downloaded)
+            else -> node.title
+        }
+
+    /**
+     * A browse entry as a MediaItem: title, show, cover and how much was heard. The extras are
+     * unstable in Media3 1.x, but they're how Android Auto is told about grids and progress.
+     */
     @OptIn(UnstableApi::class)
-    private inner class Callback : MediaSession.Callback {
+    private fun browseItem(node: BrowseTree.Node): MediaItem {
+        val episode = node.episode
+        val art =
+            when {
+                episode != null && (episode.artworkUrl ?: node.show?.artworkUrl) != null -> ArtProvider.episode(episode.id)
+                node.show?.artworkUrl != null -> ArtProvider.show(node.show.id)
+                else -> null
+            }
+        val extras = Bundle()
+        if (node.grid && !node.playable) {
+            extras.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM)
+        }
+        if (node.playable) {
+            val status =
+                when {
+                    node.progress >= 1f -> MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_FULLY_PLAYED
+                    node.progress > 0f -> MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_PARTIALLY_PLAYED
+                    else -> MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_NOT_PLAYED
+                }
+            extras.putInt(MediaConstants.EXTRAS_KEY_COMPLETION_STATUS, status)
+            if (status == MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_PARTIALLY_PLAYED) {
+                extras.putDouble(MediaConstants.EXTRAS_KEY_COMPLETION_PERCENTAGE, node.progress.toDouble())
+            }
+        }
+        return MediaItem
+            .Builder()
+            .setMediaId(node.id)
+            .setMediaMetadata(
+                MediaMetadata
+                    .Builder()
+                    .setTitle(sectionTitle(node))
+                    .apply { if (node.subtitle.isNotBlank()) setSubtitle(node.subtitle).setArtist(node.subtitle) }
+                    .setArtworkUri(art)
+                    .setIsBrowsable(!node.playable)
+                    .setIsPlayable(node.playable)
+                    .setMediaType(
+                        when {
+                            node.playable -> MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE
+                            node.show != null -> MediaMetadata.MEDIA_TYPE_PODCAST
+                            else -> MediaMetadata.MEDIA_TYPE_FOLDER_PODCASTS
+                        },
+                    ).setExtras(extras)
+                    .build(),
+            ).build()
+    }
+
+    /** Up Next as Media3 items, starting at the first episode's saved position. */
+    @OptIn(UnstableApi::class)
+    private fun upNextItems(ids: List<String>): MediaItemsWithStartPosition {
+        val items = ids.mapNotNull(::mediaItem)
+        if (items.isEmpty()) throw UnsupportedOperationException("Nothing to play")
+        val state = store.library.value.state(items.first().mediaId)
+        return MediaItemsWithStartPosition(items, 0, if (state.played) 0 else state.positionMs)
+    }
+
+    private fun page(
+        nodes: List<BrowseTree.Node>,
+        page: Int,
+        pageSize: Int,
+        params: LibraryParams?,
+    ): LibraryResult<ImmutableList<MediaItem>> {
+        val from = (page.coerceAtLeast(0).toLong() * pageSize).coerceAtMost(nodes.size.toLong()).toInt()
+        return LibraryResult.ofItemList(ImmutableList.copyOf(nodes.drop(from).take(pageSize).map(::browseItem)), params)
+    }
+
+    // Media3 1.x marks parts of the library API unstable (params extras, start positions); they're
+    // the documented way to serve Android Auto.
+    @OptIn(UnstableApi::class)
+    private inner class Callback : MediaLibrarySession.Callback {
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            // Answered at once, never after waiting on the main thread: Android Auto connects as a
+            // legacy browser and Media3 holds the main thread until the root arrives (Music's car
+            // spinner, docs/decisions.md).
+            val root =
+                MediaItem
+                    .Builder()
+                    .setMediaId(BrowseTree.ROOT)
+                    .setMediaMetadata(
+                        MediaMetadata
+                            .Builder()
+                            .setTitle(getString(R.string.app_name))
+                            .setIsBrowsable(true)
+                            .setIsPlayable(false)
+                            .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_PODCASTS)
+                            .build(),
+                    ).build()
+            val extras =
+                Bundle().apply {
+                    putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_PREV, true)
+                    putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_NEXT, true)
+                }
+            return Futures.immediateFuture(LibraryResult.ofItem(root, LibraryParams.Builder().setExtras(extras).build()))
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
+            later {
+                val nodes = tree().children(parentId)
+                if (nodes == null) LibraryResult.ofError(SessionError.ERROR_BAD_VALUE) else page(nodes, page, pageSize, params)
+            }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<Void>> =
+            later {
+                session.notifySearchResultChanged(browser, query, tree().searchNodes(query).size, params)
+                LibraryResult.ofVoid()
+            }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?,
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = later { page(tree().searchNodes(query), page, pageSize, params) }
+
+        /**
+         * An episode picked in a browser, or asked for by voice ("play Radiolab on Podcasts"), plays
+         * now with the rest of Up Next after it. The app's own requests (bare episode ids) go
+         * through unchanged.
+         */
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaItemsWithStartPosition> {
+            val single = mediaItems.singleOrNull()
+            val query = single?.requestMetadata?.searchQuery
+            val picked = single?.mediaId?.takeIf { it.startsWith(BrowseTree.EPISODE) }
+            if (query == null && picked == null) {
+                return super.onSetMediaItems(mediaSession, controller, mediaItems, startIndex, startPositionMs)
+            }
+            return later {
+                val t = tree()
+                val upNext = if (picked != null) t.playNow(picked) else t.search(query.orEmpty())
+                upNextItems(upNext ?: throw UnsupportedOperationException("Nothing matches"))
+            }
+        }
+
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> =
-            Futures.immediateFuture(mediaItems.mapNotNull { mediaItem(it.mediaId) }.toMutableList())
+            Futures.immediateFuture(mediaItems.mapNotNull { mediaItem(BrowseTree.episodeId(it.mediaId)) }.toMutableList())
 
         /** Android's "resume playback" media controls, after the app was closed. */
         override fun onPlaybackResumption(
