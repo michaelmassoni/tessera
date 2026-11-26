@@ -3,7 +3,6 @@ package io.github.michaelmassoni.tessera.music.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,9 +22,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraPasswordField
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
@@ -51,7 +49,6 @@ fun ServerSignInFields(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showPassword by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = fields.address,
@@ -73,24 +70,13 @@ fun ServerSignInFields(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        TesseraPasswordField(
             value = fields.password,
             onValueChange = { onChange(fields.copy(password = it)) },
-            label = { Text(stringResource(R.string.server_password)) },
-            singleLine = true,
+            label = stringResource(R.string.server_password),
             enabled = enabled,
             isError = problem == ServerProblem.WrongLogin,
-            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
-            trailingIcon = {
-                IconButton(onClick = { showPassword = !showPassword }) {
-                    Icon(
-                        painterResource(if (showPassword) DesignR.drawable.ic_visibility_off else DesignR.drawable.ic_visibility),
-                        contentDescription = stringResource(if (showPassword) R.string.hide_password else R.string.show_password),
-                    )
-                }
-            },
+            onDone = onDone,
             modifier = Modifier.fillMaxWidth(),
         )
         if (problem == ServerProblem.LocalNetwork) {

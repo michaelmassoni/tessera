@@ -16,7 +16,12 @@ import org.jlleitschuh.gradle.ktlint.KtlintExtension
 /** Settings shared by every Android module (apps and core libraries). */
 internal fun Project.configureAndroidCommon(commonExtension: CommonExtension) {
     commonExtension.apply {
-        compileSdk { version = release(libs.version("sdk-compile").toInt()) }
+        compileSdk {
+            version =
+                release(libs.version("sdk-compile").toInt()) {
+                    minorApiLevel = libs.version("sdk-compile-minor").toInt()
+                }
+        }
         buildToolsVersion = libs.version("build-tools")
         defaultConfig.minSdk { version = release(libs.version("sdk-min").toInt()) }
 

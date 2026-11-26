@@ -91,8 +91,6 @@
     <string name="username">Username</string>
     <string name="username_hint">Leave empty if your server has no login</string>
     <string name="password">Password</string>
-    <string name="show_password">Show password</string>
-    <string name="hide_password">Hide password</string>
     <string name="problem_bad_address">That isn\'t a web address</string>
     <string name="problem_insecure">Use https://, or a private network or Tailscale address for http://</string>
     <string name="problem_unreachable">Couldn\'t reach the server. Check the address and your connection.</string>

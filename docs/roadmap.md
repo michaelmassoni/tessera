@@ -37,7 +37,7 @@ many. P3 is nice to have.
 | Real-phone pass | Music and Podcasts in Android Auto: ✅ 2026-11-26. Feeds against yarr: ✅ 2026-11-26. Music Cast: ✅. Still to do: Phone call waiting, Bluetooth and proximity; Messages MMS. | Blocks Phone's "experimental" label. |
 | Accessibility audit | Not done | TalkBack, 200% font, touch targets, app by app. Scriptable on the emulator. |
 | material3 | ✅ 1.5.0 stable (2026-11-26) | Was `1.5.0-rc01`. |
-| Compose 1.13 (BOM 2026.11.01) | Not done | Needs compileSdk 37.1 (toolchain and F-Droid pin) and the state-based text field migration in core:dav, Messages, Notes and Music (the deprecations are errors here). |
+| Compose 1.13 (BOM 2026.11.01) | ✅ 2026-11-26 | compileSdk 37.1; password fields, Messages recipients and Notes checklist rows moved to the state-based text fields. F-Droid recipes need `platforms;android-37.1`. |
 | `androidx.pdf` `1.0.0-beta01` (Files) | Pre-release | Stable when it ships, or accept the beta for Files 1.0 in `decisions.md`. |
 | Final icons | Commissioned | `scripts/launcher-icons.sh` turns each glyph into the Colour, Light, Dark and monochrome icons. |
 | Baseline profiles | None | Biggest remaining performance win (about 20–30% faster cold start). A `:baselineprofile` module with Macrobenchmark; the profile is a checked-in text file, so it suits F-Droid. |

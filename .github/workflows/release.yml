@@ -36,7 +36,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Install Android SDK packages
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "platforms;android-37.1" "build-tools;37.0.0" > /dev/null
 
       # Secrets: TESSERA_KEYSTORE_BASE64 (base64 of the keystore), TESSERA_KEYSTORE_PASSWORD,
       # TESSERA_KEY_ALIAS, TESSERA_KEY_PASSWORD. The keystore exists only on the runner.

@@ -13,7 +13,8 @@
       buildToolsVersion = "37.0.0";
       # imageApi: null = no emulator; otherwise the API level of the AOSP (no Google APIs) image.
       mkSdk = imageApi: pkgs.androidenv.composeAndroidPackages ({
-        platformVersions = [ "37.0" ] ++ pkgs.lib.optional (imageApi != null && imageApi != "37.0") imageApi;
+        # 37.1: compileSdk (Compose 1.13 needs it); 37.0: the emulator image and targetSdk.
+        platformVersions = [ "37.0" "37.1" ] ++ pkgs.lib.optional (imageApi != null && imageApi != "37.0") imageApi;
         buildToolsVersions = [ buildToolsVersion ];
       } // pkgs.lib.optionalAttrs (imageApi != null) {
         includeEmulator = true;

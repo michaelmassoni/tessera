@@ -28,7 +28,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Install Android SDK packages
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "platforms;android-37.1" "build-tools;37.0.0" > /dev/null
 
       - name: Build and check
         # compileReleaseKotlin too: a dependency that only debug builds get by accident (through

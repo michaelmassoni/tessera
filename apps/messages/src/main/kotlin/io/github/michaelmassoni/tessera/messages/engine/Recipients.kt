@@ -35,25 +35,20 @@ object Recipients {
     }
 
     /**
-     * Cursor mapping between [dialable] and its [display]: for each offset in the dialable text,
-     * the offset in the display, and back.
+     * What [display] adds to [dialable] (the spaces, dashes and brackets of the layout), as
+     * (position in the display, character), in order. The field's output transformation inserts
+     * them, so Compose keeps the cursor in the right place. Empty when the display isn't [dialable]
+     * with characters added.
      */
-    fun offsets(
+    fun insertions(
         dialable: String,
         display: String,
-    ): Pair<IntArray, IntArray> {
-        val toDisplay = IntArray(dialable.length + 1)
-        val toDialable = IntArray(display.length + 1)
-        var seen = 0
-        display.forEachIndexed { j, c ->
-            toDialable[j] = seen
-            if (c.isDigit() || c == '+') {
-                if (seen < dialable.length) toDisplay[seen] = j
-                seen++
-            }
+    ): List<Pair<Int, Char>> {
+        val added = mutableListOf<Pair<Int, Char>>()
+        var r = 0
+        display.forEachIndexed { s, c ->
+            if (r < dialable.length && c == dialable[r]) r++ else added += s to c
         }
-        toDialable[display.length] = seen.coerceAtMost(dialable.length)
-        toDisplay[dialable.length] = display.length
-        return toDisplay to toDialable
+        return if (r == dialable.length) added else emptyList()
     }
 }
