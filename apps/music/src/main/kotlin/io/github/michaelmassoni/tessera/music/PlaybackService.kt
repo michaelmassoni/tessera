@@ -41,14 +41,15 @@ import io.github.michaelmassoni.tessera.music.server.ServerPlayback
 import io.github.michaelmassoni.tessera.music.server.ServerStore
 import io.github.michaelmassoni.tessera.music.widget.NowPlaying
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
@@ -275,19 +276,24 @@ class PlaybackService : MediaLibraryService() {
             null
         }
 
-    /** The library as browsers see it, built off the main thread and rebuilt when Android Auto reconnects. */
-    @Volatile private var tree: BrowseTree? = null
+    /**
+     * The library as browsers see it, built off the main thread and rebuilt when Android Auto
+     * reconnects. Touched only on the main thread (the session's callbacks and [scope]).
+     */
+    private var treeLoad: Deferred<BrowseTree>? = null
 
     @Volatile private var serverSource = false
 
-    private suspend fun tree(refresh: Boolean = false): BrowseTree {
-        if (!refresh) tree?.let { return it }
-        return withContext(Dispatchers.IO) {
-            serverSource = ServerStore(applicationContext).source == MusicSource.Server
-            val (songs, playlists) = LibraryLoader.load(applicationContext)
-            BrowseTree(songs, playlists, MusicSettings(applicationContext).albumArtists).also { tree = it }
-        }
-    }
+    /** Starts building the tree again; browsing waits for it. */
+    private fun reloadTree(): Deferred<BrowseTree> =
+        scope
+            .async(Dispatchers.IO) {
+                serverSource = ServerStore(applicationContext).source == MusicSource.Server
+                val (songs, playlists) = LibraryLoader.load(applicationContext)
+                BrowseTree(songs, playlists, MusicSettings(applicationContext).albumArtists)
+            }.also { treeLoad = it }
+
+    private suspend fun tree(): BrowseTree = (treeLoad ?: reloadTree()).await()
 
     /** Runs [block] on the service's scope and hands its result to Media3 as a future. */
     private fun <T : Any> later(block: suspend () -> T): ListenableFuture<T> {
@@ -389,26 +395,28 @@ class PlaybackService : MediaLibraryService() {
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<MediaItem>> =
-            later {
-                // A browser connecting (the car starting) sees the library as it is now.
-                tree(refresh = true)
-                val root =
-                    MediaItem
-                        .Builder()
-                        .setMediaId(BrowseTree.ROOT)
-                        .setMediaMetadata(
-                            MediaMetadata
-                                .Builder()
-                                .setTitle(getString(R.string.app_name))
-                                .setIsBrowsable(true)
-                                .setIsPlayable(false)
-                                .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
-                                .build(),
-                        ).build()
-                val extras = Bundle().apply { putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_PREV, true) }
-                LibraryResult.ofItem(root, LibraryParams.Builder().setExtras(extras).build())
-            }
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            // A browser connecting (the car starting) sees the library as it is now. The root itself
+            // is answered at once: Android Auto connects as a legacy browser, and Media3 then holds
+            // the main thread until the root arrives, so a root that waited for the main thread
+            // (as the tree's loading does) never came and the car showed a spinner for good.
+            reloadTree()
+            val root =
+                MediaItem
+                    .Builder()
+                    .setMediaId(BrowseTree.ROOT)
+                    .setMediaMetadata(
+                        MediaMetadata
+                            .Builder()
+                            .setTitle(getString(R.string.app_name))
+                            .setIsBrowsable(true)
+                            .setIsPlayable(false)
+                            .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                            .build(),
+                    ).build()
+            val extras = Bundle().apply { putBoolean(MediaConstants.EXTRAS_KEY_SLOT_RESERVATION_SEEK_TO_PREV, true) }
+            return Futures.immediateFuture(LibraryResult.ofItem(root, LibraryParams.Builder().setExtras(extras).build()))
+        }
 
         override fun onGetChildren(
             session: MediaLibrarySession,

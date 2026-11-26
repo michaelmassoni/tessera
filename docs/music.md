@@ -276,9 +276,16 @@ library is involved. `PlaybackService` is a Media3 `MediaLibraryService`, so the
 - **Installing outside the Play Store:** Android Auto hides such apps until you allow them: in the
   Android Auto app, tap the version number in Settings ten times to unlock developer settings,
   then turn on "Unknown sources".
-- Checked on the emulator by browsing the service with a Media3 `MediaBrowser` as a car does
-  (sections, grid hint, covers readable by another app, picking a song, voice search, shuffle).
-  Not run in a car or the Desktop Head Unit: Android Auto isn't on the AOSP emulator.
+- **The root is answered at once (0.10.2):** Android Auto connects as a legacy
+  (`android.media.browse`) browser, and Media3 holds the main thread until `onGetLibraryRoot`
+  returns. The root used to wait for the library to load, which resumes on the main thread, so
+  it never came and the car showed a spinner for good. The library now loads in the background
+  and `onGetChildren` waits for it.
+- Checked on the emulator by browsing the service with a Media3 `MediaBrowser` (sections, grid
+  hint, covers readable by another app, picking a song, voice search, shuffle) and, since 0.10.2,
+  with the framework `MediaBrowser` from another app, the path Android Auto takes. A Media3
+  browser alone missed the spinner. Not run in the Desktop Head Unit: Android Auto isn't on the
+  AOSP emulator.
 
 ## Out of scope for v0.1
 
