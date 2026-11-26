@@ -25,7 +25,7 @@ class BrowseTreeTest {
 
     @Test
     fun `root, albums and an album's songs`() {
-        assertEquals(listOf("playlists", "albums", "artists", "songs"), tree.root().map { it.id })
+        assertEquals(listOf("recent", "playlists", "albums", "artists"), tree.root().map { it.id })
         val albums = tree.children(BrowseTree.ALBUMS)!!
         assertEquals(listOf("Northern Lights", "Paper Planes"), albums.map { it.title })
         val tracks = tree.children(albums.first().id)!!
@@ -44,7 +44,7 @@ class BrowseTreeTest {
 
     @Test
     fun `playlists keep their order and offer shuffle`() {
-        val items = tree.children(tree.children(BrowseTree.PLAYLISTS)!!.single().id)!!
+        val items = tree.children("${BrowseTree.PLAYLIST}7")!!
         assertEquals(listOf("Shuffle", "Lanterns", "Slow Tide"), items.map { it.title })
         val q = tree.queueFor(items.first().id)!!
         assertTrue(q.shuffle)
@@ -59,5 +59,56 @@ class BrowseTreeTest {
         assertTrue(tree.search("")!!.shuffle)
         assertNull(tree.search("nothing like this"))
         assertNull(tree.queueFor("album/999"))
+    }
+
+    @Test
+    fun `playlists tab starts with liked songs and all songs`() {
+        assertEquals(listOf("liked", "songs", "playlist/7"), tree.children(BrowseTree.PLAYLISTS)!!.map { it.id })
+        assertEquals(listOf("Shuffle", "Lanterns", "Northern Lights", "Slow Tide"), tree.children(BrowseTree.SONGS)!!.map { it.title })
+        // Nothing liked yet: just a Shuffle-less empty list.
+        assertEquals(emptyList<String>(), tree.children(BrowseTree.LIKED)!!.map { it.id })
+    }
+
+    @Test
+    fun `liked songs, last liked first, play as a queue`() {
+        val starred = songs.map { if (it.id == 3L) it.copy(starredAt = 100) else it }
+        val likes = mapOf(1L to LikeChange(liked = true, at = 200))
+        val t = BrowseTree(starred, emptyList(), albumArtists = true, likes = likes)
+        val items = t.children(BrowseTree.LIKED)!!
+        assertEquals(listOf("Shuffle", "Northern Lights", "Lanterns"), items.map { it.title })
+        val q = t.queueFor(items[2].id)!!
+        assertEquals(listOf(1L, 3L), q.songs.map { it.id })
+        assertEquals(1, q.start)
+        assertEquals(BrowseTree.LIKED_TITLE, q.from.name)
+    }
+
+    @Test
+    fun `recent lists played then added albums under their headings`() {
+        val dated =
+            songs.map {
+                when (it.id) {
+                    1L -> it.copy(addedAt = 50)
+                    3L -> it.copy(addedAt = 90, playedAt = 10)
+                    else -> it
+                }
+            }
+        // Played on this phone more recently than the server's record.
+        val t = BrowseTree(dated, emptyList(), albumArtists = true, history = mapOf(2L to 500L))
+        val recent = t.children(BrowseTree.RECENT)!!
+        assertEquals(
+            listOf(
+                BrowseTree.RECENTLY_PLAYED to "album/10",
+                BrowseTree.RECENTLY_PLAYED to "album/20",
+                BrowseTree.RECENTLY_ADDED to "album/20#added",
+                BrowseTree.RECENTLY_ADDED to "album/10#added",
+            ),
+            recent.map { it.group to it.id },
+        )
+        assertTrue(recent.all { it.grid && !it.playable })
+        // Each opens its album.
+        assertEquals(listOf("Lanterns"), t.children(recent[2].id)!!.map { it.title })
+        assertEquals(recent.size, recent.map { it.id }.toSet().size)
+        // Never played, never dated: nothing to show.
+        assertEquals(emptyList<String>(), tree.children(BrowseTree.RECENT)!!.map { it.id })
     }
 }

@@ -90,6 +90,8 @@ import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.LikeChange
+import io.github.michaelmassoni.tessera.music.engine.Likes
 import io.github.michaelmassoni.tessera.music.engine.Lyrics
 import io.github.michaelmassoni.tessera.music.engine.PageKeys
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
@@ -112,6 +114,8 @@ data class LibraryState(
     val albumArtists: List<Artist> = emptyList(),
     /** When songs were last played on this phone, for "Recently played". */
     val history: Map<Long, Long> = emptyMap(),
+    /** This phone's likes (see [Likes]): with each song's server star, what's liked. */
+    val likes: Map<Long, LikeChange> = emptyMap(),
     /** Songs from a server (an empty library says so). */
     val fromServer: Boolean = false,
     /** Something wrong with the server, shown above the library. */
@@ -177,6 +181,12 @@ interface LibraryActions {
     fun removeSongFromPlaylist(
         id: Long,
         songId: Long,
+    ) {}
+
+    /** The heart: likes or unlikes a song (a star on the server). */
+    fun setLiked(
+        songId: Long,
+        liked: Boolean,
     ) {}
 
     fun openSettings()
@@ -355,6 +365,7 @@ fun MusicApp(
                 playlists = library.playlists,
                 libraryActions = libraryActions,
                 explicit = library.byId[playback.songId]?.explicit == true,
+                liked = library.byId[playback.songId]?.let { Likes.isLiked(it, library.likes) },
                 castButton = { CastButton() },
                 castingTo = castingTo(),
                 links =
