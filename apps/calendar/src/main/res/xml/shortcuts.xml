@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:icon="@drawable/ic_shortcut_new_event"
+        android:shortcutId="new_event"
+        android:shortcutShortLabel="@string/shortcut_new_event">
+        <intent
+            android:action="android.intent.action.INSERT"
+            android:data="content://com.android.calendar/events"
+            android:targetClass="io.github.michaelmassoni.tessera.calendar.MainActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.calendar" />
+    </shortcut>
+</shortcuts>

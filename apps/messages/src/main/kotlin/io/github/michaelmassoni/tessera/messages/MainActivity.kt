@@ -186,6 +186,12 @@ class MainActivity : ComponentActivity() {
             return
         }
         when (intent.action) {
+            // The launcher shortcut: straight to a new message.
+            ACTION_NEW_MESSAGE -> {
+                open = null
+                state = state.copy(composing = true)
+            }
+
             // sms:/smsto:/mms:/mmsto: links open (or start) the conversation, with any text as a draft.
             Intent.ACTION_SENDTO, Intent.ACTION_VIEW -> {
                 val data = intent.data ?: return
@@ -530,6 +536,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_THREAD = "io.github.michaelmassoni.tessera.messages.THREAD"
+        const val ACTION_NEW_MESSAGE = "io.github.michaelmassoni.tessera.messages.NEW_MESSAGE"
         private const val MAX_PICTURES = 5
         private const val RELOAD_DELAY_MS = 300L
 
