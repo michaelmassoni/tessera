@@ -145,7 +145,7 @@ and screenshot tests in light and dark. On Nix, `nix develop` gives you the whol
 
 How the project is organised, and the conventions every app follows, are in
 [CLAUDE.md](CLAUDE.md). Decisions and their reasons are in [docs/decisions.md](docs/decisions.md),
-and what's planned next is in [docs/feature-gaps.md](docs/feature-gaps.md).
+and what's planned next is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Contributing
 
