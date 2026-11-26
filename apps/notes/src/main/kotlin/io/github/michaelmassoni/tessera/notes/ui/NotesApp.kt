@@ -37,8 +37,6 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -50,7 +48,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -70,6 +67,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.notes.EditorState
 import io.github.michaelmassoni.tessera.notes.ListState
 import io.github.michaelmassoni.tessera.notes.NotesEvent
@@ -157,7 +156,11 @@ fun NotesApp(
 
     NoteEvents(events, snackbar, listActions)
 
-    BackHandler(enabled = editor == null && (list.selection.isNotEmpty() || list.search.isNotEmpty() || list.view != NoteView.Notes)) {
+    // Not while the keyboard is up: Back closes it first, as in every other app.
+    val keyboard = keyboardVisible()
+    BackHandler(
+        enabled = editor == null && !keyboard && (list.selection.isNotEmpty() || list.search.isNotEmpty() || list.view != NoteView.Notes),
+    ) {
         when {
             list.selection.isNotEmpty() -> listActions.clearSelection()
             list.search.isNotEmpty() -> listActions.setSearch("")
@@ -378,7 +381,6 @@ private fun ListSearchBar(
     onEmptyTrash: () -> Unit,
 ) {
     val text = rememberTextFieldState(state.search)
-    val searchState = rememberSearchBarState()
     LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect(actions::setSearch) }
     LaunchedEffect(state.search) { if (state.search.isEmpty() && text.text.isNotEmpty()) text.edit { replace(0, length, "") } }
     val placeholder =
@@ -392,28 +394,21 @@ private fun ListSearchBar(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SearchBar(
-            state = searchState,
+        TesseraSearchBar(
+            text = text,
+            placeholder = placeholder,
             modifier = Modifier.weight(1f),
-            inputField = {
-                SearchBarDefaults.InputField(
-                    textFieldState = text,
-                    searchBarState = searchState,
-                    onSearch = {},
-                    placeholder = { Text(placeholder) },
-                    leadingIcon = {
-                        IconButton(onClick = onOpenDrawer) {
-                            Icon(painterResource(DesignR.drawable.ic_menu), contentDescription = stringResource(R.string.open_menu))
-                        }
-                    },
-                    trailingIcon = {
-                        if (text.text.isNotEmpty()) {
-                            IconButton(onClick = { text.edit { replace(0, length, "") } }) {
-                                Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
-                            }
-                        }
-                    },
-                )
+            leadingIcon = {
+                IconButton(onClick = onOpenDrawer) {
+                    Icon(painterResource(DesignR.drawable.ic_menu), contentDescription = stringResource(R.string.open_menu))
+                }
+            },
+            trailingIcon = {
+                if (text.text.isNotEmpty()) {
+                    IconButton(onClick = { text.edit { replace(0, length, "") } }) {
+                        Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
+                    }
+                }
             },
         )
         if (state.view == NoteView.Trash && state.notes.isNotEmpty()) {

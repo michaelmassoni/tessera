@@ -33,14 +33,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -67,6 +64,8 @@ import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.ContactSummary
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import kotlinx.coroutines.flow.Flow
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -142,7 +141,8 @@ fun ContactsApp(
     ContactEvents(events, snackbar)
     BackHandler(enabled = editor != null) { closeEditor() }
     BackHandler(enabled = editor == null && detail != null) { detailActions.back() }
-    BackHandler(enabled = editor == null && detail == null && list.search.isNotEmpty()) { listActions.setSearch("") }
+    // Not while the keyboard is up: Back closes it first, as in every other app.
+    BackHandler(enabled = editor == null && detail == null && list.search.isNotEmpty() && !keyboardVisible()) { listActions.setSearch("") }
 
     // The list (and a contact under its editor) keeps its scroll position while a page is open over
     // it; a closed page's is dropped.
@@ -262,51 +262,43 @@ private fun ListScreen(
         modifier = modifier,
         topBar = {
             val text = rememberTextFieldState(state.search)
-            val searchState = rememberSearchBarState()
             LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect(actions::setSearch) }
             LaunchedEffect(state.search) { if (state.search.isEmpty() && text.text.isNotEmpty()) text.edit { replace(0, length, "") } }
             Row(
                 Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SearchBar(
-                    state = searchState,
+                TesseraSearchBar(
+                    text = text,
+                    placeholder = stringResource(R.string.search_hint),
                     modifier = Modifier.weight(1f),
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            textFieldState = text,
-                            searchBarState = searchState,
-                            onSearch = {},
-                            placeholder = { Text(stringResource(R.string.search_hint)) },
-                            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-                            trailingIcon = {
-                                if (text.text.isNotEmpty()) {
-                                    IconButton(onClick = { text.edit { replace(0, length, "") } }) {
-                                        Icon(
-                                            painterResource(DesignR.drawable.ic_close),
-                                            contentDescription = stringResource(R.string.clear_search),
-                                        )
-                                    }
-                                } else if (!pickMode) {
-                                    Box {
-                                        IconButton(onClick = { menu = true }) {
-                                            Icon(
-                                                painterResource(DesignR.drawable.ic_more_vert),
-                                                contentDescription = stringResource(R.string.action_more),
-                                            )
-                                        }
-                                        ListMenu(
-                                            menu,
-                                            { menu = false },
-                                            actions,
-                                            onChooseAccount = { choosingAccount = true },
-                                            showAccounts =
-                                                state.accounts.size > 1,
-                                        )
-                                    }
+                    leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
+                    trailingIcon = {
+                        if (text.text.isNotEmpty()) {
+                            IconButton(onClick = { text.edit { replace(0, length, "") } }) {
+                                Icon(
+                                    painterResource(DesignR.drawable.ic_close),
+                                    contentDescription = stringResource(R.string.clear_search),
+                                )
+                            }
+                        } else if (!pickMode) {
+                            Box {
+                                IconButton(onClick = { menu = true }) {
+                                    Icon(
+                                        painterResource(DesignR.drawable.ic_more_vert),
+                                        contentDescription = stringResource(R.string.action_more),
+                                    )
                                 }
-                            },
-                        )
+                                ListMenu(
+                                    menu,
+                                    { menu = false },
+                                    actions,
+                                    onChooseAccount = { choosingAccount = true },
+                                    showAccounts =
+                                        state.accounts.size > 1,
+                                )
+                            }
+                        }
                     },
                 )
             }

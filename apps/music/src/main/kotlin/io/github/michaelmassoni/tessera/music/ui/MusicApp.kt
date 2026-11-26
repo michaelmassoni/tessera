@@ -42,8 +42,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,7 +50,6 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -84,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import io.github.michaelmassoni.tessera.core.cast.CastButton
 import io.github.michaelmassoni.tessera.core.cast.castingTo
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
 import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
@@ -545,24 +543,16 @@ private fun LibraryScreen(
     Scaffold(
         topBar = {
             val text = rememberTextFieldState()
-            val searchState = rememberSearchBarState()
             LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect { query = it } }
-            SearchBar(
-                state = searchState,
+            TesseraSearchBar(
+                text = text,
+                placeholder = stringResource(R.string.search_hint),
                 modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
-                inputField = {
-                    SearchBarDefaults.InputField(
-                        textFieldState = text,
-                        searchBarState = searchState,
-                        onSearch = {},
-                        placeholder = { Text(stringResource(R.string.search_hint)) },
-                        leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-                        trailingIcon = {
-                            IconButton(onClick = actions::openSettings) {
-                                Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
-                            }
-                        },
-                    )
+                leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = actions::openSettings) {
+                        Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                    }
                 },
             )
         },

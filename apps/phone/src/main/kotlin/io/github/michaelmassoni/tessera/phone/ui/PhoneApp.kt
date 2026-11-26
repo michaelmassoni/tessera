@@ -44,8 +44,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -53,7 +51,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +75,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.Avatar
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.data.ContactNumber
 import io.github.michaelmassoni.tessera.phone.engine.CallEntry
@@ -217,7 +216,8 @@ private fun PhoneTab(
     val search = rememberTextFieldState()
     // Each list tab keeps its own scroll position when switching tabs.
     val tabs = rememberSaveableStateHolder()
-    BackHandler(enabled = tab == Tab.Contacts && search.text.isNotEmpty()) { search.clearText() }
+    // Not while the keyboard is up: Back closes it first, as in every other app.
+    BackHandler(enabled = tab == Tab.Contacts && search.text.isNotEmpty() && !keyboardVisible()) { search.clearText() }
     Scaffold(
         topBar = {
             if (tab == Tab.Contacts) {
@@ -545,33 +545,25 @@ private fun ContactSearch(
     text: TextFieldState,
     actions: PhoneActions,
 ) {
-    val searchState = rememberSearchBarState()
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SearchBar(
-            state = searchState,
+        TesseraSearchBar(
+            text = text,
+            placeholder = stringResource(R.string.search_contacts),
             modifier = Modifier.weight(1f),
-            inputField = {
-                SearchBarDefaults.InputField(
-                    textFieldState = text,
-                    searchBarState = searchState,
-                    onSearch = {},
-                    placeholder = { Text(stringResource(R.string.search_contacts)) },
-                    leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-                    trailingIcon = {
-                        if (text.text.isNotEmpty()) {
-                            IconButton(onClick = { text.clearText() }) {
-                                Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
-                            }
-                        } else {
-                            IconButton(onClick = actions::openSettings) {
-                                Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
-                            }
-                        }
-                    },
-                )
+            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
+            trailingIcon = {
+                if (text.text.isNotEmpty()) {
+                    IconButton(onClick = { text.clearText() }) {
+                        Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
+                    }
+                } else {
+                    IconButton(onClick = actions::openSettings) {
+                        Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                    }
+                }
             },
         )
     }
