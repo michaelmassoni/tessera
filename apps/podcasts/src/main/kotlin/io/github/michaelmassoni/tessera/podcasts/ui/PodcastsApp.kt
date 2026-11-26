@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import io.github.michaelmassoni.tessera.podcasts.Progress
 import io.github.michaelmassoni.tessera.podcasts.R
+import io.github.michaelmassoni.tessera.podcasts.engine.PageKeys
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 private enum class Tab(
@@ -64,6 +66,20 @@ data class Screen(
     val tab: Int = 0,
     val stack: List<Page> = emptyList(),
 ) {
+    /** The saved-state key of the tab and of each page on it; the last is the one shown. */
+    val keys: List<String>
+        get() =
+            PageKeys.levels(
+                "tab:$tab",
+                stack.map {
+                    when (it) {
+                        is Page.ShowPage -> "show:${it.id}"
+                        is Page.EpisodePage -> "episode:${it.id}"
+                        Page.DownloadsPage -> "downloads"
+                    }
+                },
+            )
+
     companion object {
         val Saver =
             listSaver<Screen, String>(
@@ -104,23 +120,30 @@ fun PodcastsApp(
     search: SearchModel = remember { SearchModel() },
 ) {
     var screen by rememberSaveable(stateSaver = Screen.Saver) { mutableStateOf(initialScreen) }
+    // Each tab and page keeps its scroll position while another is shown; a page closed for good forgets it.
+    val saveable = rememberSaveableStateHolder()
+
+    fun navigate(to: Screen) {
+        PageKeys.closed(screen.keys, to.keys).forEach(saveable::removeState)
+        screen = to
+    }
     var backProgress by remember { mutableFloatStateOf(0f) }
     PredictiveBackHandler(enabled = screen.stack.isNotEmpty()) { events ->
         try {
             events.collect { backProgress = it.progress }
-            screen = screen.copy(stack = screen.stack.dropLast(1))
+            navigate(screen.copy(stack = screen.stack.dropLast(1)))
         } finally {
             backProgress = 0f
         }
     }
 
     fun open(page: Page) {
-        if (screen.stack.lastOrNull() != page) screen = screen.copy(stack = screen.stack + page)
+        if (screen.stack.lastOrNull() != page) navigate(screen.copy(stack = screen.stack + page))
     }
-    val back: () -> Unit = { screen = screen.copy(stack = screen.stack.dropLast(1)) }
+    val back: () -> Unit = { navigate(screen.copy(stack = screen.stack.dropLast(1))) }
     val openShow: (String) -> Unit = { open(Page.ShowPage(it)) }
     val openEpisode: (String) -> Unit = { open(Page.EpisodePage(it)) }
-    val toSearch: () -> Unit = { screen = Screen(Tab.Search.ordinal) }
+    val toSearch: () -> Unit = { navigate(Screen(Tab.Search.ordinal)) }
 
     PlayerSheet(
         hasMedia = state.player.episodeId != null,
@@ -142,7 +165,7 @@ fun PodcastsApp(
                 Tab.entries.forEach { t ->
                     item(
                         selected = screen.tab == t.ordinal && screen.stack.isEmpty(),
-                        onClick = { screen = Screen(t.ordinal) },
+                        onClick = { navigate(Screen(t.ordinal)) },
                         icon = { Icon(painterResource(t.icon), contentDescription = null) },
                         label = { Text(stringResource(t.label)) },
                     )
@@ -152,6 +175,8 @@ fun PodcastsApp(
             Column(Modifier.fillMaxSize()) {
                 AnimatedContent(
                     targetState = screen,
+                    // The same key as the saved state, so a page is never composed twice during a transition.
+                    contentKey = { it.keys.last() },
                     transitionSpec = {
                         val deeper = targetState.stack.size > initialState.stack.size
                         val shallower = targetState.stack.size < initialState.stack.size
@@ -170,25 +195,27 @@ fun PodcastsApp(
                             translationX = p * 32.dp.toPx()
                         },
                 ) { s ->
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                        when (val p = s.stack.lastOrNull()) {
-                            is Page.ShowPage -> {
-                                ShowScreen(p.id, state, actions, back, openEpisode)
-                            }
+                    saveable.SaveableStateProvider(s.keys.last()) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                            when (val p = s.stack.lastOrNull()) {
+                                is Page.ShowPage -> {
+                                    ShowScreen(p.id, state, actions, back, openEpisode)
+                                }
 
-                            is Page.EpisodePage -> {
-                                EpisodeScreen(p.id, state, actions, back, openShow)
-                            }
+                                is Page.EpisodePage -> {
+                                    EpisodeScreen(p.id, state, actions, back, openShow)
+                                }
 
-                            Page.DownloadsPage -> {
-                                DownloadsScreen(state, actions, back, openEpisode, openShow)
-                            }
+                                Page.DownloadsPage -> {
+                                    DownloadsScreen(state, actions, back, openEpisode, openShow)
+                                }
 
-                            null -> {
-                                when (Tab.entries[s.tab]) {
-                                    Tab.Home -> HomeScreen(state, actions, openEpisode, openShow, toSearch)
-                                    Tab.Library -> LibraryScreen(state, actions, openShow, { open(Page.DownloadsPage) }, toSearch)
-                                    Tab.Search -> SearchScreen(actions, openShow, model = search)
+                                null -> {
+                                    when (Tab.entries[s.tab]) {
+                                        Tab.Home -> HomeScreen(state, actions, openEpisode, openShow, toSearch)
+                                        Tab.Library -> LibraryScreen(state, actions, openShow, { open(Page.DownloadsPage) }, toSearch)
+                                        Tab.Search -> SearchScreen(actions, openShow, model = search)
+                                    }
                                 }
                             }
                         }
