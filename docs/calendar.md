@@ -152,7 +152,10 @@ Three home screen widgets, built with Jetpack Glance. They use the launcher's wi
   Tapping an event opens it. Below 240dp wide the date shortens to "Nov 21".
 - **Month** (4×4, resizable): looks like the app's month view: rounded day cells (today's
   tinted) with events as pills in their calendar's colour, multi-day events as one bar, laid out
-  by the same `WeekLayout`. As many lanes as the size allows, then "+N". Tapping a day opens the
+  by the same `WeekLayout`. As many lanes as the size allows, then "+N". A lane's height
+  follows the phone's font and font size (0.9.3): the pill text is measured in the device's
+  default text style, plus 1 dp padding and a 1.5 dp gap above and below. A fixed 18 dp lane left
+  stacked pills touching on stock Pixel, whose Google Sans is taller than Roboto. Tapping a day opens the
   app on that day's sheet. The header has ‹ and › to move between months, today's date to come
   back to this month, and + (all 40dp; the year shows for other years).
 
