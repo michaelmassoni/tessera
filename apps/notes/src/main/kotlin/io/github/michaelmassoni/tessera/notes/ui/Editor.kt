@@ -79,7 +79,9 @@ import io.github.michaelmassoni.tessera.notes.R
 import io.github.michaelmassoni.tessera.notes.engine.Checklist
 import io.github.michaelmassoni.tessera.notes.engine.ChecklistItem
 import io.github.michaelmassoni.tessera.notes.engine.DragTarget
+import io.github.michaelmassoni.tessera.notes.engine.Links
 import io.github.michaelmassoni.tessera.notes.engine.Note
+import io.github.michaelmassoni.tessera.notes.engine.NoteColor
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** What the editor can do; implemented over the ViewModel. */
@@ -113,6 +115,11 @@ interface EditorActions {
     fun undo()
 
     fun redo()
+
+    fun setColor(color: NoteColor?) {}
+
+    /** Sets (epoch ms) or clears the note's reminder. */
+    fun setReminder(at: Long?) {}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,8 +133,18 @@ fun NoteEditor(
 ) {
     val note = state.note
     var menu by remember { mutableStateOf(false) }
+    var coloring by rememberSaveable { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
+    val background = noteBackground(note.color)
+    if (coloring) {
+        ColorDialog(note.color, onPick = actions::setColor, onDismiss = { coloring = false })
+    }
+    if (picking) {
+        ReminderPicker(note.reminderAt, onSet = actions::setReminder, onDismiss = { picking = false })
+    }
     Scaffold(
         modifier = modifier,
+        containerColor = background,
         topBar = {
             TopAppBar(
                 title = {},
@@ -172,6 +189,11 @@ fun NoteEditor(
                                 DesignR.drawable.ic_checklist,
                                 actions::toggleChecklist,
                             )
+                            item(
+                                if (note.reminderAt == null) R.string.action_remind else R.string.action_change_reminder,
+                                DesignR.drawable.ic_alarm,
+                            ) { picking = true }
+                            item(R.string.action_color, DesignR.drawable.ic_palette) { coloring = true }
                             item(R.string.action_labels, DesignR.drawable.ic_label) { actions.editLabels(note) }
                             item(R.string.action_share, DesignR.drawable.ic_share) { actions.share(note) }
                             item(R.string.action_copy, DesignR.drawable.ic_content_copy, actions::duplicate)
@@ -179,7 +201,7 @@ fun NoteEditor(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = background),
             )
         },
         bottomBar = { EditorBottomBar(state, actions) },
@@ -210,6 +232,9 @@ fun NoteEditor(
                         Text(note.labels.sortedWith(String.CASE_INSENSITIVE_ORDER).joinToString("  ·  "))
                     }
                 }
+                note.reminderAt?.let { at ->
+                    ReminderChip(at, onEdit = { picking = true }, onClear = { actions.setReminder(null) })
+                }
             }
         }
     }
@@ -223,14 +248,41 @@ private fun BodyField(
     val focus = remember { FocusRequester() }
     // A new, empty note opens with the keyboard up.
     LaunchedEffect(note.id) { if (note.isBlank) focus.requestFocus() }
-    PlainField(
-        value = note.body,
-        onValueChange = actions::setBody,
-        placeholder = stringResource(R.string.body_hint),
-        textStyle = MaterialTheme.typography.bodyLarge,
-        singleLine = false,
-        modifier = Modifier.focusRequester(focus),
+    // State-based, so the cursor is known: the link it's in is offered under the text.
+    val field = remember(note.id) { TextFieldState(note.body) }
+    val current by rememberUpdatedState(note.body)
+    val report by rememberUpdatedState<(String) -> Unit>(actions::setBody)
+    LaunchedEffect(field) { snapshotFlow { field.text.toString() }.collect { if (it != current) report(it) } }
+    // Undo, redo and other changes made outside the field replace its text.
+    LaunchedEffect(note.body) {
+        if (field.text.toString() != note.body) {
+            val keep = field.selection.start
+            field.edit {
+                replace(0, length, note.body)
+                selection = TextRange(keep.coerceAtMost(length))
+            }
+        }
+    }
+    var focused by remember { mutableStateOf(false) }
+    val textStyle = MaterialTheme.typography.bodyLarge
+    TextField(
+        state = field,
+        placeholder = { Text(stringResource(R.string.body_hint), style = textStyle) },
+        textStyle = textStyle,
+        colors = plainFieldColors(),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+                .focusRequester(focus)
+                .onFocusChanged { focused = it.isFocused },
     )
+    val link =
+        remember(field.text, field.selection, focused) {
+            if (focused && field.selection.collapsed) Links.at(field.text.toString(), field.selection.start) else null
+        }
+    link?.let { LinkChip(it) }
 }
 
 @Composable
@@ -585,9 +637,10 @@ private fun PlainField(
 @Composable
 private fun plainFieldColors() =
     TextFieldDefaults.colors(
-        focusedContainerColor = MaterialTheme.colorScheme.surface,
-        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-        disabledContainerColor = MaterialTheme.colorScheme.surface,
-        focusedIndicatorColor = MaterialTheme.colorScheme.surface,
-        unfocusedIndicatorColor = MaterialTheme.colorScheme.surface,
+        // Transparent, so a coloured note's tint shows through.
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
     )

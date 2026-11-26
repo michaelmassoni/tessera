@@ -6,6 +6,7 @@ import io.github.michaelmassoni.tessera.notes.data.NoteRepository
 import io.github.michaelmassoni.tessera.notes.engine.Checklist
 import io.github.michaelmassoni.tessera.notes.engine.ChecklistItem
 import io.github.michaelmassoni.tessera.notes.engine.Note
+import io.github.michaelmassoni.tessera.notes.engine.NoteColor
 import io.github.michaelmassoni.tessera.notes.engine.NoteQuery
 import io.github.michaelmassoni.tessera.notes.engine.NoteView
 import io.github.michaelmassoni.tessera.notes.engine.UndoStack
@@ -258,6 +259,14 @@ class NotesViewModel(
         }
 
     fun togglePinned() = edit(null) { it.copy(pinned = !it.pinned, archived = false) }
+
+    fun setColor(color: NoteColor?) = edit(null) { it.copy(color = color) }
+
+    /** Sets or clears the reminder, saved at once (NotesApplication then sets the alarm). */
+    fun setReminder(at: Long?) {
+        edit(null) { it.copy(reminderAt = at) }
+        flush()
+    }
 
     fun toggleArchived() {
         val note = _editor.value?.note ?: return

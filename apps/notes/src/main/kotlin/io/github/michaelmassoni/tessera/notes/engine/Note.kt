@@ -8,6 +8,10 @@ data class ChecklistItem(
     val checked: Boolean = false,
 )
 
+/** A note's colour: a hue tinted onto the theme's surface (docs/notes.md, Colours). */
+@Serializable
+enum class NoteColor { Red, Orange, Yellow, Green, Teal, Blue, Purple, Pink, Brown, Grey }
+
 /**
  * One note. A note is either text ([checklist] == null, content in [body]) or a checklist
  * ([checklist] != null; [body] is unused). Times are epoch milliseconds.
@@ -24,6 +28,10 @@ data class Note(
     val trashedAt: Long? = null,
     val created: Long = 0,
     val modified: Long = 0,
+    /** The card's colour; null for the default. */
+    val color: NoteColor? = null,
+    /** When to remind (epoch ms); null for none. Kept after it fires, shown as past. */
+    val reminderAt: Long? = null,
 ) {
     val isChecklist: Boolean get() = checklist != null
     val isTrashed: Boolean get() = trashedAt != null
