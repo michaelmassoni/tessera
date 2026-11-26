@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.music
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -34,8 +35,18 @@ data class QueueItem(
 data class Progress(
     val positionMs: Long = 0,
     val durationMs: Long = 0,
+    /** Whether the position was moving when sampled, and when that was ([SystemClock.elapsedRealtime]). */
+    val playing: Boolean = false,
+    val sampledAt: Long = 0,
 ) {
     val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+
+    /** Where playback is at [now], carried on from the sample while playing, so the seek bar moves smoothly between samples. */
+    fun at(now: Long): Progress {
+        if (!playing || sampledAt <= 0 || now <= sampledAt) return this
+        val moved = positionMs + (now - sampledAt)
+        return copy(positionMs = if (durationMs > 0) moved.coerceAtMost(durationMs) else moved, sampledAt = now)
+    }
 }
 
 /** What the UI shows about playback. */
@@ -229,7 +240,8 @@ class PlayerConnection(
                             ?.toString()
                             ?.let(Subsonic::isServerUri) == true,
             )
-        _progress.value = Progress(player.currentPosition, player.duration.coerceAtLeast(0))
+        _progress.value =
+            Progress(player.currentPosition, player.duration.coerceAtLeast(0), player.isPlaying, SystemClock.elapsedRealtime())
         // Position changes continuously while playing; poll it twice a second for the progress UI.
         ticker?.cancel()
         if (player.isPlaying) {
@@ -237,7 +249,13 @@ class PlayerConnection(
                 scope.launch {
                     while (isActive) {
                         delay(500)
-                        _progress.value = Progress(player.currentPosition, player.duration.coerceAtLeast(0))
+                        _progress.value =
+                            Progress(
+                                player.currentPosition,
+                                player.duration.coerceAtLeast(0),
+                                player.isPlaying,
+                                SystemClock.elapsedRealtime(),
+                            )
                     }
                 }
         }

@@ -4,6 +4,21 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-26: Music casts with its own Cast client, not Google's SDK (Accepted)
+
+- **Context:** the maintainer asked for casting to Chromecasts and TVs. Google's Cast sender SDK
+  and Media3's `media3-cast` both need Google Play Services, which the privacy rules forbid.
+- **Decision (maintainer):** Music implements the open Cast v2 protocol itself: mDNS discovery
+  through `NsdManager`, TLS to port 8009, a hand-encoded protobuf frame, and the Default Media
+  Receiver (`CC1AD845`) for playback. The phone serves the audio over HTTP while casting (files
+  on the phone and server songs alike); the maintainer chose casting both over server-only.
+  DLNA was offered and left for later.
+- **Consequences:** no proprietary code and F-Droid stays happy. Cast devices aren't
+  authenticated (their certificates are self-signed and the device-auth check needs Google's
+  root), which other open-source senders accept too; the device only ever gets addresses on the
+  phone. On Android 17 Music asks for `ACCESS_LOCAL_NETWORK` when Cast is first tapped. Cast
+  doesn't appear in Android's output switcher yet.
+
 ## 2026-11-26: Settings as a list of categories (Accepted)
 
 - **Context:** each app's settings page had grown into one long scroll: the app's own sections,

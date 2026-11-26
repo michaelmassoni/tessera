@@ -138,4 +138,20 @@
     <string name="show_as_list">Show as list</string>
     <string name="show_as_grid">Show as grid</string>
     <string name="album_artists">Album artists</string>
+    <!-- Casting (docs/music.md, Casting) -->
+    <string name="now_playing">playing now</string>
+    <string name="cast">Cast</string>
+    <string name="cast_to">Cast to</string>
+    <string name="cast_casting">Casting</string>
+    <string name="cast_casting_to">Casting to %1$s</string>
+    <string name="cast_connecting_to">Connecting to %1$s</string>
+    <string name="cast_connecting">Connecting…</string>
+    <string name="cast_failed">Couldn\'t connect. Try again.</string>
+    <string name="cast_searching">Looking for TVs and speakers on your Wi-Fi…</string>
+    <string name="cast_none">No devices found. Make sure this phone and the TV or speaker are on the same Wi-Fi.</string>
+    <string name="cast_stop">Stop casting</string>
+    <string name="cast_volume">Volume of the cast device</string>
+    <string name="cast_permission">To cast, Music needs to find and talk to TVs and speakers on your Wi-Fi. Nothing else on the network is contacted.</string>
+    <string name="cast_allow">Allow</string>
+    <string name="cast_open_settings">Open settings</string>
 </resources>

@@ -119,6 +119,7 @@ internal fun PlaylistScreen(
     onBack: () -> Unit,
     onAlbum: ((Long) -> Unit)? = null,
     onArtist: ((Long) -> Unit)? = null,
+    playingId: Long = 0,
 ) {
     var menu by remember { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -166,6 +167,7 @@ internal fun PlaylistScreen(
                     playlist.id,
                 ),
                 showShuffle = false,
+                playingId = playingId,
                 onLongClick = {
                     i,
                     s,
@@ -262,7 +264,6 @@ internal fun PlaylistScreen(
  * What a long press on a song offers: play it next or queue it, add it to a playlist (or a new
  * one), go to its album or artist (where given), and, inside a playlist, remove it from there.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SongOptions(
     song: Song,
@@ -272,13 +273,43 @@ internal fun SongOptions(
     onRemove: (() -> Unit)? = null,
     onAlbum: ((Long) -> Unit)? = null,
     onArtist: ((Long) -> Unit)? = null,
+) = SongsOptions(
+    title = song.title,
+    subtitle = song.artist.ifBlank { stringResource(R.string.unknown_artist) },
+    songs = listOf(song),
+    playlists = playlists,
+    actions = actions,
+    onDismiss = onDismiss,
+    onRemove = onRemove,
+    onAlbum = onAlbum?.let { go -> { go(song.albumId) } },
+    onArtist = onArtist?.let { go -> { go(song.artistId) } },
+)
+
+/**
+ * The same for a whole album or artist (its page's More options): play it next, queue it,
+ * shuffle it, add it to a playlist, and go to its artist where there is one.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SongsOptions(
+    title: String,
+    subtitle: String,
+    songs: List<Song>,
+    playlists: List<Playlist>,
+    actions: LibraryActions,
+    onDismiss: () -> Unit,
+    onRemove: (() -> Unit)? = null,
+    onAlbum: (() -> Unit)? = null,
+    onArtist: (() -> Unit)? = null,
+    onShuffle: (() -> Unit)? = null,
 ) {
     var picking by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
+    val ids = songs.map { it.id }
     when {
         creating -> {
             NameDialog(R.string.new_playlist, "", onDismiss = onDismiss) { name ->
-                actions.createPlaylist(name, listOf(song.id))
+                actions.createPlaylist(name, ids)
                 onDismiss()
             }
         }
@@ -299,7 +330,7 @@ internal fun SongOptions(
                         items(Playlists.sorted(playlists.filterNot { it.readOnly }), key = { it.id }) { p ->
                             ListItem(
                                 onClick = {
-                                    actions.addToPlaylist(p.id, listOf(song.id))
+                                    actions.addToPlaylist(p.id, ids)
                                     onDismiss()
                                 },
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -315,23 +346,32 @@ internal fun SongOptions(
         else -> {
             ModalBottomSheet(onDismissRequest = onDismiss) {
                 Column(Modifier.padding(bottom = 16.dp)) {
-                    ListItem(supportingContent = { Text(song.artist.ifBlank { stringResource(R.string.unknown_artist) }, maxLines = 1) }) {
-                        Text(song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    ListItem(supportingContent = { Text(subtitle, maxLines = 1) }) {
+                        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     ListItem(
                         onClick = {
-                            actions.playNext(listOf(song))
+                            actions.playNext(songs)
                             onDismiss()
                         },
                         leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_play_next), contentDescription = null) },
                     ) { Text(stringResource(R.string.play_next)) }
                     ListItem(
                         onClick = {
-                            actions.addToQueue(listOf(song))
+                            actions.addToQueue(songs)
                             onDismiss()
                         },
                         leadingContent = { Icon(painterResource(DesignR.drawable.ic_add_to_queue), contentDescription = null) },
                     ) { Text(stringResource(R.string.add_to_queue)) }
+                    if (onShuffle != null) {
+                        ListItem(
+                            onClick = {
+                                onDismiss()
+                                onShuffle()
+                            },
+                            leadingContent = { Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null) },
+                        ) { Text(stringResource(R.string.shuffle)) }
+                    }
                     ListItem(
                         onClick = { picking = true },
                         leadingContent = { Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = null) },
@@ -340,7 +380,7 @@ internal fun SongOptions(
                         ListItem(
                             onClick = {
                                 onDismiss()
-                                onAlbum(song.albumId)
+                                onAlbum()
                             },
                             leadingContent = { Icon(painterResource(DesignR.drawable.ic_album), contentDescription = null) },
                         ) { Text(stringResource(R.string.go_to_album)) }
@@ -349,7 +389,7 @@ internal fun SongOptions(
                         ListItem(
                             onClick = {
                                 onDismiss()
-                                onArtist(song.artistId)
+                                onArtist()
                             },
                             leadingContent = { Icon(painterResource(DesignR.drawable.ic_artist), contentDescription = null) },
                         ) { Text(stringResource(R.string.go_to_artist)) }
