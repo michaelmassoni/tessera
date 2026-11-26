@@ -39,6 +39,9 @@ here.
   root), which other open-source senders accept too; the device only ever gets addresses on the
   phone. On Android 17 Music asks for `ACCESS_LOCAL_NETWORK` when Cast is first tapped. Cast
   doesn't appear in Android's output switcher yet.
+- **Shared (same day):** when Podcasts got casting too, the client moved to `core:cast` (the
+  engine, the remote player and the Cast button and sheet). Each app hands it a `CastContent`
+  that turns a queue item into what the device plays, and switches its media session itself.
 
 ## 2026-11-26: Settings as a list of categories (Accepted)
 

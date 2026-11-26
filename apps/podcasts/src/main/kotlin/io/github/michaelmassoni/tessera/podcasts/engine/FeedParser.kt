@@ -33,6 +33,8 @@ data class ParsedItem(
     val audioBytes: Long = 0,
     val artworkUrl: String? = null,
     val link: String? = null,
+    /** Podcasting 2.0 `<podcast:chapters url=…>`: a JSON chapters file. */
+    val chaptersUrl: String? = null,
 )
 
 class NotAFeedException : Exception()
@@ -46,6 +48,7 @@ object FeedParser {
     private const val CONTENT = "purl.org/rss/1.0/modules/content/"
     private const val ATOM = "www.w3.org/2005/Atom"
     private const val MEDIA = "search.yahoo.com/mrss/"
+    private const val PODCAST = "podcastindex.org/namespace/1.0"
 
     /** @throws NotAFeedException when [input] isn't RSS or Atom. */
     fun parse(
@@ -211,6 +214,7 @@ object FeedParser {
             var mediaType: String? = null
             var image: String? = null
             var link: String? = null
+            var chapters: String? = null
 
             fun start(
                 uri: String,
@@ -239,6 +243,10 @@ object FeedParser {
 
                     name == "image" && ns(uri, ITUNES) -> {
                         image = attributes.getValue("href")?.let(::resolve)
+                    }
+
+                    name == "chapters" && ns(uri, PODCAST) && chapters == null -> {
+                        chapters = attributes.getValue("url")?.takeIf { it.isNotBlank() }?.let(::resolve)
                     }
                 }
             }
@@ -315,6 +323,7 @@ object FeedParser {
                     audioBytes = bytes,
                     artworkUrl = image,
                     link = link,
+                    chaptersUrl = chapters,
                 )
             }
         }

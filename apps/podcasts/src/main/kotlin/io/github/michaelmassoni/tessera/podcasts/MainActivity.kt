@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
                 val downloads by work.collectAsStateWithLifecycle(emptyList())
                 val playerState by player.state.collectAsStateWithLifecycle()
                 val sleep by SleepTimer.state.collectAsStateWithLifecycle()
+                val chapters by EpisodeChapters.byEpisode.collectAsStateWithLifecycle()
                 val progress by player.progress.collectAsStateWithLifecycle()
                 val downloading =
                     remember(downloads) {
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
                                 speed = playerState.speed,
                                 queue = playerState.queue,
                                 sleep = sleep,
+                                chapters = playerState.episodeId?.let(chapters::get).orEmpty(),
                             ),
                     )
                 PodcastsApp(state, { progress }, actions, search = search)

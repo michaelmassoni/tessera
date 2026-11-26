@@ -140,4 +140,18 @@ class FeedParserTest {
         assertEquals(listOf("show:gone"), Feeds.added(content.episodes, again).map { it.id })
         assertEquals(2, Feeds.content("show", feed, content.episodes + gone, emptySet()).episodes.size)
     }
+
+    @Test
+    fun `reads the podcast namespace chapters link`() {
+        val feed =
+            parse(
+                """<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0"><channel><title>T</title>
+                <item><guid>1</guid><title>E</title><enclosure url="https://x/e.mp3" type="audio/mpeg"/>
+                <podcast:chapters url="chapters/1.json" type="application/json+chapters"/></item>
+                <item><guid>2</guid><title>F</title><enclosure url="https://x/f.mp3" type="audio/mpeg"/></item>
+                </channel></rss>""",
+            )
+        assertEquals("https://example.com/chapters/1.json", feed.items[0].chaptersUrl)
+        assertNull(feed.items[1].chaptersUrl)
+    }
 }

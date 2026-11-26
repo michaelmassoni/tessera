@@ -92,6 +92,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.ByteBuffer
+import io.github.michaelmassoni.tessera.core.cast.R as CastR
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** Player commands. */
@@ -673,7 +674,7 @@ private fun OutputRow(
     ) {
         castButton()
         Text(
-            castingTo?.let { stringResource(R.string.cast_casting_to, it) }.orEmpty(),
+            castingTo?.let { stringResource(CastR.string.cast_casting_to, it) }.orEmpty(),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,

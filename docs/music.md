@@ -335,6 +335,8 @@ other open-source senders do.
 - **Security:** cast devices use self-signed TLS certificates, so the connection is encrypted
   but the device isn't authenticated (as with other open-source senders). It only ever receives
   song addresses on the phone, never a password.
+- **Where it lives:** `core:cast` since Podcasts got casting too (Podcasts 0.3); Music gives it a
+  `CastContent` that serves the song and cover through `ServerPlayback`'s data source.
 - **Engine (unit tested):** `CastMessage` (the protobuf frame, hand-encoded: no protobuf
   library), `CastProtocol` (the JSON messages and status parsing), `MediaServer` (HTTP with
   byte ranges, tokens and the allowed address) and `RemoteQueue` (what plays next, with repeat).

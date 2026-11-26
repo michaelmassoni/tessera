@@ -25,6 +25,7 @@ the reason.
 build-logic/      convention plugins: tessera.android.application, .library, .compose
 core/design       TesseraTheme (MaterialExpressiveTheme + dynamic color), shared components
 core/settings     settings screen, theme and icon settings, theme sync between apps
+core/cast         casting to Chromecasts and TVs without Play Services (Music, Podcasts)
 scripts/          launcher-icons.sh (generates Colour/Light/Dark launcher icons)
 apps/<name>       one application module per app, package io.github.michaelmassoni.tessera.<name>
 docs/<name>.md    spec for each app, written before the implementation
