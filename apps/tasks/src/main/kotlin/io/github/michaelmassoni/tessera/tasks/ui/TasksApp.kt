@@ -48,10 +48,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -167,8 +169,15 @@ fun TasksApp(
     var deleted by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(openTask) { if (openTask != null) editing = openTask }
     BackHandler(editing != null) { editing = null }
+    val open = editing?.takeIf { state.data.task(it)?.deleted == false }
+    // The list (and a parent under its subtask) keeps its scroll position while a task is open over
+    // it; a closed task's is dropped.
+    val saveable = rememberSaveableStateHolder()
+    val pages = remember(saveable) { PageStack(saveable::removeState) }
+    val stack = taskPages(open) { state.data.task(it)?.parentId }
+    SideEffect { pages.show(stack) }
     AnimatedContent(
-        targetState = editing?.takeIf { state.data.task(it)?.deleted == false },
+        targetState = open,
         transitionSpec = {
             if (targetState != null) {
                 (slideInHorizontally(tween(300)) { it / 5 } + fadeIn(tween(300))) togetherWith fadeOut(tween(150))
@@ -177,23 +186,26 @@ fun TasksApp(
             }
         },
         label = "tasks",
+        contentKey = ::taskPageKey,
         modifier = modifier,
     ) { id ->
-        if (id != null) {
-            val task = state.data.task(id)
-            if (task != null) {
-                TaskEditor(task, state.data, actions, state.stars, onOpen = {
-                    editing = it
-                }, onClose = { editing = task.parentId }, onDeleted = {
-                    deleted = task.id
-                    editing = task.parentId
+        saveable.SaveableStateProvider(taskPageKey(id)) {
+            if (id != null) {
+                val task = state.data.task(id)
+                if (task != null) {
+                    TaskEditor(task, state.data, actions, state.stars, onOpen = {
+                        editing = it
+                    }, onClose = { editing = task.parentId }, onDeleted = {
+                        deleted = task.id
+                        editing = task.parentId
+                    })
+                }
+            } else {
+                ListScreen(state, lists, selected, { selected = it }, actions, onOpen = { editing = it }, deleted = deleted, onUndoShown = {
+                    deleted =
+                        null
                 })
             }
-        } else {
-            ListScreen(state, lists, selected, { selected = it }, actions, onOpen = { editing = it }, deleted = deleted, onUndoShown = {
-                deleted =
-                    null
-            })
         }
     }
 }
@@ -300,12 +312,16 @@ private fun ListScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
+        // Each list (and Starred) keeps its own scroll position when switching between them.
+        val tabState = rememberSaveableStateHolder()
         val content: @Composable () -> Unit = {
-            if (selected == STARRED) {
-                StarredList(state.data, actions, onOpen)
-            } else {
-                state.data.list(selected)?.let { list ->
-                    TaskListContent(list, state.data, sort, { sort = it }, actions, stars, onOpen, showHeader = single == null)
+            tabState.SaveableStateProvider("tab:$selected") {
+                if (selected == STARRED) {
+                    StarredList(state.data, actions, onOpen)
+                } else {
+                    state.data.list(selected)?.let { list ->
+                        TaskListContent(list, state.data, sort, { sort = it }, actions, stars, onOpen, showHeader = single == null)
+                    }
                 }
             }
         }

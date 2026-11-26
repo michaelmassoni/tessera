@@ -3,10 +3,12 @@ package io.github.michaelmassoni.tessera.recorder.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import io.github.michaelmassoni.tessera.recorder.data.Recording
@@ -88,32 +90,50 @@ fun RecorderApp(
     val open = ui.recordings.firstOrNull { it.id == openId }
     LaunchedEffect(open, ui.loaded) { if (ui.loaded && open == null) openId = null }
 
+    // The list leaves composition while a page is shown: this keeps its scroll and search for the way back.
+    val saveable = rememberSaveableStateHolder()
     when {
         recordingOpen && ui.state is RecorderState.Active -> {
             BackHandler { recordingOpen = false }
-            RecordingScreen(ui.state, ui.live, actions, onBack = { recordingOpen = false }, modifier = modifier)
+            // A page closed for good starts fresh next time.
+            DisposableEffect(Unit) { onDispose { saveable.removeState(RECORDING_KEY) } }
+            saveable.SaveableStateProvider(RECORDING_KEY) {
+                RecordingScreen(ui.state, ui.live, actions, onBack = { recordingOpen = false }, modifier = modifier)
+            }
         }
 
         open != null -> {
             BackHandler { openId = null }
-            player(open) { playback, controls ->
-                PlayerScreen(open, actions.waveform(open), playback, controls, actions, onBack = { openId = null }, modifier = modifier)
+            val key = playerKey(open.id)
+            DisposableEffect(key) { onDispose { saveable.removeState(key) } }
+            saveable.SaveableStateProvider(key) {
+                player(open) { playback, controls ->
+                    PlayerScreen(open, actions.waveform(open), playback, controls, actions, onBack = { openId = null }, modifier = modifier)
+                }
             }
         }
 
         else -> {
-            ListScreen(
-                ui,
-                actions,
-                snackbar,
-                onOpen = { openId = it.id },
-                onShowRecording = { recordingOpen = true },
-                onRecord = {
-                    actions.record()
-                    recordingOpen = true
-                },
-                modifier = modifier,
-            )
+            saveable.SaveableStateProvider(LIST_KEY) {
+                ListScreen(
+                    ui,
+                    actions,
+                    snackbar,
+                    onOpen = { openId = it.id },
+                    onShowRecording = { recordingOpen = true },
+                    onRecord = {
+                        actions.record()
+                        recordingOpen = true
+                    },
+                    modifier = modifier,
+                )
+            }
         }
     }
 }
+
+private const val LIST_KEY = "list"
+private const val RECORDING_KEY = "recording"
+
+/** The saved-state key of a recording's player page. */
+internal fun playerKey(id: Long): String = "player:$id"

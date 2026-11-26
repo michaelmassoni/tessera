@@ -48,12 +48,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -175,41 +177,47 @@ fun CalendarApp(
     }
     BackHandler(editor != null) { close() }
 
+    // The views leave composition while the editor is shown: this keeps their scroll and page.
+    val saveable = rememberSaveableStateHolder()
     if (editor != null) {
-        EventEditor(editor, actions::update, actions::save, close, modifier)
+        // Saved or cancelled: the next event opens a fresh editor.
+        DisposableEffect(Unit) { onDispose { saveable.removeState(EDITOR_KEY) } }
+        saveable.SaveableStateProvider(EDITOR_KEY) { EventEditor(editor, actions::update, actions::save, close, modifier) }
     } else {
-        Scaffold(
-            modifier = modifier,
-            topBar = { CalendarTopBar(state, actions) { calendarsDialog = true } },
-            floatingActionButton = {
-                FloatingActionButton(onClick = actions::create) {
-                    Icon(painterResource(DesignR.drawable.ic_add), contentDescription = stringResource(R.string.new_event))
-                }
-            },
-            snackbarHost = { SnackbarHost(snackbar) },
-        ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
-                when (state.mode) {
-                    ViewMode.Month -> {
-                        MonthScreen(state, actions)
+        saveable.SaveableStateProvider(VIEWS_KEY) {
+            Scaffold(
+                modifier = modifier,
+                topBar = { CalendarTopBar(state, actions) { calendarsDialog = true } },
+                floatingActionButton = {
+                    FloatingActionButton(onClick = actions::create) {
+                        Icon(painterResource(DesignR.drawable.ic_add), contentDescription = stringResource(R.string.new_event))
                     }
+                },
+                snackbarHost = { SnackbarHost(snackbar) },
+            ) { padding ->
+                Box(Modifier.fillMaxSize().padding(padding)) {
+                    when (state.mode) {
+                        ViewMode.Month -> {
+                            MonthScreen(state, actions)
+                        }
 
-                    ViewMode.Week -> {
-                        TimelinePager(state, days = 7, actions, zone = zone, clock = clock)
-                    }
+                        ViewMode.Week -> {
+                            TimelinePager(state, days = 7, actions, zone = zone, clock = clock)
+                        }
 
-                    ViewMode.Day -> {
-                        TimelinePager(state, days = 1, actions, zone = zone, clock = clock)
-                    }
+                        ViewMode.Day -> {
+                            TimelinePager(state, days = 1, actions, zone = zone, clock = clock)
+                        }
 
-                    ViewMode.Schedule -> {
-                        EventList(
-                            state.schedule,
-                            state.today,
-                            actions::open,
-                            empty = stringResource(R.string.no_upcoming),
-                            onLoadMore = actions::loadMore,
-                        )
+                        ViewMode.Schedule -> {
+                            EventList(
+                                state.schedule,
+                                state.today,
+                                actions::open,
+                                empty = stringResource(R.string.no_upcoming),
+                                onLoadMore = actions::loadMore,
+                            )
+                        }
                     }
                 }
             }
@@ -622,3 +630,6 @@ private fun ViewPicker(
         }
     }
 }
+
+private const val VIEWS_KEY = "views"
+private const val EDITOR_KEY = "editor"

@@ -57,6 +57,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -65,6 +66,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -144,6 +146,8 @@ fun SportsApp(
 ) {
     // The picker stays open until Done (on first run too, so following a league doesn't close it).
     var editing by rememberSaveable(state.loaded) { mutableStateOf(state.loaded && state.follows.leagues.isEmpty()) }
+    // Each screen leaves composition while another is shown: this keeps its scroll (and tab) for the way back.
+    val saveable = rememberSaveableStateHolder()
     when {
         !state.loaded -> {
             Box(
@@ -153,25 +157,33 @@ fun SportsApp(
         }
 
         editing || state.follows.leagues.isEmpty() -> {
-            FollowScreen(
-                state = state,
-                actions = actions,
-                onDone = {
-                    editing = false
-                    actions.doneFollowing()
-                },
-                canGoBack = state.follows.leagues.isNotEmpty(),
-                modifier = modifier,
-            )
+            saveable.SaveableStateProvider(FOLLOW_KEY) {
+                FollowScreen(
+                    state = state,
+                    actions = actions,
+                    onDone = {
+                        saveable.removeState(FOLLOW_KEY)
+                        editing = false
+                        actions.doneFollowing()
+                    },
+                    canGoBack = state.follows.leagues.isNotEmpty(),
+                    modifier = modifier,
+                )
+            }
         }
 
         state.teamOpen != null -> {
             BackHandler(onBack = actions::closeTeam)
-            TeamScreen(state.teamOpen, state.team, state, actions, now, zone, modifier)
+            val key = teamPageKey(state.teamOpen)
+            // Closed (back, or another team opened from a game): reopening it starts at the top.
+            DisposableEffect(key) { onDispose { saveable.removeState(key) } }
+            saveable.SaveableStateProvider(key) { TeamScreen(state.teamOpen, state.team, state, actions, now, zone, modifier) }
         }
 
         else -> {
-            MainScreen(state, actions, now, zone, snackbar, onEdit = { editing = true }, modifier = modifier)
+            saveable.SaveableStateProvider(MAIN_KEY) {
+                MainScreen(state, actions, now, zone, snackbar, onEdit = { editing = true }, modifier = modifier)
+            }
         }
     }
     // The sheet opens once its details are in, at its final height: a bottom sheet doesn't follow
@@ -190,7 +202,6 @@ fun SportsApp(
 }
 
 /** Scores for your teams as Yesterday, Today and Upcoming, as in Apple Sports. */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MainScreen(
     state: SportsState,
@@ -202,10 +213,41 @@ private fun MainScreen(
     modifier: Modifier = Modifier,
 ) {
     var leagues by rememberSaveable { mutableStateOf(false) }
+    // The scores leave composition while the leagues are shown: this keeps their tab and scroll.
+    val saveable = rememberSaveableStateHolder()
     if (leagues) {
-        LeaguesScreen(state, actions, now, zone, onBack = { leagues = false }, modifier = modifier)
+        saveable.SaveableStateProvider(LEAGUES_KEY) {
+            LeaguesScreen(
+                state,
+                actions,
+                now,
+                zone,
+                onBack = {
+                    saveable.removeState(LEAGUES_KEY)
+                    leagues = false
+                },
+                modifier = modifier,
+            )
+        }
         return
     }
+    saveable.SaveableStateProvider(SCORES_KEY) {
+        Scores(state, actions, now, zone, snackbar, onEdit, onLeagues = { leagues = true }, modifier = modifier)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun Scores(
+    state: SportsState,
+    actions: SportsActions,
+    now: Long,
+    zone: ZoneId,
+    snackbar: SnackbarHostState,
+    onEdit: () -> Unit,
+    onLeagues: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val tabs = ScoreTab.entries
     val pager = rememberPagerState(initialPage = ScoreTab.Today.ordinal) { tabs.size }
     val scope = rememberCoroutineScope()
@@ -216,7 +258,7 @@ private fun MainScreen(
                 TopAppBar(
                     title = { Text(stringResource(R.string.app_name)) },
                     actions = {
-                        IconButton(onClick = { leagues = true }) {
+                        IconButton(onClick = onLeagues) {
                             Icon(painterResource(R.drawable.ic_scoreboard), contentDescription = stringResource(R.string.leagues))
                         }
                         IconButton(onClick = onEdit) {
@@ -337,6 +379,7 @@ private fun LeaguesScreen(
 ) {
     BackHandler(onBack = onBack)
     val leagues = state.follows.leagues()
+    val saveable = rememberSaveableStateHolder()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val league = leagues.getOrNull(tab) ?: leagues.firstOrNull()
     LaunchedEffect(league) { league?.let { actions.loadLeague(it) } }
@@ -363,7 +406,8 @@ private fun LeaguesScreen(
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            league?.let { LeagueTab(it, state, actions, now, zone) }
+            // Each league keeps its own scroll.
+            league?.let { saveable.SaveableStateProvider("league:${it.id}") { LeagueTab(it, state, actions, now, zone) } }
         }
     }
 }
@@ -817,3 +861,11 @@ private fun GameSheet(
         }
     }
 }
+
+private const val FOLLOW_KEY = "follow"
+private const val MAIN_KEY = "main"
+private const val LEAGUES_KEY = "leagues"
+private const val SCORES_KEY = "scores"
+
+/** The saved-state key of a team's page: one per team, so another team starts at the top. */
+internal fun teamPageKey(team: Team): String = "team:${team.key}"
