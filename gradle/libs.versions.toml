@@ -5,16 +5,16 @@ libphonenumber = "9.0.44"
 phonenumber-geocoder = "3.44"
 # Android SDK levels, read by the convention plugins in build-logic/.
 sdk-compile = "37"
+# compileSdk 37.1: Compose 1.13 (BOM 2026.11.01) needs it. targetSdk stays 37.
+sdk-compile-minor = "1"
 sdk-target = "37"
 sdk-min = "31"
 build-tools = "37.0.0"
 
 agp = "9.5.2"
 kotlin = "2.4.21"
-compose-bom = "2026.09.00"     # compose ui 1.12.1 (stable)
-# material3 1.5.0 (stable, 2026-11-18; Expressive APIs public) over the BOM's 1.4.0. It needs only
-# Compose 1.12. BOM 2026.11.01 ships it but brings Compose 1.13, which needs compileSdk 37.1 and
-# the state-based text field migration: a separate step (docs/roadmap.md, docs/decisions.md).
+compose-bom = "2026.11.01"     # compose ui 1.13.0 (stable)
+# material3 1.5.0 (stable): the BOM's version, kept explicit so the navigation suite matches it.
 material3 = "1.5.0"
 activity-compose = "1.13.0"
 core-ktx = "1.19.1"

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -31,11 +30,10 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.dav.SignInError
 import io.github.michaelmassoni.tessera.core.dav.SignInProblem
+import io.github.michaelmassoni.tessera.core.design.TesseraPasswordField
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkAccess
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
@@ -60,7 +58,6 @@ fun YarrSignInForm(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var show by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             fields.address,
@@ -83,24 +80,13 @@ fun YarrSignInForm(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            fields.password,
-            { onChange(fields.copy(password = it)) },
-            label = { Text(stringResource(R.string.password)) },
-            singleLine = true,
+        TesseraPasswordField(
+            value = fields.password,
+            onValueChange = { onChange(fields.copy(password = it)) },
+            label = stringResource(R.string.password),
             enabled = enabled && fields.username.isNotBlank(),
             isError = problem == SignInProblem.WrongLogin,
-            visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
-            trailingIcon = {
-                IconButton(onClick = { show = !show }) {
-                    Icon(
-                        painterResource(if (show) DesignR.drawable.ic_visibility_off else DesignR.drawable.ic_visibility),
-                        contentDescription = stringResource(if (show) R.string.hide_password else R.string.show_password),
-                    )
-                }
-            },
+            onDone = onDone,
             modifier = Modifier.fillMaxWidth(),
         )
         if (problem == SignInProblem.LocalNetwork) {

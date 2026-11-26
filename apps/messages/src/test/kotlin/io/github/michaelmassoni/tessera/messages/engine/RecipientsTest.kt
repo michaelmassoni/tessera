@@ -1,6 +1,5 @@
 package io.github.michaelmassoni.tessera.messages.engine
 
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -47,11 +46,11 @@ class RecipientsTest {
         assertEquals("0412345678", Recipients.display("0412345678") { "+61 412 345 678" })
     }
 
-    @Test fun `cursor offsets skip the spaces`() {
-        val (toDisplay, toDialable) = Recipients.offsets("0412345678", "0412 345 678")
-        assertArrayEquals(intArrayOf(0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 12), toDisplay)
-        assertEquals(4, toDialable[4])
-        assertEquals(4, toDialable[5])
-        assertEquals(10, toDialable[12])
+    @Test fun `the layout is the characters it adds`() {
+        assertEquals(listOf(4 to ' ', 8 to ' '), Recipients.insertions("0412345678", "0412 345 678"))
+        assertEquals(listOf(0 to '(', 4 to ')', 5 to ' ', 9 to '-'), Recipients.insertions("2025550143", "(202) 555-0143"))
+        assertEquals(emptyList<Pair<Int, Char>>(), Recipients.insertions("0412", "0412"))
+        // Not the same digits: nothing is inserted.
+        assertEquals(emptyList<Pair<Int, Char>>(), Recipients.insertions("0412", "0413 9"))
     }
 }

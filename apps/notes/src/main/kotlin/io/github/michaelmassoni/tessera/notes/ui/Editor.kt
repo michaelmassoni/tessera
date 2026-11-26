@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -46,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -69,7 +71,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -458,12 +459,48 @@ private fun ItemRow(
 ) {
     val focus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
-    // Keep the cursor position across recompositions while the text comes from the ViewModel.
-    var field by remember { mutableStateOf(TextFieldValue(item.text, TextRange(item.text.length))) }
-    if (field.text != item.text) field = TextFieldValue(item.text, TextRange(item.text.length.coerceAtMost(field.selection.start)))
+    // The text comes from the ViewModel: typing reports each change, and a change made there (an
+    // item split on Enter, or merged by backspace) replaces the field's text, keeping the cursor.
+    val field = remember { TextFieldState(item.text, TextRange(item.text.length)) }
+    val current by rememberUpdatedState(item.text)
+    val report by rememberUpdatedState(onTextChange)
+    LaunchedEffect(field) {
+        // The trimmed text after a split: already what the split gave this item, so not reported
+        // again (that report would go through the old list and undo the split).
+        var trimmed: String? = null
+        snapshotFlow { field.text.toString() }.collect { text ->
+            if (text == trimmed) {
+                trimmed = null
+                return@collect
+            }
+            trimmed = null
+            if (text == current) return@collect
+            report(text)
+            // Enter (or pasted lines): the list splits there and the rest moves to new items, so
+            // this item keeps what's before the newline. Its text in the ViewModel may not change
+            // (it was already that), so the field is trimmed here rather than waiting for it.
+            if ('\n' in text) {
+                val before = text.substringBefore('\n')
+                trimmed = before
+                field.edit {
+                    replace(0, length, before)
+                    selection = TextRange(before.length)
+                }
+            }
+        }
+    }
+    LaunchedEffect(item.text) {
+        if (field.text.toString() != item.text) {
+            val keep = field.selection.start
+            field.edit {
+                replace(0, length, item.text)
+                selection = TextRange(keep.coerceAtMost(length))
+            }
+        }
+    }
     LaunchedEffect(requestFocus) {
         if (requestFocus) {
-            field = field.copy(selection = TextRange(cursor.coerceIn(0, item.text.length)))
+            field.edit { selection = TextRange(cursor.coerceIn(0, length)) }
             focus.requestFocus()
             onFocused()
         }
@@ -489,15 +526,11 @@ private fun ItemRow(
         Checkbox(checked = item.checked, onCheckedChange = { onToggle() })
         val hint = stringResource(R.string.item_hint)
         BasicTextField(
-            value = field,
-            onValueChange = {
-                field = it
-                if (it.text != item.text) onTextChange(it.text)
-            },
+            state = field,
             textStyle = textStyle,
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            decorationBox = { inner ->
+            decorator = { inner ->
                 Box {
                     if (field.text.isEmpty()) Text(hint, style = textStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                     inner()

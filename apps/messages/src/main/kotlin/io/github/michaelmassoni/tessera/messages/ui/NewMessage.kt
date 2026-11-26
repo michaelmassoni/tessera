@@ -14,6 +14,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.insert
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,12 +31,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -37,9 +46,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.OffsetMapping
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.messages.R
 import io.github.michaelmassoni.tessera.messages.engine.Recipients
@@ -56,11 +62,13 @@ internal fun NewMessage(
     onPick: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var to by rememberSaveable { mutableStateOf("") }
+    // Numbers are kept as bare digits; the field lays them out for display.
+    val field = rememberTextFieldState()
+    val to = field.text.toString()
     // A normal keyboard by default, so names can be typed; the dialpad is a tap away.
     var dialpad by rememberSaveable { mutableStateOf(false) }
     val numberMode = Recipients.looksLikeNumber(to)
-    val phoneFormat = remember(actions) { PhoneNumberTransformation(actions::formatNumber) }
+    val phoneFormat = remember(actions) { PhoneNumberLayout(actions::formatNumber) }
     val invalid = remember(to) { numberMode && Recipients.shouldCheck(to) && !actions.isValidNumber(to) }
     // Chosen recipients as (label, number).
     var chosen by rememberSaveable { mutableStateOf(listOf<Pair<String, String>>()) }
@@ -73,7 +81,21 @@ internal fun NewMessage(
         number: String,
     ) {
         if (number.isNotBlank() && chosen.none { it.second == number }) chosen = chosen + (label to number.trim())
-        to = ""
+        field.clearText()
+    }
+    // A comma or semicolon finishes a recipient and starts the next.
+    LaunchedEffect(field) {
+        snapshotFlow { field.text.toString() }.collect { text ->
+            if (text.endsWith(',') || text.endsWith(';')) {
+                val entry = text.dropLast(1)
+                if (Recipients.looksLikeNumber(entry)) {
+                    val number = Recipients.dialable(entry)
+                    add(Recipients.display(number, actions::formatNumber), number)
+                } else {
+                    add(entry, entry)
+                }
+            }
+        }
     }
     val addLabel = stringResource(R.string.add_to_group)
     val numbers = { (chosen.map { it.second } + listOfNotNull(to.trim().takeIf { it.isNotEmpty() })) }
@@ -110,25 +132,13 @@ internal fun NewMessage(
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 OutlinedTextField(
-                    value = to,
-                    onValueChange = { text ->
-                        // A comma or semicolon finishes a number and starts the next. Numbers are kept as
-                        // bare digits; the field lays them out for display.
-                        if (text.endsWith(',') || text.endsWith(';')) {
-                            val entry = text.dropLast(1)
-                            if (Recipients.looksLikeNumber(entry)) {
-                                val number = Recipients.dialable(entry)
-                                add(Recipients.display(number, actions::formatNumber), number)
-                            } else {
-                                add(entry, entry)
-                            }
-                        } else {
-                            to = if (Recipients.looksLikeNumber(text)) Recipients.dialable(text) else text
-                        }
-                    },
+                    state = field,
+                    // A number typed with spaces or dashes is kept as bare digits (the layout is added
+                    // for display); a comma or semicolon is left for the collector above.
+                    inputTransformation = BareNumbers,
+                    outputTransformation = if (numberMode) phoneFormat else null,
                     label = { Text(stringResource(R.string.to)) },
-                    singleLine = true,
-                    visualTransformation = if (numberMode) phoneFormat else VisualTransformation.None,
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     isError = invalid,
                     supportingText = if (invalid) ({ Text(stringResource(R.string.check_number)) }) else null,
                     trailingIcon = {
@@ -144,7 +154,7 @@ internal fun NewMessage(
                             keyboardType = if (dialpad) KeyboardType.Phone else KeyboardType.Text,
                             imeAction = ImeAction.Next,
                         ),
-                    keyboardActions = KeyboardActions(onNext = { if (numbers().isNotEmpty()) onPick(numbers()) }),
+                    onKeyboardAction = { if (numbers().isNotEmpty()) onPick(numbers()) },
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = { onPick(numbers()) }, enabled = numbers().isNotEmpty()) {
@@ -185,22 +195,25 @@ internal fun NewMessage(
     }
 }
 
-/** Shows a number typed as bare digits laid out for the phone's country, keeping the cursor right. */
-private class PhoneNumberTransformation(
+/**
+ * Shows a number typed as bare digits laid out for the phone's country. The layout is inserted
+ * character by character ([Recipients.insertions]), so Compose keeps the cursor where it belongs.
+ */
+private class PhoneNumberLayout(
     private val format: (String) -> String?,
-) : VisualTransformation {
-    override fun filter(text: AnnotatedString): TransformedText {
-        val raw = text.text
-        val shown = Recipients.display(raw, format)
-        if (shown == raw) return TransformedText(text, OffsetMapping.Identity)
-        val (toShown, toRaw) = Recipients.offsets(raw, shown)
-        return TransformedText(
-            AnnotatedString(shown),
-            object : OffsetMapping {
-                override fun originalToTransformed(offset: Int) = toShown[offset.coerceIn(0, raw.length)]
+) : OutputTransformation {
+    override fun TextFieldBuffer.transformOutput() {
+        val raw = asCharSequence().toString()
+        Recipients.insertions(raw, Recipients.display(raw, format)).forEach { (at, c) -> insert(at, c.toString()) }
+    }
+}
 
-                override fun transformedToOriginal(offset: Int) = toRaw[offset.coerceIn(0, shown.length)]
-            },
-        )
+/** A number typed with its layout (spaces, dashes, brackets) is kept as bare digits. */
+private object BareNumbers : InputTransformation {
+    override fun TextFieldBuffer.transformInput() {
+        val text = asCharSequence().toString()
+        if (text.endsWith(',') || text.endsWith(';') || !Recipients.looksLikeNumber(text)) return
+        val digits = Recipients.dialable(text)
+        if (digits != text) replace(0, length, digits)
     }
 }

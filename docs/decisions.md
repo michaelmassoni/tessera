@@ -4,6 +4,24 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-26: compileSdk 37.1 and Compose 1.13 (Accepted)
+
+**Decision:** Compile against Android 37.1 (`platforms;android-37.1`, a stable SDK platform) and
+move to the Compose BOM 2026.11.01 (Compose UI 1.13.0, material3 1.5.0). targetSdk stays 37.
+
+**Reason:** Compose 1.13 requires compileSdk 37.1. Staying on Compose 1.12 would block every later
+BOM update, and 1.13 deprecates the value-based text fields with `VisualTransformation` and the
+`TextFieldValue` `BasicTextField`, which are errors here. Better migrated before the Notes and
+Messages work on the roadmap touches the same screens.
+
+**Consequences:**
+
+- The Nix dev shell, CI and release workflows install `platforms;android-37.1` beside 37.0 (the
+  emulator image and targetSdk). F-Droid build recipes need the same platform.
+- Password fields use `core:design` `TesseraPasswordField` (Material's `OutlinedSecureTextField`);
+  Messages' recipient field is state-based with an `OutputTransformation` for the number layout;
+  the Notes checklist rows use `TextFieldState`.
+
 ## 2026-11-26: Asking for the local network only when the server is on it (Accepted)
 
 - **Context:** on Android 17, apps targeting SDK 37 need the runtime permission
