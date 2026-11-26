@@ -26,6 +26,9 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
   refresh until a writable calendar exists, then stops checking.
 - **Visibility:** each calendar can be shown or hidden. This is stored in `Calendars.VISIBLE`,
   so other calendar apps agree.
+- **Calendar choice in the editor (0.9.2):** only shown, writable calendars, plus the event's own
+  calendar if it's hidden. With none shown, every writable one. Each has its colour and, except the
+  Device calendar, its account, since two accounts often both have a "Personal" or "Work".
 - **Reloading:** the provider is watched only while the app is visible (returning reloads anyway),
   and a burst of changes from a sync becomes one reload 500 ms after the last. Launching loads
   once, not once in onCreate and again in onResume.
