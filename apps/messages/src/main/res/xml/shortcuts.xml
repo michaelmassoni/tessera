@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:icon="@drawable/ic_shortcut_new_message"
+        android:shortcutId="new_message"
+        android:shortcutShortLabel="@string/shortcut_new_message">
+        <intent
+            android:action="io.github.michaelmassoni.tessera.messages.NEW_MESSAGE"
+            android:targetClass="io.github.michaelmassoni.tessera.messages.MainActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.messages" />
+    </shortcut>
+</shortcuts>

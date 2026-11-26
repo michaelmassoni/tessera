@@ -156,4 +156,6 @@
     <string name="widget_theme_app">Same as Tessera</string>
     <string name="widget_theme_light">Light</string>
     <string name="widget_theme_dark">Dark</string>
+    <!-- Launcher shortcuts (long-press the icon). -->
+    <string name="shortcut_new_task">New task</string>
 </resources>

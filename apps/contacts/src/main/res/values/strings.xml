@@ -141,4 +141,6 @@
         <item quantity="one">Merged %d contact</item>
         <item quantity="other">Merged %d contacts</item>
     </plurals>
+    <!-- Launcher shortcuts (long-press the icon). -->
+    <string name="shortcut_new_contact">New contact</string>
 </resources>

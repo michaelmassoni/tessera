@@ -205,3 +205,7 @@ published once per app version.
 ## First run
 
 See [setup.md](setup.md) for what calendar asks for the first time it opens.
+
+## Launcher shortcuts (0.11)
+
+Long-press the app icon: **New event** opens the editor (`ACTION_INSERT`). Each icon is the Material Symbol on the app's launcher colour.

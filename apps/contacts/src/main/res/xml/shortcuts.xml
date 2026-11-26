@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:icon="@drawable/ic_shortcut_new_contact"
+        android:shortcutId="new_contact"
+        android:shortcutShortLabel="@string/shortcut_new_contact">
+        <intent
+            android:action="android.intent.action.INSERT"
+            android:data="content://com.android.contacts/contacts"
+            android:targetClass="io.github.michaelmassoni.tessera.contacts.MainActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.contacts" />
+    </shortcut>
+</shortcuts>
