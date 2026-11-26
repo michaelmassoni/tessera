@@ -29,6 +29,10 @@ data class Song(
     val explicit: Boolean = false,
     /** When the server says it was starred (liked), ms; 0 if not starred. See [Likes]. */
     val starredAt: Long = 0,
+    /** The genre tag as written (may hold several: see [Groups.splitGenres]); blank if untagged. */
+    val genre: String = "",
+    /** The folder it's in ("Music/Rock/Album"), for Folders; blank if unknown. */
+    val folder: String = "",
 )
 
 data class Album(

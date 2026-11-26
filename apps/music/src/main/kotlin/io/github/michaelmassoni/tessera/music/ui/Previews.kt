@@ -9,6 +9,7 @@ import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.QueueItem
+import io.github.michaelmassoni.tessera.music.engine.Groups
 import io.github.michaelmassoni.tessera.music.engine.Library
 import io.github.michaelmassoni.tessera.music.engine.LyricLine
 import io.github.michaelmassoni.tessera.music.engine.Lyrics
@@ -195,4 +196,14 @@ private fun CastingPlayerPreview() {
             castingTo = livingRoom.name,
         )
     }
+}
+
+private val genreSongs =
+    songs.mapIndexed { i, s -> s.copy(genre = listOf("Ambient", "Ambient; Electronic", "Jazz", "Indie Folk", "indie folk")[i]) }
+
+// Genres from the Songs tab's chip; folders look the same with a folder icon and the path.
+@TesseraPreviews
+@Composable
+private fun GenresPreview() {
+    TesseraTheme(dynamicColor = false) { GroupsScreen(Groups.genres(genreSongs), folders = false, onOpen = {}, onBack = {}) }
 }

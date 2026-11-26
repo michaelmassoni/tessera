@@ -223,6 +223,13 @@ object Subsonic {
             addedAt = time(o.string("created")),
             playedAt = time(o.string("played")),
             starredAt = time(o.string("starred")),
+            genre =
+                (o["genres"] as? JsonArray)
+                    ?.mapNotNull { (it as? JsonObject)?.string("name") }
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.joinToString("; ")
+                    ?: o.string("genre").orEmpty(),
+            folder = o.string("path")?.substringBeforeLast('/', "").orEmpty(),
             // OpenSubsonic: "explicit", "clean" or blank; some servers abbreviate to "e" / "c".
             explicit = o.string("explicitStatus")?.lowercase() in setOf("explicit", "e"),
         )
