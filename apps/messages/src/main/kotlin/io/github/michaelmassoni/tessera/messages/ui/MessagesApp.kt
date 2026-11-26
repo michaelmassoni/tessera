@@ -25,6 +25,8 @@ data class MessagesState(
     val loaded: Boolean = false,
     val conversations: List<Conversation> = emptyList(),
     val names: Map<String, String> = emptyMap(),
+    /** Contact photos (thumbnail URIs) by address. */
+    val photos: Map<String, String> = emptyMap(),
     val hasPermissions: Boolean = true,
     /** Tessera Messages is the default SMS app: it receives, and may delete and mark read. */
     val isDefault: Boolean = false,
@@ -70,6 +72,9 @@ interface MessagesActions {
     fun removeAttachment(uri: String)
 
     fun suggestions(query: String): List<Pair<String, String>>
+
+    /** Conversations with a message containing [query], with that message's text. Blocking. */
+    fun searchMessages(query: String): Map<Long, String> = emptyMap()
 
     /** [dialable] laid out for the phone's country, or null. */
     fun formatNumber(dialable: String): String?

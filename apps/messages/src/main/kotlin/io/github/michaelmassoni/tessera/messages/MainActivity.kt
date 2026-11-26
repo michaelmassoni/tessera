@@ -269,22 +269,22 @@ class MainActivity : ComponentActivity() {
             observingContacts = true
         }
         lifecycleScope.launch {
-            val (conversations, names) =
+            val (conversations, names, photos) =
                 withContext(Dispatchers.IO) {
                     val list = runCatching { repository.conversations() }.getOrDefault(emptyList())
-                    val names =
-                        if (granted(Manifest.permission.READ_CONTACTS)) {
-                            repository.names(list.flatMap { it.addresses }.distinct())
-                        } else {
-                            emptyMap()
-                        }
-                    list to names
+                    val addresses = list.flatMap { it.addresses }.distinct()
+                    if (granted(Manifest.permission.READ_CONTACTS)) {
+                        Triple(list, repository.names(addresses), repository.photos(addresses))
+                    } else {
+                        Triple(list, emptyMap(), emptyMap())
+                    }
                 }
             state =
                 state.copy(
                     loaded = true,
                     conversations = conversations,
                     names = names,
+                    photos = photos,
                     hasPermissions = hasAll(),
                     isDefault = isDefaultSmsApp(),
                     pinned = local.pinned,
@@ -401,6 +401,8 @@ class MainActivity : ComponentActivity() {
 
         override fun suggestions(query: String) =
             if (granted(Manifest.permission.READ_CONTACTS)) repository.suggestions(query) else emptyList()
+
+        override fun searchMessages(query: String) = repository.searchMessages(query)
 
         override fun grant() = request.launch(permissions)
 
