@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -106,6 +108,8 @@ fun WeatherApp(
     modifier: Modifier = Modifier,
 ) {
     var showPlaces by rememberSaveable { mutableStateOf(false) }
+    // The forecast leaves composition while the places list is shown: this keeps its scroll.
+    val saveable = rememberSaveableStateHolder()
     when {
         !state.loaded -> {
             @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -116,21 +120,34 @@ fun WeatherApp(
         }
 
         state.pages.isEmpty() || showPlaces -> {
-            PlacesScreen(
-                state = state,
-                actions = actions,
-                snackbar = snackbar,
-                onBack = if (state.pages.isNotEmpty()) ({ showPlaces = false }) else null,
-                onOpen = { id ->
-                    actions.show(id)
-                    showPlaces = false
-                },
-                modifier = modifier,
-            )
+            saveable.SaveableStateProvider(PLACES_KEY) {
+                PlacesScreen(
+                    state = state,
+                    actions = actions,
+                    snackbar = snackbar,
+                    onBack =
+                        if (state.pages.isNotEmpty()) {
+                            {
+                                saveable.removeState(PLACES_KEY)
+                                showPlaces = false
+                            }
+                        } else {
+                            null
+                        },
+                    onOpen = { id ->
+                        actions.show(id)
+                        saveable.removeState(PLACES_KEY)
+                        showPlaces = false
+                    },
+                    modifier = modifier,
+                )
+            }
         }
 
         else -> {
-            ForecastPager(state, actions, now, snackbar, onPlaces = { showPlaces = true }, modifier = modifier)
+            saveable.SaveableStateProvider(FORECAST_KEY) {
+                ForecastPager(state, actions, now, snackbar, onPlaces = { showPlaces = true }, modifier = modifier)
+            }
         }
     }
 }
@@ -163,23 +180,68 @@ private fun ForecastPager(
     var detailMetric by rememberSaveable { mutableStateOf(Metric.Temperature.name) }
     val detailForecast = current.forecast
     val day = detailDay
+    // The pager leaves composition while a day's details are shown: this keeps each page's scroll.
+    val saveable = rememberSaveableStateHolder()
     if (day != null && detailForecast != null) {
-        DayDetailScreen(
-            forecast = detailForecast,
-            placeName = placeName(current),
-            units = state.units,
-            now = now,
-            date = LocalDate.ofEpochDay(day),
-            metric = Metric.valueOf(detailMetric),
-            onSelect = { date, metric ->
+        saveable.SaveableStateProvider(DAY_KEY) {
+            DayDetailScreen(
+                forecast = detailForecast,
+                placeName = placeName(current),
+                units = state.units,
+                now = now,
+                date = LocalDate.ofEpochDay(day),
+                metric = Metric.valueOf(detailMetric),
+                onSelect = { date, metric ->
+                    detailDay = date.toEpochDay()
+                    detailMetric = metric.name
+                },
+                onBack = {
+                    saveable.removeState(DAY_KEY)
+                    detailDay = null
+                },
+                modifier = modifier,
+            )
+        }
+        return
+    }
+    saveable.SaveableStateProvider(PAGER_KEY) {
+        ForecastScaffold(
+            state,
+            actions,
+            now,
+            snackbar,
+            onPlaces,
+            pager,
+            current,
+            onDetail = { date, metric ->
                 detailDay = date.toEpochDay()
                 detailMetric = metric.name
             },
-            onBack = { detailDay = null },
             modifier = modifier,
         )
-        return
     }
+    state.openWarning?.let { WarningSheet(it, state.warningText, state.warningFailed, actions::closeWarning) }
+}
+
+private const val PLACES_KEY = "places"
+private const val FORECAST_KEY = "forecast"
+private const val PAGER_KEY = "pager"
+private const val DAY_KEY = "day"
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ForecastScaffold(
+    state: WeatherState,
+    actions: WeatherActions,
+    now: Long,
+    snackbar: SnackbarHostState,
+    onPlaces: () -> Unit,
+    pager: PagerState,
+    current: PlacePage,
+    onDetail: (LocalDate, Metric) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val pages = state.pages
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -217,15 +279,11 @@ private fun ForecastPager(
                 state.units,
                 now,
                 onRefresh = actions::refresh,
-                onDetail = { date, metric ->
-                    detailDay = date.toEpochDay()
-                    detailMetric = metric.name
-                },
+                onDetail = onDetail,
                 onWarning = actions::openWarning,
             )
         }
     }
-    state.openWarning?.let { WarningSheet(it, state.warningText, state.warningFailed, actions::closeWarning) }
 }
 
 @Composable
