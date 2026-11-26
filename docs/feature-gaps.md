@@ -1,5 +1,8 @@
 # Feature gaps
 
+> **Superseded** on 2026-11-26 by [roadmap.md](roadmap.md). Kept as a record of the
+> 2026-11-19/20 review.
+
 A review of each app against what people expect from the phone's built-in app (Pixel and Samsung
 apps, plus popular open-source ones). Written 2026-11-19, from each spec and a check of the code.
 Updated 2026-11-20 with a theme audit, a performance audit, suite-wide features and the 2026
