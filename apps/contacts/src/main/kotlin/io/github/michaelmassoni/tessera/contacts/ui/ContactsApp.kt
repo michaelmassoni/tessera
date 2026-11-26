@@ -84,6 +84,12 @@ interface ListActions {
     fun export()
 
     fun openSettings()
+
+    fun openDuplicates() {}
+
+    fun closeDuplicates() {}
+
+    fun merge(group: List<ContactSummary>) {}
 }
 
 /** What the editor can do. */
@@ -95,6 +101,11 @@ interface EditActions {
     fun save()
 
     fun cancel()
+
+    /** A picture picked for the contact's photo. */
+    fun pickPhoto(picture: android.net.Uri) {}
+
+    fun removePhoto() {}
 }
 
 private val ExpandedWidth = 840.dp
@@ -124,6 +135,8 @@ fun ContactsApp(
     editActions: EditActions,
     modifier: Modifier = Modifier,
     pickMode: Boolean = false,
+    // The duplicates page, while open.
+    duplicates: List<List<ContactSummary>>? = null,
 ) {
     val snackbar = remember { SnackbarHostState() }
     var confirmDiscard by rememberSaveable { mutableStateOf(false) }
@@ -158,7 +171,15 @@ fun ContactsApp(
             ListScreen(list, if (expanded) openId else null, snackbar, listActions, pickMode, m)
         }
         val editorPane: @Composable (EditorState) -> Unit = { e ->
-            ContactEditor(e, editActions::change, editActions::account, editActions::save, closeEditor)
+            ContactEditor(
+                e,
+                editActions::change,
+                editActions::account,
+                editActions::save,
+                closeEditor,
+                onPickPhoto = editActions::pickPhoto,
+                onRemovePhoto = editActions::removePhoto,
+            )
         }
         if (expanded) {
             Row(Modifier.fillMaxSize()) {
@@ -199,6 +220,8 @@ fun ContactsApp(
                 }
             }
         }
+        // Over everything, like the editor: the duplicates page.
+        duplicates?.let { DuplicatesScreen(it, listActions::merge, listActions::closeDuplicates, Modifier.fillMaxSize()) }
     }
 
     if (confirmDiscard) {
@@ -240,6 +263,7 @@ private fun ContactEvents(
                     is ContactsEvent.Deleted -> resources.getString(R.string.deleted, e.name)
                     is ContactsEvent.Imported -> resources.getQuantityString(R.plurals.imported, e.count, e.count)
                     ContactsEvent.ImportFailed -> resources.getString(R.string.import_failed)
+                    is ContactsEvent.Merged -> resources.getQuantityString(R.plurals.merged, e.count, e.count)
                 }
             snackbar.showSnackbar(text)
         }
@@ -369,6 +393,7 @@ private fun ListMenu(
         if (showAccounts) item(R.string.all_accounts, DesignR.drawable.ic_account_circle, onChooseAccount)
         item(R.string.action_import, DesignR.drawable.ic_download, actions::import)
         item(R.string.action_export, DesignR.drawable.ic_upload, actions::export)
+        item(R.string.duplicates_title, DesignR.drawable.ic_group, actions::openDuplicates)
         HorizontalDivider()
         item(R.string.settings, DesignR.drawable.ic_settings, actions::openSettings)
     }

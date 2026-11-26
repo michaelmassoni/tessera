@@ -39,6 +39,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.michaelmassoni.tessera.contacts.data.ContactsRepository
+import io.github.michaelmassoni.tessera.contacts.data.PhotoPrep
 import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
@@ -127,6 +128,7 @@ class MainActivity : ComponentActivity() {
                     val openId by viewModel.openId.collectAsStateWithLifecycle()
                     val detail by viewModel.detail.collectAsStateWithLifecycle()
                     val editor by viewModel.editor.collectAsStateWithLifecycle()
+                    val duplicates by viewModel.duplicates.collectAsStateWithLifecycle()
                     ContactsApp(
                         list,
                         openId,
@@ -137,6 +139,7 @@ class MainActivity : ComponentActivity() {
                         detailActions,
                         editActions,
                         pickMode = pick != null,
+                        duplicates = duplicates,
                     )
                     val picking = pick
                     val d = detail
@@ -319,6 +322,12 @@ class MainActivity : ComponentActivity() {
         override fun export() = exportLauncher.launch("contacts-${LocalDate.now()}.vcf")
 
         override fun openSettings() = startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+
+        override fun openDuplicates() = viewModel.openDuplicates()
+
+        override fun closeDuplicates() = viewModel.closeDuplicates()
+
+        override fun merge(group: List<ContactSummary>) = viewModel.merge(group)
     }
 
     private val importLauncher =
@@ -380,6 +389,10 @@ class MainActivity : ComponentActivity() {
         override fun save() = viewModel.save()
 
         override fun cancel() = viewModel.cancelEdit()
+
+        override fun pickPhoto(picture: android.net.Uri) = viewModel.pickPhoto { PhotoPrep.prepare(this@MainActivity, picture) }
+
+        override fun removePhoto() = viewModel.removePhoto()
     }
 }
 

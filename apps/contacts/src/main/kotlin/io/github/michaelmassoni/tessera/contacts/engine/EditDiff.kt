@@ -116,7 +116,7 @@ object EditDiff {
         }
         list(RowKind.Phone, original.phones, edited.phones)
         list(RowKind.Email, original.emails, edited.emails)
-        list(RowKind.Address, listOfNotNull(original.address), listOfNotNull(edited.address))
+        list(RowKind.Address, original.addresses, edited.addresses)
         return ops
     }
 }

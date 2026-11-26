@@ -114,15 +114,26 @@ needed.
 - Action buttons have text labels.
 - Phone numbers are read digit by digit (`TtsSpan`), as the system does.
 
+## Photos, duplicates and addresses (0.5)
+
+- **Photo:** the editor shows the photo (or initials) with Add or Change photo and Remove. Change
+  opens the system photo picker (no storage permission); the picture's centred square, scaled to
+  at most 720 px (`PhotoCrop`, unit tested), becomes the contact's display photo when it's saved.
+  There's no crop editor: the centre is used, as most phones' quick photo set does. A synced
+  account sends the new photo with its next sync (CardDAV PHOTO).
+- **Merge duplicates** (list menu): groups of contacts with the same name (ignoring case, accents
+  and spacing), or a phone number (last nine digits, so national and international forms match)
+  or email in common, joined through any link (`Duplicates`, unit tested). Merge joins a group
+  into one contact through `AggregationExceptions` (keep together), as the system's Contacts
+  does: each account keeps its own data, nothing is deleted. The page updates as groups are merged.
+- **Addresses:** any number in the editor (was one), each with its type; a second defaults to Work.
+
 ## Out of scope for v0.1
 
-- Editing photos.
 - Groups and labels.
-- Merging and linking duplicates.
 - Ringtone per contact.
 - Blocking numbers.
 - QR sharing.
-- Multiple addresses in the editor (all of them are still shown on the detail screen).
 
 ## First run
 
