@@ -1,8 +1,12 @@
 package io.github.michaelmassoni.tessera.contacts.ui
 
+import android.net.Uri
 import android.provider.ContactsContract.CommonDataKinds.Email
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.provider.ContactsContract.CommonDataKinds.StructuredPostal
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +58,7 @@ import io.github.michaelmassoni.tessera.contacts.R
 import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
+import io.github.michaelmassoni.tessera.core.design.Avatar
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -84,8 +89,11 @@ fun ContactEditor(
     onSave: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onPickPhoto: (Uri) -> Unit = {},
+    onRemovePhoto: () -> Unit = {},
 ) {
     val form = state.form
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(onPickPhoto) }
     val resources = LocalResources.current
     Scaffold(
         modifier = modifier,
@@ -115,6 +123,12 @@ fun ContactEditor(
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                PhotoSection(
+                    name = listOf(form.givenName, form.familyName).filter { it.isNotBlank() }.joinToString(" "),
+                    photo = state.shownPhoto,
+                    onChoose = { pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onRemove = onRemovePhoto,
+                )
                 if (state.contactId == null && state.accounts.size > 1) {
                     AccountPicker(state.account, state.accounts, onAccount)
                 }
@@ -143,16 +157,15 @@ fun ContactEditor(
                     onChange = { onChange(form.copy(emails = it)) },
                 )
                 LabeledList(
-                    items = listOfNotNull(form.address),
+                    items = form.addresses,
                     types = PostalTypes,
                     typeLabel = { t, l -> StructuredPostal.getTypeLabel(resources, t, l).toString() },
                     fieldLabel = stringResource(R.string.field_address),
                     addLabel = stringResource(R.string.add_address),
                     keyboard = KeyboardType.Text,
-                    newType = StructuredPostal.TYPE_HOME,
-                    maxItems = 1,
+                    newType = if (form.addresses.isEmpty()) StructuredPostal.TYPE_HOME else StructuredPostal.TYPE_WORK,
                     multiLine = true,
-                    onChange = { onChange(form.copy(address = it.firstOrNull())) },
+                    onChange = { onChange(form.copy(addresses = it)) },
                 )
                 BirthdayField(form.birthday) { onChange(form.copy(birthday = it)) }
                 Field(form.note, { onChange(form.copy(note = it)) }, stringResource(R.string.field_notes), singleLine = false)
@@ -364,4 +377,22 @@ fun DiscardDialog(
         confirmButton = { TextButton(onClick = onDiscard) { Text(stringResource(R.string.discard)) } },
         dismissButton = { TextButton(onClick = onKeepEditing) { Text(stringResource(R.string.keep_editing)) } },
     )
+}
+
+/** The photo at the top of the editor: the photo (or initials), Choose or Change, and Remove. */
+@Composable
+private fun PhotoSection(
+    name: String,
+    photo: String?,
+    onChoose: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Avatar(name.ifBlank { null }, key = name, photoUri = photo, size = 96.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = onChoose) { Text(stringResource(if (photo == null) R.string.photo_add else R.string.photo_change)) }
+            if (photo != null) TextButton(onClick = onRemove) { Text(stringResource(R.string.photo_remove)) }
+        }
+    }
 }

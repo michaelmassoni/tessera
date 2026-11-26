@@ -128,4 +128,17 @@
     <string name="setup_pick_text">These address books on your server will sync with this phone.</string>
     <string name="no_server_address_books">No address books on the server yet.</string>
     <string name="use_address_books">Sync these address books</string>
+    <!-- The editor's photo (docs/contacts.md, Photo). -->
+    <string name="photo_add">Add photo</string>
+    <string name="photo_change">Change photo</string>
+    <string name="photo_remove">Remove photo</string>
+    <!-- Find and merge duplicates (docs/contacts.md, Duplicates). -->
+    <string name="duplicates_title">Merge duplicates</string>
+    <string name="duplicates_hint">These look like the same person: the same name, or a number or email in common. Merging shows them as one contact; each account keeps its own details.</string>
+    <string name="duplicates_none">No duplicates found</string>
+    <string name="duplicates_merge">Merge</string>
+    <plurals name="merged">
+        <item quantity="one">Merged %d contact</item>
+        <item quantity="other">Merged %d contacts</item>
+    </plurals>
 </resources>

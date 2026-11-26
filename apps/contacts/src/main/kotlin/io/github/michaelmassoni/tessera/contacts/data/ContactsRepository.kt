@@ -16,6 +16,7 @@ import android.provider.ContactsContract.CommonDataKinds.Website
 import android.provider.ContactsContract.Contacts
 import android.provider.ContactsContract.Data
 import android.provider.ContactsContract.RawContacts
+import androidx.core.net.toUri
 import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
@@ -25,6 +26,7 @@ import io.github.michaelmassoni.tessera.contacts.engine.Labeled
 import io.github.michaelmassoni.tessera.contacts.engine.RowKind
 import io.github.michaelmassoni.tessera.contacts.engine.RowOp
 import io.github.michaelmassoni.tessera.contacts.engine.VCardContact
+import java.io.File
 
 /**
  * Reads and writes the system contacts database. Blocking: call off the main thread.
@@ -209,7 +211,7 @@ class ContactsRepository(
             form.copy(
                 phones = phones.filter { rowRaws[it.id] == editRaw },
                 emails = emails.filter { rowRaws[it.id] == editRaw },
-                address = addresses.firstOrNull { rowRaws[it.id] == editRaw },
+                addresses = addresses.filter { rowRaws[it.id] == editRaw },
             )
         return ContactDetail(
             id = id,
@@ -255,18 +257,75 @@ class ContactsRepository(
         if (ops.isNotEmpty()) resolver.applyBatch(ContactsContract.AUTHORITY, ArrayList(ops))
     }
 
-    /** Creates a contact in [account]. @return its contact id, if the provider reports it. */
+    /** Creates a contact in [account]. @return its contact id and raw contact id, where the provider reports them. */
     fun create(
         account: AccountRef,
         form: ContactForm,
-    ): Long? {
+    ): Pair<Long?, Long?> {
         val ops = arrayListOf(rawContactInsert(account))
         EditDiff.diff(ContactForm(), form).forEach { op -> ops += op.toOperation { withValueBackReference(Data.RAW_CONTACT_ID, 0) } }
         val results = resolver.applyBatch(ContactsContract.AUTHORITY, ops)
-        val rawUri = results.firstOrNull()?.uri ?: return null
-        return resolver.query(rawUri, arrayOf(RawContacts.CONTACT_ID), null, null, null)?.use { c ->
-            if (c.moveToFirst()) c.getLong(0) else null
-        }
+        val rawUri = results.firstOrNull()?.uri ?: return null to null
+        val contactId =
+            resolver.query(rawUri, arrayOf(RawContacts.CONTACT_ID), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getLong(0) else null
+            }
+        return contactId to ContentUris.parseId(rawUri)
+    }
+
+    /**
+     * Sets a raw contact's photo from a prepared JPEG ([file], a file:// URI): written as the
+     * display photo, from which Contacts makes the thumbnail. A synced account sends it on its next sync.
+     */
+    fun setPhoto(
+        rawContactId: Long,
+        file: String,
+    ) {
+        val target =
+            Uri.withAppendedPath(
+                ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawContactId),
+                RawContacts.DisplayPhoto.CONTENT_DIRECTORY,
+            )
+        val bytes = File(file.toUri().path ?: return).readBytes()
+        resolver.openAssetFileDescriptor(target, "rw")?.use { fd -> fd.createOutputStream().use { it.write(bytes) } }
+    }
+
+    /**
+     * Joins [contactIds] into one contact, as the system's Contacts does: every raw contact of
+     * them is marked to be kept together (`AggregationExceptions`). Each account keeps its own data.
+     */
+    fun merge(contactIds: List<Long>) {
+        if (contactIds.size < 2) return
+        val raws = mutableListOf<Long>()
+        resolver
+            .query(
+                RawContacts.CONTENT_URI,
+                arrayOf(RawContacts._ID),
+                "${RawContacts.CONTACT_ID} IN (${contactIds.joinToString(",") { "?" }}) AND ${RawContacts.DELETED} = 0",
+                contactIds.map(Long::toString).toTypedArray(),
+                null,
+            )?.use { c -> while (c.moveToNext()) raws += c.getLong(0) }
+        if (raws.size < 2) return
+        val first = raws.first()
+        val ops =
+            raws.drop(1).mapTo(ArrayList()) { other ->
+                ContentProviderOperation
+                    .newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
+                    .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
+                    .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, first)
+                    .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, other)
+                    .build()
+            }
+        resolver.applyBatch(ContactsContract.AUTHORITY, ops)
+    }
+
+    /** Removes a raw contact's photo. */
+    fun removePhoto(rawContactId: Long) {
+        resolver.delete(
+            Data.CONTENT_URI,
+            "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?",
+            arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Photo.CONTENT_ITEM_TYPE),
+        )
     }
 
     fun setStarred(
@@ -298,7 +357,7 @@ class ContactsRepository(
                     familyName = family,
                     phones = card.phones.map { (number, types) -> Labeled(number, VCardTypes.phone(types)) },
                     emails = card.emails.map { (address, types) -> Labeled(address, VCardTypes.email(types)) },
-                    address = card.addresses.firstOrNull()?.let { (text, types) -> Labeled(text, VCardTypes.postal(types)) },
+                    addresses = card.addresses.map { (text, types) -> Labeled(text, VCardTypes.postal(types)) },
                     company = card.organization,
                     birthday = card.birthday,
                     note = card.note,
