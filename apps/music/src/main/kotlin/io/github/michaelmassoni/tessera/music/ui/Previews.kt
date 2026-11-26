@@ -36,6 +36,7 @@ private val library = LibraryState(true, Library.songs(songs), Library.albums(so
 private val playing =
     PlaybackState(
         hasMedia = true,
+        songId = 3,
         title = "City at Dawn",
         artist = "The Night Shift",
         album = "Overtime",

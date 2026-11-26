@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <!-- Four rounded level bars of different heights: what's playing. -->
+  <path
+      android:fillColor="@android:color/white"
+      android:pathData="M160,800L160,480Q160,447 183.5,423.5Q207,400 240,400Q273,400 296.5,423.5Q320,447 320,480L320,800ZM400,800L400,240Q400,207 423.5,183.5Q447,160 480,160Q513,160 536.5,183.5Q560,207 560,240L560,800ZM640,800L640,560Q640,527 663.5,503.5Q687,480 720,480Q753,480 776.5,503.5Q800,527 800,560L800,800Z"/>
+</vector>

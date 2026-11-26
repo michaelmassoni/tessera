@@ -139,6 +139,7 @@
     <string name="show_as_grid">Show as grid</string>
     <string name="album_artists">Album artists</string>
     <!-- Casting (docs/music.md, Casting) -->
+    <string name="now_playing">playing now</string>
     <string name="cast">Cast</string>
     <string name="cast_to">Cast to</string>
     <string name="cast_casting">Casting</string>

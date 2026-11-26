@@ -287,6 +287,20 @@ library is involved. `PlaybackService` is a Media3 `MediaLibraryService`, so the
   browser alone missed the spinner. Not run in the Desktop Head Unit: Android Auto isn't on the
   AOSP emulator.
 
+## Now playing in lists, album options, smooth progress (0.11)
+
+Asked for by the maintainer alongside casting.
+
+- **The song playing is marked** in every song list (Songs, search, album, artist, playlist): the
+  row is highlighted, its title is in the primary colour, and a level-bars icon sits beside the
+  length. TalkBack adds "playing now".
+- **Album and artist pages have More options** in the top bar: Play next, Add to queue, Shuffle
+  (albums), Add to playlist (or a new one) and, for an album, Go to artist. Albums also get a
+  Shuffle button beside Play. The sheet is the song one (`SongsOptions`), for many songs at once.
+- **The seek bar and the mini player's progress move smoothly.** The player is still sampled
+  twice a second; between samples `Progress.at` carries the position on from the last sample
+  every frame while playing (`rememberSmoothProgress`), so they glide instead of jumping.
+
 ## Casting (0.11)
 
 Asked for by the maintainer: cast to Chromecasts, Google TVs, Nest speakers and TVs with Cast

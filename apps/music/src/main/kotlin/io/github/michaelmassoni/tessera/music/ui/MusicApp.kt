@@ -70,6 +70,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -286,13 +287,14 @@ private class LibraryView(
 fun MusicApp(
     library: LibraryState,
     playback: PlaybackState,
-    progress: () -> Progress,
+    sampledProgress: () -> Progress,
     libraryActions: LibraryActions,
     playerActions: PlayerActions,
     modifier: Modifier = Modifier,
     lyrics: LyricsState = LyricsState.None(false),
 ) {
     val context = LocalContext.current
+    val progress = rememberSmoothProgress(sampledProgress)
     val view = remember { LibraryView(MusicSettings(context)) }
     var screen by rememberSaveable(stateSaver = Screen.Saver) { mutableStateOf(Screen(0)) }
     // Each tab and page keeps its scroll position while another is shown; a page closed for good forgets it.
@@ -459,13 +461,21 @@ fun MusicApp(
                                                     libraryActions,
                                                     openArtist,
                                                     back,
+                                                    playingId = playback.songId,
                                                 )
                                             }
                                         }
 
                                         is Page.ArtistPage -> {
                                             (library.albumArtists + library.artists).firstOrNull { it.id == p.id }?.let {
-                                                ArtistScreen(it, library.playlists, libraryActions, openAlbum, back)
+                                                ArtistScreen(
+                                                    it,
+                                                    library.playlists,
+                                                    libraryActions,
+                                                    openAlbum,
+                                                    back,
+                                                    playingId = playback.songId,
+                                                )
                                             }
                                         }
 
@@ -479,6 +489,7 @@ fun MusicApp(
                                                     back,
                                                     onAlbum = openAlbum,
                                                     onArtist = openArtist,
+                                                    playingId = playback.songId,
                                                 )
                                             }
                                         }
@@ -492,6 +503,7 @@ fun MusicApp(
                                                 openAlbum,
                                                 openArtist,
                                                 { open(Page.PlaylistPage(it)) },
+                                                playingId = playback.songId,
                                             )
                                         }
                                     }
@@ -515,6 +527,7 @@ private fun LibraryScreen(
     onAlbum: (Long) -> Unit,
     onArtist: (Long) -> Unit,
     onPlaylist: (Long) -> Unit,
+    playingId: Long = 0,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var options by remember { mutableStateOf<Song?>(null) }
@@ -603,6 +616,7 @@ private fun LibraryScreen(
                             PlayingFrom(PlayingFrom.Kind.Search, query),
                             showShuffle = false,
                             onLongClick = onLongClick,
+                            playingId = playingId,
                         )
                     }
 
@@ -613,7 +627,14 @@ private fun LibraryScreen(
                                 view.songSort,
                                 library.history,
                             ) { Sorts.songs(library.songs, view.songSort, library.history) }
-                        SongList(songs, actions, PlayingFrom(PlayingFrom.Kind.Songs), showShuffle = true, onLongClick = onLongClick)
+                        SongList(
+                            songs,
+                            actions,
+                            PlayingFrom(PlayingFrom.Kind.Songs),
+                            showShuffle = true,
+                            onLongClick = onLongClick,
+                            playingId = playingId,
+                        )
                     }
 
                     tab == Tab.Playlists -> {
@@ -655,6 +676,8 @@ internal fun SongList(
     header: (LazyListScope.() -> Unit)? = null,
     showArt: Boolean = true,
     onLongClick: ((Int, Song) -> Unit)? = null,
+    // The song playing now (its id), shown highlighted wherever it appears.
+    playingId: Long = 0,
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
         header?.invoke(this)
@@ -672,16 +695,44 @@ internal fun SongList(
         itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->
             val artist = song.artist.ifBlank { stringResource(R.string.unknown_artist) }
             val explicit = if (song.explicit) ", " + stringResource(R.string.explicit) else ""
-            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}"
+            val current = playingId != 0L && song.id == playingId
+            val playing = if (current) ", " + stringResource(R.string.now_playing) else ""
+            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$playing"
             ListItem(
+                selected = current,
                 onClick = { actions.play(songs, i, from) },
                 onLongClick = onLongClick?.let { { it(i, song) } },
                 onLongClickLabel = onLongClick?.let { stringResource(R.string.song_options) },
                 leadingContent = if (showArt) ({ AlbumArt(song.albumId) }) else null,
                 supportingContent = { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                trailingContent = { Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium) },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (current) {
+                            Icon(
+                                painterResource(R.drawable.ic_now_playing),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium)
+                    }
+                },
                 modifier = Modifier.padding(horizontal = 8.dp).semantics(mergeDescendants = true) { contentDescription = description },
-            ) { TitleWithBadge({ m -> Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = m) }, song.explicit) }
+            ) {
+                TitleWithBadge(
+                    { m ->
+                        Text(
+                            song.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = if (current) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                            modifier = m,
+                        )
+                    },
+                    song.explicit,
+                )
+            }
         }
     }
 }
@@ -694,18 +745,34 @@ private fun AlbumScreen(
     actions: LibraryActions,
     onArtist: (Long) -> Unit,
     onBack: () -> Unit,
+    playingId: Long = 0,
 ) {
+    val from = PlayingFrom(PlayingFrom.Kind.Album, album.title, album.id)
     var options by remember { mutableStateOf<Song?>(null) }
     options?.let { song -> SongOptions(song, playlists, actions, onDismiss = { options = null }, onArtist = onArtist) }
-    Scaffold(topBar = { BackBar(album.title, onBack) }) { padding ->
+    var albumOptions by remember { mutableStateOf(false) }
+    if (albumOptions) {
+        SongsOptions(
+            title = album.title,
+            subtitle = album.artist.ifBlank { stringResource(R.string.unknown_artist) },
+            songs = album.songs,
+            playlists = playlists,
+            actions = actions,
+            onDismiss = { albumOptions = false },
+            onArtist = album.songs.firstOrNull()?.let { s -> { onArtist(s.artistId) } },
+            onShuffle = { actions.shuffle(album.songs, from) },
+        )
+    }
+    Scaffold(topBar = { BackBar(album.title, onBack, onMore = { albumOptions = true }) }) { padding ->
         Box(Modifier.padding(padding)) {
             SongList(
                 album.songs,
                 actions,
-                PlayingFrom(PlayingFrom.Kind.Album, album.title, album.id),
+                from,
                 showShuffle = false,
                 showArt = false,
                 onLongClick = { _, song -> options = song },
+                playingId = playingId,
                 header = {
                     item(key = "header") {
                         Column(
@@ -719,9 +786,15 @@ private fun AlbumScreen(
                                 listOfNotNull(album.artist.ifBlank { null }, album.year.takeIf { it > 0 }?.toString()).joinToString(" · "),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Button(onClick = { actions.play(album.songs, 0, PlayingFrom(PlayingFrom.Kind.Album, album.title, album.id)) }) {
-                                Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
-                                Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { actions.play(album.songs, 0, from) }) {
+                                    Icon(painterResource(DesignR.drawable.ic_play_arrow_filled), contentDescription = null)
+                                    Text(stringResource(R.string.play), modifier = Modifier.padding(start = 8.dp))
+                                }
+                                FilledTonalButton(onClick = { actions.shuffle(album.songs, from) }) {
+                                    Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
+                                    Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 8.dp))
+                                }
                             }
                         }
                     }
@@ -739,10 +812,22 @@ private fun ArtistScreen(
     actions: LibraryActions,
     onAlbum: (Long) -> Unit,
     onBack: () -> Unit,
+    playingId: Long = 0,
 ) {
     var options by remember { mutableStateOf<Song?>(null) }
     options?.let { song -> SongOptions(song, playlists, actions, onDismiss = { options = null }, onAlbum = onAlbum) }
-    Scaffold(topBar = { BackBar(artist.name, onBack) }) { padding ->
+    var artistOptions by remember { mutableStateOf(false) }
+    if (artistOptions) {
+        SongsOptions(
+            title = artist.name.ifBlank { stringResource(R.string.unknown_artist) },
+            subtitle = pluralStringResource(R.plurals.song_count, artist.songs.size, artist.songs.size),
+            songs = artist.songs,
+            playlists = playlists,
+            actions = actions,
+            onDismiss = { artistOptions = false },
+        )
+    }
+    Scaffold(topBar = { BackBar(artist.name, onBack, onMore = { artistOptions = true }) }) { padding ->
         Box(Modifier.padding(padding)) {
             SongList(
                 artist.songs,
@@ -750,6 +835,7 @@ private fun ArtistScreen(
                 PlayingFrom(PlayingFrom.Kind.Artist, artist.name, artist.id),
                 showShuffle = true,
                 onLongClick = { _, song -> options = song },
+                playingId = playingId,
                 header = {
                     item(key = "header") {
                         Column(
@@ -811,6 +897,7 @@ private fun ArtistScreen(
 internal fun BackBar(
     title: String,
     onBack: () -> Unit,
+    onMore: (() -> Unit)? = null,
 ) {
     TopAppBar(
         title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -818,6 +905,13 @@ internal fun BackBar(
             IconButton(
                 onClick = onBack,
             ) { Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back)) }
+        },
+        actions = {
+            onMore?.let { more ->
+                IconButton(onClick = more) {
+                    Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
+                }
+            }
         },
     )
 }

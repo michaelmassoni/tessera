@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.music.ui
 
 import android.graphics.ImageDecoder
+import android.os.SystemClock
 import android.util.LruCache
 import android.util.Size
 import androidx.activity.compose.BackHandler
@@ -47,12 +48,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -628,4 +632,23 @@ private object ArtCache : LruCache<String, ImageBitmap>(16 * 1024 * 1024) {
         key: String,
         value: ImageBitmap,
     ) = value.width * value.height * 4
+}
+
+/**
+ * [progress], moved on every frame while playing. The player is sampled twice a second; between
+ * samples the position is carried on from the last one, so the seek bar glides instead of jumping.
+ */
+@Composable
+fun rememberSmoothProgress(progress: () -> Progress): () -> Progress {
+    val frame = remember { mutableLongStateOf(0L) }
+    val playing = progress().playing
+    LaunchedEffect(playing) {
+        while (playing) withFrameMillis { frame.longValue = SystemClock.elapsedRealtime() }
+    }
+    return remember(progress) {
+        {
+            frame.longValue // read, so whoever shows the position follows every frame
+            progress().at(SystemClock.elapsedRealtime())
+        }
+    }
 }
