@@ -7,17 +7,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -32,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,9 +44,11 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
@@ -53,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.gallery.Collection
 import io.github.michaelmassoni.tessera.gallery.GalleryState
@@ -177,6 +184,7 @@ fun GalleryApp(
                             { open(current, it) },
                             now,
                             pickMode,
+                            onQuery = if (current is Collection.Search) ({ q -> album = Collection.Search(q) }) else null,
                         )
                     }
 
@@ -190,6 +198,7 @@ fun GalleryApp(
                             { open(Collection.All, it) },
                             now,
                             pickMode,
+                            onOpenSearch = if (pickMode) null else ({ album = Collection.Search("") }),
                         )
                     }
 
@@ -242,6 +251,9 @@ private fun CollectionScreen(
     onOpen: (MediaItem) -> Unit,
     now: () -> Long,
     pickMode: Boolean,
+    // The Photos tab: opens search. A search screen: the query changed.
+    onOpenSearch: (() -> Unit)? = null,
+    onQuery: ((String) -> Unit)? = null,
 ) {
     val locale = LocalConfiguration.current.locales[0]
     val labels = RelativeLabels(stringResource(R.string.today), stringResource(R.string.yesterday))
@@ -262,11 +274,14 @@ private fun CollectionScreen(
             Collection.Favorites -> stringResource(R.string.favorites)
             Collection.Videos -> stringResource(R.string.videos)
             Collection.Trash -> stringResource(R.string.trash)
+            is Collection.Search -> ""
         }
     Scaffold(
         topBar = {
             if (state.selection.isNotEmpty() && !pickMode) {
                 SelectionBar(state.selection.size, collection == Collection.Trash, state.albums, actions)
+            } else if (collection is Collection.Search && onQuery != null) {
+                SearchTopBar(collection.query, onQuery, onBack ?: {})
             } else {
                 TopAppBar(
                     title = { Text(if (pickMode) stringResource(R.string.pick_title) else title) },
@@ -282,6 +297,11 @@ private fun CollectionScreen(
                     },
                     actions = {
                         if (onBack == null && !pickMode) {
+                            onOpenSearch?.let {
+                                IconButton(onClick = it) {
+                                    Icon(painterResource(DesignR.drawable.ic_search), contentDescription = stringResource(R.string.search))
+                                }
+                            }
                             IconButton(onClick = actions::openSettings) {
                                 Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                             }
@@ -300,11 +320,14 @@ private fun CollectionScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            if (state.loaded && items.isEmpty()) {
+            if (collection is Collection.Search && collection.query.isBlank()) {
+                // Nothing typed yet: nothing to say.
+            } else if (state.loaded && items.isEmpty()) {
                 EmptyState(
                     when (collection) {
                         Collection.All -> R.string.empty_photos
                         Collection.Trash -> R.string.empty_trash
+                        is Collection.Search -> R.string.no_matching_photos
                         else -> R.string.empty_album
                     },
                 )
@@ -581,10 +604,11 @@ private fun Collection.encode(): List<Any> =
         Collection.Favorites -> listOf("favorites")
         Collection.Videos -> listOf("videos")
         Collection.Trash -> listOf("trash")
+        is Collection.Search -> listOf("search", query)
     }
 
-/** The saved-state key of an album's grid. */
-private fun Collection.stateKey(): String = "album:" + encode().joinToString("/")
+/** The saved-state key of an album's grid (one for search, whatever is typed). */
+private fun Collection.stateKey(): String = if (this is Collection.Search) "album:search" else "album:" + encode().joinToString("/")
 
 private fun decodeCollection(v: List<Any>): Collection =
     when (v[0]) {
@@ -592,6 +616,7 @@ private fun decodeCollection(v: List<Any>): Collection =
         "favorites" -> Collection.Favorites
         "videos" -> Collection.Videos
         "trash" -> Collection.Trash
+        "search" -> Collection.Search(v.getOrNull(1) as? String ?: "")
         else -> Collection.All
     }
 
@@ -608,3 +633,30 @@ private val ViewingSaver: Saver<Pair<Collection, Long>?, Any> =
             if (list.isEmpty()) null else decodeCollection(list.drop(1)) to (list[0] as Long)
         },
     )
+
+/** Search's top bar: back, and the search field (focused when it opens). */
+@Composable
+private fun SearchTopBar(
+    query: String,
+    onQuery: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    val text = rememberTextFieldState(query)
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect(onQuery) }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
+        }
+        TesseraSearchBar(
+            text = text,
+            placeholder = stringResource(R.string.search_hint),
+            modifier = Modifier.weight(1f),
+            focusRequester = focus,
+        )
+    }
+}

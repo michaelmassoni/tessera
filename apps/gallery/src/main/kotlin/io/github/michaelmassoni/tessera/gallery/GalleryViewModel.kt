@@ -6,6 +6,7 @@ import io.github.michaelmassoni.tessera.gallery.data.MediaRepository
 import io.github.michaelmassoni.tessera.gallery.engine.Album
 import io.github.michaelmassoni.tessera.gallery.engine.Albums
 import io.github.michaelmassoni.tessera.gallery.engine.MediaItem
+import io.github.michaelmassoni.tessera.gallery.engine.MediaSearch
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.ZoneId
+import java.util.Locale
 
 /** Which items a grid or the viewer is showing. */
 sealed interface Collection {
@@ -31,6 +34,11 @@ sealed interface Collection {
     data object Videos : Collection
 
     data object Trash : Collection
+
+    /** Photos and videos matching [query] (docs/gallery.md, Search). */
+    data class Search(
+        val query: String,
+    ) : Collection
 }
 
 data class GalleryState(
@@ -85,6 +93,7 @@ class GalleryViewModel(
             Collection.Favorites -> s.items.filter { it.favorite }
             Collection.Videos -> s.items.filter { it.isVideo }
             Collection.Trash -> s.trash
+            is Collection.Search -> MediaSearch(ZoneId.systemDefault(), Locale.getDefault()).search(s.items, collection.query)
         }
     }
 
