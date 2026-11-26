@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -89,6 +90,7 @@ import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
+import io.github.michaelmassoni.tessera.music.engine.Groups
 import io.github.michaelmassoni.tessera.music.engine.Library
 import io.github.michaelmassoni.tessera.music.engine.LikeChange
 import io.github.michaelmassoni.tessera.music.engine.Likes
@@ -217,6 +219,17 @@ private sealed interface Page {
     data class PlaylistPage(
         val id: Long,
     ) : Page
+
+    /** All genres ([folders] false) or all folders. */
+    data class GroupsPage(
+        val folders: Boolean,
+    ) : Page
+
+    /** One genre or folder, by [io.github.michaelmassoni.tessera.music.engine.SongGroup.id]. */
+    data class GroupPage(
+        val folders: Boolean,
+        val id: Long,
+    ) : Page
 }
 
 /** Where the library is: a tab, and the pages opened from it (album, artist, playlist). */
@@ -234,6 +247,8 @@ private data class Screen(
                         is Page.AlbumPage -> "album:${it.id}"
                         is Page.ArtistPage -> "artist:${it.id}"
                         is Page.PlaylistPage -> "playlist:${it.id}"
+                        is Page.GroupsPage -> if (it.folders) "folders" else "genres"
+                        is Page.GroupPage -> (if (it.folders) "folder:" else "genre:") + it.id
                     }
                 },
             )
@@ -249,6 +264,8 @@ private data class Screen(
                                 is Page.AlbumPage -> listOf(0L, p.id)
                                 is Page.ArtistPage -> listOf(1L, p.id)
                                 is Page.PlaylistPage -> listOf(2L, p.id)
+                                is Page.GroupsPage -> listOf(if (p.folders) 4L else 3L, 0L)
+                                is Page.GroupPage -> listOf(if (p.folders) 6L else 5L, p.id)
                             }
                         }
                 },
@@ -259,6 +276,10 @@ private data class Screen(
                             when (kind) {
                                 0L -> Page.AlbumPage(id)
                                 1L -> Page.ArtistPage(id)
+                                3L -> Page.GroupsPage(folders = false)
+                                4L -> Page.GroupsPage(folders = true)
+                                5L -> Page.GroupPage(folders = false, id)
+                                6L -> Page.GroupPage(folders = true, id)
                                 else -> Page.PlaylistPage(id)
                             }
                         },
@@ -330,6 +351,9 @@ fun MusicApp(
         }
     }
 
+    // Genres and folders, worked out once per library load.
+    val groups = remember(library.songs) { Groups.genres(library.songs) to Groups.folders(library.songs) }
+
     fun open(page: Page) {
         // Already there (Go to album from that album's page): stay.
         if (screen.stack.lastOrNull() != page) navigate(screen.copy(stack = screen.stack + page))
@@ -393,6 +417,8 @@ fun MusicApp(
                                         PlayingFrom.Kind.Playlist -> { id -> open(Page.PlaylistPage(id)) }
                                         PlayingFrom.Kind.Songs -> { _ -> navigate(Screen(Tab.Songs.ordinal)) }
                                         PlayingFrom.Kind.Search -> null
+                                        PlayingFrom.Kind.Genre -> { id -> open(Page.GroupPage(folders = false, id)) }
+                                        PlayingFrom.Kind.Folder -> { id -> open(Page.GroupPage(folders = true, id)) }
                                     }
                                 val id = if (from.kind == PlayingFrom.Kind.Songs) 0L else playingSource
                                 if (go != null && id != null) {
@@ -510,6 +536,30 @@ fun MusicApp(
                                             }
                                         }
 
+                                        is Page.GroupsPage -> {
+                                            GroupsScreen(
+                                                if (p.folders) groups.second else groups.first,
+                                                p.folders,
+                                                { open(Page.GroupPage(p.folders, it)) },
+                                                back,
+                                            )
+                                        }
+
+                                        is Page.GroupPage -> {
+                                            (if (p.folders) groups.second else groups.first).firstOrNull { it.id == p.id }?.let {
+                                                GroupScreen(
+                                                    it,
+                                                    p.folders,
+                                                    library.playlists,
+                                                    libraryActions,
+                                                    back,
+                                                    onAlbum = openAlbum,
+                                                    onArtist = openArtist,
+                                                    playingId = playback.songId,
+                                                )
+                                            }
+                                        }
+
                                         null -> {
                                             LibraryScreen(
                                                 Tab.entries[s.tab],
@@ -519,6 +569,7 @@ fun MusicApp(
                                                 openAlbum,
                                                 openArtist,
                                                 { open(Page.PlaylistPage(it)) },
+                                                { open(Page.GroupsPage(it)) },
                                                 playingId = playback.songId,
                                             )
                                         }
@@ -543,6 +594,8 @@ private fun LibraryScreen(
     onAlbum: (Long) -> Unit,
     onArtist: (Long) -> Unit,
     onPlaylist: (Long) -> Unit,
+    // Opens Genres (false) or Folders (true).
+    onGroups: (Boolean) -> Unit,
     playingId: Long = 0,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -578,7 +631,10 @@ private fun LibraryScreen(
                 }
                 when (tab) {
                     Tab.Songs -> {
-                        SortBar(Sorts.songs, view.songSort, { change { view.songSort = it } })
+                        SortBar(Sorts.songs, view.songSort, { change { view.songSort = it } }) {
+                            AssistChip(onClick = { onGroups(false) }, label = { Text(stringResource(R.string.genres)) })
+                            AssistChip(onClick = { onGroups(true) }, label = { Text(stringResource(R.string.folders)) })
+                        }
                     }
 
                     Tab.Albums -> {

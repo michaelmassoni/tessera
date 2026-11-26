@@ -120,6 +120,17 @@
     <string name="playing_from_playlist">Playing from playlist</string>
     <string name="playing_from_search">Playing from search</string>
     <string name="playing_from_songs">Playing from your library</string>
+    <string name="playing_from_genre">Playing from genre</string>
+    <string name="playing_from_folder">Playing from folder</string>
+    <!-- Genres and folders (docs/music.md). -->
+    <string name="genres">Genres</string>
+    <string name="folders">Folders</string>
+    <string name="no_genres">No genres. Songs without a genre tag aren\'t listed.</string>
+    <string name="no_folders">No folders</string>
+    <plurals name="group_songs">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
     <string name="all_songs">All songs</string>
     <string name="save_to_playlist">Save to playlist</string>
     <string name="lyrics">Lyrics</string>

@@ -535,6 +535,8 @@ private fun PlayingFromTitle(
                     PlayingFrom.Kind.Playlist -> R.string.playing_from_playlist
                     PlayingFrom.Kind.Search -> R.string.playing_from_search
                     PlayingFrom.Kind.Songs -> R.string.playing_from_songs
+                    PlayingFrom.Kind.Genre -> R.string.playing_from_genre
+                    PlayingFrom.Kind.Folder -> R.string.playing_from_folder
                 },
             ),
             style = MaterialTheme.typography.labelMedium,
