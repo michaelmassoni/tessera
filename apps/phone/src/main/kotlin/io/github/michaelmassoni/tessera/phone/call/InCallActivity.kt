@@ -67,8 +67,22 @@ class InCallActivity : ComponentActivity() {
                     CallManager.reject(id)
                 }
 
+                override fun declineWithMessage(
+                    id: String,
+                    message: String,
+                ) {
+                    CallManager.rejectWithMessage(id, message)
+                }
+
                 override fun hangUp(id: String) {
                     CallManager.hangUp(id)
+                }
+
+                override fun chooseSim(
+                    id: String,
+                    index: Int,
+                ) {
+                    CallManager.chooseSim(id, index)
                 }
 
                 override fun hold(

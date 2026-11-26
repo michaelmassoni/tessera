@@ -52,6 +52,16 @@ class TesseraInCallService :
         }
         // libphonenumber reads its data on first use: do that now, not when a call rings.
         thread(name = "callerid-warmup") { runCatching { where.describe("+61390000000") } }
+        val telecom = getSystemService(android.telecom.TelecomManager::class.java)
+        CallManager.accountLabel = { handle ->
+            runCatching {
+                telecom
+                    .getPhoneAccount(handle)
+                    ?.label
+                    ?.toString()
+                    ?.ifBlank { null }
+            }.getOrNull()
+        }
         CallManager.audioControl = this
         ensureChannel(this)
     }

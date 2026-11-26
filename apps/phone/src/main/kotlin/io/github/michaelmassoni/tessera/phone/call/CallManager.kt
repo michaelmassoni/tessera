@@ -1,6 +1,8 @@
 package io.github.michaelmassoni.tessera.phone.call
 
+import android.os.Build
 import android.telecom.Call
+import android.telecom.PhoneAccountHandle
 import android.telecom.VideoProfile
 import io.github.michaelmassoni.tessera.phone.engine.AudioInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,8 @@ data class CallInfo(
     val spam: Boolean = false,
     /** Part of a conference call (shown as the conference, not on its own). */
     val child: Boolean = false,
+    /** Waiting for you to pick a SIM ("Ask every time" on a dual-SIM phone): their labels, in order. */
+    val simChoices: List<String> = emptyList(),
 ) {
     val ringing: Boolean get() = state == Call.STATE_RINGING
     val active: Boolean get() = state == Call.STATE_ACTIVE
@@ -54,6 +58,9 @@ object CallManager {
         /** Switches call audio to the route with this [AudioRoute.id]. */
         fun route(id: String)
     }
+
+    /** A SIM's label ("Telstra"), set by the service; null when Telecom won't say. */
+    internal var accountLabel: (PhoneAccountHandle) -> String? = { null }
 
     internal var nameLookup: (String) -> Pair<String, String?>? = { null }
 
@@ -127,7 +134,38 @@ object CallManager {
 
     fun reject(id: String) = calls[id]?.reject(false, null)
 
+    /** Declines and has the default SMS app text [message] to the caller. */
+    fun rejectWithMessage(
+        id: String,
+        message: String,
+    ) = calls[id]?.reject(true, message)
+
     fun hangUp(id: String) = calls[id]?.disconnect()
+
+    /** Places [id] on the SIM at [index] of its [CallInfo.simChoices]. */
+    fun chooseSim(
+        id: String,
+        index: Int,
+    ) {
+        val call = calls[id] ?: return
+        accountsOf(call).getOrNull(index)?.let { call.phoneAccountSelected(it, false) }
+    }
+
+    /** The SIMs Telecom offers for a call waiting on a choice; else every SIM that can call (set by the service). */
+    internal var callAccounts: () -> List<PhoneAccountHandle> = { emptyList() }
+
+    // Deprecated, but still how Telecom hands the default dialer the choice.
+    @Suppress("DEPRECATION")
+    private fun accountsOf(call: Call): List<PhoneAccountHandle> {
+        val extras = call.details.intentExtras
+        val offered =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                extras?.getParcelableArrayList(Call.AVAILABLE_PHONE_ACCOUNTS, PhoneAccountHandle::class.java)
+            } else {
+                extras?.getParcelableArrayList(Call.AVAILABLE_PHONE_ACCOUNTS)
+            }
+        return offered?.takeIf { it.isNotEmpty() } ?: callAccounts()
+    }
 
     fun hold(
         id: String,
@@ -180,6 +218,12 @@ object CallManager {
                     location = location.takeIf { name == null },
                     spam = spam && name == null,
                     child = call.parent != null,
+                    simChoices =
+                        if (state == Call.STATE_SELECT_PHONE_ACCOUNT) {
+                            accountsOf(call).mapIndexed { i, a -> accountLabel(a) ?: "SIM ${i + 1}" }
+                        } else {
+                            emptyList()
+                        },
                 )
             }
     }
