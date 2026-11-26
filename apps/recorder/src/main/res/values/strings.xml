@@ -71,6 +71,9 @@
     <string name="shortcut_record">New recording</string>
 
     <!-- Settings -->
+    <string name="settings_recording">Recording</string>
+    <string name="settings_quality_standard_summary">Standard quality</string>
+    <string name="settings_quality_high_summary">High quality</string>
     <string name="settings_quality">Recording quality</string>
     <string name="quality_standard">Standard: for voice, about 1 MB a minute</string>
     <string name="quality_high">High: stereo, for music, about 2 MB a minute</string>

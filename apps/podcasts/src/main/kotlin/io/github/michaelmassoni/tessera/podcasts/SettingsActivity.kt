@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
-import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.podcasts.data.Prefs
@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -36,13 +37,59 @@ class SettingsActivity : TesseraSettingsActivity() {
         )
 
     @Composable
-    override fun ColumnScope.AppSettings() {
+    override fun categories(): List<SettingsCategory> {
         val context = LocalContext.current
-        val resources = LocalResources.current
-        val scope = rememberCoroutineScope()
         var auto by remember { mutableStateOf(Prefs.autoDownload(context)) }
         var deletePlayed by remember { mutableStateOf(Prefs.deletePlayed(context)) }
         var mobile by remember { mutableStateOf(Prefs.mobileDownloads(context)) }
+        val summary =
+            listOfNotNull(
+                stringResource(if (auto) R.string.settings_downloads_auto else R.string.settings_downloads_manual),
+                stringResource(if (mobile) R.string.settings_downloads_mobile else R.string.settings_downloads_wifi),
+                if (deletePlayed) stringResource(R.string.settings_downloads_delete) else null,
+            ).joinToString(" · ")
+        return listOf(
+            SettingsCategory(
+                key = "downloads",
+                title = stringResource(R.string.settings_downloads),
+                icon = DesignR.drawable.ic_download,
+                summary = summary,
+            ) {
+                SwitchSetting(
+                    title = stringResource(R.string.settings_auto_download),
+                    summary = stringResource(R.string.settings_auto_download_summary),
+                    checked = auto,
+                    onCheckedChange = {
+                        auto = it
+                        Prefs.setAutoDownload(context, it)
+                    },
+                )
+                SwitchSetting(
+                    title = stringResource(R.string.settings_delete_played),
+                    summary = stringResource(R.string.settings_delete_played_summary),
+                    checked = deletePlayed,
+                    onCheckedChange = {
+                        deletePlayed = it
+                        Prefs.setDeletePlayed(context, it)
+                    },
+                )
+                SwitchSetting(
+                    title = stringResource(R.string.settings_mobile_downloads),
+                    summary = stringResource(R.string.settings_mobile_downloads_summary),
+                    checked = mobile,
+                    onCheckedChange = {
+                        mobile = it
+                        Prefs.setMobileDownloads(context, it)
+                    },
+                )
+            },
+        )
+    }
+
+    override val importExport: @Composable ColumnScope.() -> Unit = {
+        val context = LocalContext.current
+        val resources = LocalResources.current
+        val scope = rememberCoroutineScope()
         var importing by remember { mutableStateOf(false) }
 
         val importer =
@@ -86,36 +133,6 @@ class SettingsActivity : TesseraSettingsActivity() {
                 }
             }
 
-        SettingsHeader(stringResource(R.string.settings_downloads))
-        SwitchSetting(
-            title = stringResource(R.string.settings_auto_download),
-            summary = stringResource(R.string.settings_auto_download_summary),
-            checked = auto,
-            onCheckedChange = {
-                auto = it
-                Prefs.setAutoDownload(context, it)
-            },
-        )
-        SwitchSetting(
-            title = stringResource(R.string.settings_delete_played),
-            summary = stringResource(R.string.settings_delete_played_summary),
-            checked = deletePlayed,
-            onCheckedChange = {
-                deletePlayed = it
-                Prefs.setDeletePlayed(context, it)
-            },
-        )
-        SwitchSetting(
-            title = stringResource(R.string.settings_mobile_downloads),
-            summary = stringResource(R.string.settings_mobile_downloads_summary),
-            checked = mobile,
-            onCheckedChange = {
-                mobile = it
-                Prefs.setMobileDownloads(context, it)
-            },
-        )
-
-        SettingsHeader(stringResource(R.string.settings_subscriptions))
         InfoSetting(
             stringResource(R.string.settings_import),
             stringResource(if (importing) R.string.importing else R.string.settings_import_summary),

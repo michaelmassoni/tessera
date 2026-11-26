@@ -83,6 +83,8 @@
     <string name="pick_email">Choose an email</string>
     <string name="unnamed">(No name)</string>
 
+    <string name="settings_new_contacts">New contacts</string>
+    <string name="settings_new_contacts_summary">Saved to %1$s</string>
     <string name="settings_default_account">Default account for new contacts</string>
     <string name="setup_access_title">Your contacts</string>
     <string name="setup_access_text">To show, add and edit the contacts on this phone and in its accounts. Nothing leaves this phone unless you sync with your own server.</string>
@@ -90,6 +92,18 @@
     <!-- Sync with a CardDAV server (docs/sync.md) -->
     <string name="account_label">Tessera Contacts</string>
     <string name="settings_sync">Sync</string>
+    <string name="settings_sync_summary_off">Off</string>
+    <string name="settings_sync_summary_manual">%1$s · manually</string>
+    <string name="settings_sync_summary_day">%1$s · once a day</string>
+    <plurals name="settings_sync_summary_minutes">
+        <item quantity="one">%1$s · every minute</item>
+        <item quantity="other">%1$s · every %2$d minutes</item>
+    </plurals>
+    <plurals name="settings_sync_summary_hours">
+        <item quantity="one">%1$s · every hour</item>
+        <item quantity="other">%1$s · every %2$d hours</item>
+    </plurals>
+    <string name="settings_groups">Groups</string>
     <string name="sync_with_server">Sync with a server</string>
     <string name="settings_sync_off">Off. Contacts come from the accounts on this phone.</string>
     <string name="settings_sync_needs_access">Open Contacts and allow contacts access first</string>

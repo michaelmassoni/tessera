@@ -112,6 +112,12 @@
     <string name="settings_snooze">Snooze length</string>
     <string name="settings_silence_after">Silence after</string>
     <string name="settings_never">Never</string>
+    <string name="settings_alarms">Alarms</string>
+    <string name="settings_alarms_summary">Snooze %1$s · silence after %2$s</string>
+    <string name="settings_alarms_summary_never">Snooze %1$s · rings until stopped</string>
+    <string name="settings_sleep">Sleep</string>
+    <string name="settings_sleep_summary">Cycles of %1$s · %2$s to fall asleep</string>
+    <string name="settings_sleep_summary_none">Cycles of %1$s · no time to fall asleep</string>
 
     <!-- Problems that would stop alarms ringing properly -->
     <string name="banner_exact_alarms">Alarms can\'t ring on time without permission to set exact alarms.</string>

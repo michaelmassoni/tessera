@@ -2,7 +2,6 @@ package io.github.michaelmassoni.tessera.music
 
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
@@ -24,14 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.settings.ChoiceSetting
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
-import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.music.data.LyricsRepository
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
+import io.github.michaelmassoni.tessera.music.engine.ServerAccount
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
 import io.github.michaelmassoni.tessera.music.server.CacheSize
 import io.github.michaelmassoni.tessera.music.server.MusicSource
@@ -44,6 +45,7 @@ import io.github.michaelmassoni.tessera.music.ui.SignInFields
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -57,123 +59,160 @@ class SettingsActivity : TesseraSettingsActivity() {
         )
 
     @Composable
-    override fun ColumnScope.AppSettings() {
+    override fun categories(): List<SettingsCategory> {
         val context = LocalContext.current
-        val scope = rememberCoroutineScope()
         val store = remember { ServerStore(context) }
         var source by remember { mutableStateOf(store.source) }
         var account by remember { mutableStateOf(store.account) }
-        var signingIn by rememberSaveable { mutableStateOf(false) }
-
-        SettingsHeader(stringResource(R.string.settings_source))
-        Column(Modifier.selectableGroup()) {
-            RadioSetting(stringResource(R.string.source_local), source == MusicSource.Local, onSelect = {
-                store.source = MusicSource.Local
-                source = MusicSource.Local
-            })
-            RadioSetting(stringResource(R.string.source_server), source == MusicSource.Server, onSelect = {
-                // A server already signed in to is used again; otherwise sign in first.
-                if (account != null && store.password() != null) {
-                    store.source = MusicSource.Server
-                    source = MusicSource.Server
-                } else {
-                    signingIn = true
-                }
-            })
-        }
-        if (source == MusicSource.Server) {
-            InfoSetting(
-                title = stringResource(R.string.settings_server),
-                summary = account?.let { stringResource(R.string.settings_server_summary, it.username, it.address) }.orEmpty(),
-                onClick = { signingIn = true },
-                external = false,
-            )
-
-            var quality by remember { mutableStateOf(store.quality) }
-            SettingsHeader(stringResource(R.string.settings_quality))
-            Column(Modifier.selectableGroup()) {
-                StreamQuality.entries.forEach { q ->
-                    RadioSetting(
-                        title =
-                            if (q ==
-                                StreamQuality.Original
-                            ) {
-                                stringResource(R.string.quality_original)
-                            } else {
-                                stringResource(R.string.quality_kbps, q.kbps)
-                            },
-                        selected = q == quality,
-                        onSelect = {
-                            store.quality = q
-                            quality = q
-                        },
-                    )
-                }
-            }
-
-            var size by remember { mutableStateOf(store.cacheSize) }
-            var used by remember { mutableLongStateOf(-1L) }
-            LaunchedEffect(Unit) { used = withContext(Dispatchers.IO) { ServerPlayback.cacheBytes(context) } }
-            SettingsHeader(stringResource(R.string.settings_cache))
-            Column(Modifier.selectableGroup()) {
-                CacheSize.entries.forEach { c ->
-                    RadioSetting(
-                        title = Formatter.formatShortFileSize(context, c.bytes),
-                        selected = c == size,
-                        onSelect = {
-                            store.cacheSize = c
-                            size = c
-                        },
-                    )
-                }
-            }
-            InfoSetting(
-                title = stringResource(R.string.settings_clear_cache),
-                summary =
-                    if (used < 0) {
-                        ""
-                    } else {
-                        stringResource(R.string.settings_cache_used, Formatter.formatShortFileSize(context, used))
-                    },
-                onClick = {
-                    scope.launch {
-                        used =
-                            withContext(Dispatchers.IO) {
-                                ServerPlayback.clearCache(context)
-                                ServerPlayback.cacheBytes(context)
-                            }
-                    }
-                },
-                external = false,
-            )
-        }
-
-        SettingsHeader(stringResource(R.string.lyrics))
+        var quality by remember { mutableStateOf(store.quality) }
         val settings = remember { MusicSettings(context) }
         var online by remember { mutableStateOf(settings.onlineLyrics) }
-        SwitchSetting(
-            title = stringResource(R.string.look_up_lyrics),
-            checked = online,
-            onCheckedChange = { on ->
-                settings.onlineLyrics = on
-                online = on
-                // Songs found to have none are looked at again.
-                if (on) scope.launch(Dispatchers.IO) { LyricsRepository(context).forgetMisses() }
+        val sourceSummary =
+            when (source) {
+                MusicSource.Local -> {
+                    stringResource(R.string.source_local)
+                }
+
+                MusicSource.Server -> {
+                    val q = if (quality == StreamQuality.Original) stringResource(R.string.quality_original_summary) else quality.label()
+                    listOfNotNull(account?.address, q).joinToString(" · ")
+                }
+            }
+        return listOf(
+            SettingsCategory(
+                key = "source",
+                title = stringResource(R.string.settings_source),
+                icon = DesignR.drawable.ic_library_music,
+                summary = sourceSummary,
+            ) {
+                SourcePage(
+                    store = store,
+                    source = source,
+                    account = account,
+                    quality = quality,
+                    onSource = { source = it },
+                    onAccount = { account = it },
+                    onQuality = { quality = it },
+                )
             },
-            summary = stringResource(R.string.online_lyrics_summary),
+            SettingsCategory(
+                key = "lyrics",
+                title = stringResource(R.string.lyrics),
+                icon = DesignR.drawable.ic_lyrics,
+                summary = stringResource(if (online) R.string.lyrics_online_on else R.string.lyrics_online_off),
+            ) {
+                val scope = rememberCoroutineScope()
+                SwitchSetting(
+                    title = stringResource(R.string.look_up_lyrics),
+                    checked = online,
+                    onCheckedChange = { on ->
+                        settings.onlineLyrics = on
+                        online = on
+                        // Songs found to have none are looked at again.
+                        if (on) scope.launch(Dispatchers.IO) { LyricsRepository(context).forgetMisses() }
+                    },
+                    summary = stringResource(R.string.online_lyrics_summary),
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun StreamQuality.label(): String =
+    if (this == StreamQuality.Original) stringResource(R.string.quality_original) else stringResource(R.string.quality_kbps, kbps)
+
+@Composable
+private fun SourcePage(
+    store: ServerStore,
+    source: MusicSource,
+    account: ServerAccount?,
+    quality: StreamQuality,
+    onSource: (MusicSource) -> Unit,
+    onAccount: (ServerAccount?) -> Unit,
+    onQuality: (StreamQuality) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var signingIn by rememberSaveable { mutableStateOf(false) }
+
+    Column(Modifier.selectableGroup()) {
+        RadioSetting(stringResource(R.string.source_local), source == MusicSource.Local, onSelect = {
+            store.source = MusicSource.Local
+            onSource(MusicSource.Local)
+        })
+        RadioSetting(stringResource(R.string.source_server), source == MusicSource.Server, onSelect = {
+            // A server already signed in to is used again; otherwise sign in first.
+            if (account != null && store.password() != null) {
+                store.source = MusicSource.Server
+                onSource(MusicSource.Server)
+            } else {
+                signingIn = true
+            }
+        })
+    }
+    if (source == MusicSource.Server) {
+        InfoSetting(
+            title = stringResource(R.string.settings_server),
+            summary = account?.let { stringResource(R.string.settings_server_summary, it.username, it.address) }.orEmpty(),
+            onClick = { signingIn = true },
+            external = false,
+        )
+        ChoiceSetting(
+            title = stringResource(R.string.settings_quality),
+            options = StreamQuality.entries,
+            selected = quality,
+            label = { it.label() },
+            onSelect = {
+                store.quality = it
+                onQuality(it)
+            },
         )
 
-        if (signingIn) {
-            SignInDialog(
-                initial = account?.let { SignInFields(it.address, it.username) } ?: SignInFields(),
-                onDone = {
-                    signingIn = false
-                    account = store.account
-                    source = store.source
+        var size by remember { mutableStateOf(store.cacheSize) }
+        var used by remember { mutableLongStateOf(-1L) }
+        LaunchedEffect(Unit) { used = withContext(Dispatchers.IO) { ServerPlayback.cacheBytes(context) } }
+        ChoiceSetting(
+            title = stringResource(R.string.settings_cache),
+            options = CacheSize.entries,
+            selected = size,
+            label = { Formatter.formatShortFileSize(context, it.bytes) },
+            onSelect = {
+                store.cacheSize = it
+                size = it
+            },
+        )
+        InfoSetting(
+            title = stringResource(R.string.settings_clear_cache),
+            summary =
+                if (used < 0) {
+                    ""
+                } else {
+                    stringResource(R.string.settings_cache_used, Formatter.formatShortFileSize(context, used))
                 },
-                onDismiss = { signingIn = false },
-            )
-        }
+            onClick = {
+                scope.launch {
+                    used =
+                        withContext(Dispatchers.IO) {
+                            ServerPlayback.clearCache(context)
+                            ServerPlayback.cacheBytes(context)
+                        }
+                }
+            },
+            external = false,
+        )
+    }
+
+    if (signingIn) {
+        SignInDialog(
+            initial = account?.let { SignInFields(it.address, it.username) } ?: SignInFields(),
+            onDone = {
+                signingIn = false
+                onAccount(store.account)
+                onSource(store.source)
+            },
+            onDismiss = { signingIn = false },
+        )
     }
 }
 

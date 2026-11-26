@@ -14,6 +14,7 @@ import android.content.SyncResult
 import android.os.Bundle
 import android.os.IBinder
 import io.github.michaelmassoni.tessera.contacts.SettingsActivity
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 
 /**
  * The "Tessera Contacts" account type. Adding an account from system Settings opens the app's
@@ -37,7 +38,12 @@ class AuthenticatorService : Service() {
             Bundle().apply {
                 putParcelable(
                     AccountManager.KEY_INTENT,
-                    Intent(context, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    SettingsCategory
+                        .intent(
+                            context,
+                            SettingsActivity::class.java,
+                            SettingsActivity.SYNC,
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }
 

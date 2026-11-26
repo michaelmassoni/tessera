@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
@@ -33,18 +34,23 @@ import io.github.michaelmassoni.tessera.contacts.sync.ContactsSyncWorker
 import io.github.michaelmassoni.tessera.contacts.sync.GroupMethod
 import io.github.michaelmassoni.tessera.contacts.ui.accountName
 import io.github.michaelmassoni.tessera.core.dav.CollectionsDialog
+import io.github.michaelmassoni.tessera.core.dav.DavAccount
 import io.github.michaelmassoni.tessera.core.dav.RemoteCollection
 import io.github.michaelmassoni.tessera.core.dav.SignInDialog
+import io.github.michaelmassoni.tessera.core.dav.SyncInterval
 import io.github.michaelmassoni.tessera.core.dav.SyncPrefs
 import io.github.michaelmassoni.tessera.core.dav.SyncSettings
+import io.github.michaelmassoni.tessera.core.settings.ChoiceSetting
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -58,8 +64,9 @@ class SettingsActivity : TesseraSettingsActivity() {
         )
 
     @Composable
-    override fun ColumnScope.AppSettings() {
-        SyncSection()
+    override fun categories(): List<SettingsCategory> {
+        val context = LocalContext.current
+        val resources = LocalResources.current
         val accounts by produceState(emptyList<AccountRef>()) {
             value =
                 withContext(Dispatchers.IO) {
@@ -67,32 +74,75 @@ class SettingsActivity : TesseraSettingsActivity() {
                     runCatching { ContactsRepository(contentResolver).accounts() }.getOrDefault(emptyList())
                 }
         }
-        if (accounts.size < 2) return
-        val resources = LocalResources.current
         var selected by remember { mutableStateOf(defaultAccount ?: AccountRef.Device) }
-        SettingsHeader(stringResource(R.string.settings_default_account))
-        Column(Modifier.selectableGroup()) {
-            accounts.forEach { account ->
-                RadioSetting(
-                    title = accountName(account, resources),
-                    selected = account == selected,
-                    onSelect = {
-                        selected = account
-                        defaultAccount = account
-                    },
-                )
-            }
-        }
-    }
-
-    /** Sync with a CardDAV server (docs/sync.md). */
-    @Composable
-    private fun ColumnScope.SyncSection() {
-        val context = LocalContext.current
-        val scope = rememberCoroutineScope()
         val store = remember { ContactsDavStore(context) }
         var dav by remember { mutableStateOf(store.account) }
         var prefs by remember { mutableStateOf(SyncPrefs.load(context)) }
+        val access = context.checkSelfPermission(Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
+        // Signed in, with access to the system database the sync writes to.
+        val a = dav.takeIf { access }
+        // A choice only with two or more accounts.
+        val newContacts =
+            if (accounts.size < 2) {
+                null
+            } else {
+                SettingsCategory(
+                    key = NEW_CONTACTS,
+                    title = stringResource(R.string.settings_new_contacts),
+                    icon = DesignR.drawable.ic_person_add,
+                    summary = stringResource(R.string.settings_new_contacts_summary, accountName(selected, resources)),
+                ) {
+                    SettingsHeader(stringResource(R.string.settings_default_account))
+                    Column(Modifier.selectableGroup()) {
+                        accounts.forEach { account ->
+                            RadioSetting(
+                                title = accountName(account, resources),
+                                selected = account == selected,
+                                onSelect = {
+                                    selected = account
+                                    defaultAccount = account
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        val sync =
+            SettingsCategory(
+                key = SYNC,
+                title = stringResource(R.string.settings_sync),
+                icon = DesignR.drawable.ic_sync,
+                summary =
+                    if (a == null) {
+                        stringResource(R.string.settings_sync_summary_off)
+                    } else {
+                        syncSummary(a.username, prefs.interval)
+                    },
+            ) {
+                SyncPage(
+                    store = store,
+                    access = access,
+                    dav = dav,
+                    onDav = { dav = it },
+                    prefs = prefs,
+                    onPrefs = { prefs = it },
+                )
+            }
+        return listOfNotNull(newContacts, sync)
+    }
+
+    /** Sync with a CardDAV server (docs/sync.md), the group method, and their dialogs. */
+    @Composable
+    private fun ColumnScope.SyncPage(
+        store: ContactsDavStore,
+        access: Boolean,
+        dav: DavAccount?,
+        onDav: (DavAccount?) -> Unit,
+        prefs: SyncPrefs,
+        onPrefs: (SyncPrefs) -> Unit,
+    ) {
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         var method by remember { mutableStateOf(ContactsAccounts.pendingGroupMethod(context) ?: ContactsAccounts.groupMethod(context)) }
         var signingIn by rememberSaveable { mutableStateOf(false) }
         var picking by remember { mutableStateOf<List<RemoteCollection>?>(null) }
@@ -102,9 +152,6 @@ class SettingsActivity : TesseraSettingsActivity() {
             .collectAsStateWithLifecycle(emptyList())
         val syncing = work.any { it.state == WorkInfo.State.RUNNING }
 
-        SettingsHeader(stringResource(R.string.settings_sync))
-        val access = context.checkSelfPermission(Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
-        val a = dav
         if (!access) {
             InfoSetting(
                 stringResource(R.string.sync_with_server),
@@ -112,16 +159,17 @@ class SettingsActivity : TesseraSettingsActivity() {
                 onClick = { startActivity(Intent(context, MainActivity::class.java)) },
                 external = false,
             )
-        } else if (a == null) {
+        } else if (dav == null) {
             InfoSetting(stringResource(R.string.sync_with_server), stringResource(R.string.settings_sync_off), onClick = {
                 signingIn = true
             }, external = false)
         } else {
-            InfoSetting(stringResource(R.string.settings_server), stringResource(R.string.settings_server_summary, a.username, a.address))
             InfoSetting(
-                stringResource(
-                    R.string.settings_address_books,
-                ),
+                stringResource(R.string.settings_server),
+                stringResource(R.string.settings_server_summary, dav.username, dav.address),
+            )
+            InfoSetting(
+                stringResource(R.string.settings_address_books),
                 stringResource(R.string.settings_address_books_summary),
                 onClick = {
                     scope.launch { picking = runCatching { ContactsAccounts.remoteAddressBooks(context) }.getOrDefault(emptyList()) }
@@ -131,7 +179,7 @@ class SettingsActivity : TesseraSettingsActivity() {
             SyncSettings(
                 prefs = prefs,
                 onChange = {
-                    prefs = it
+                    onPrefs(it)
                     SyncPrefs.save(context, it)
                     ContactsSyncWorker.schedule.apply(context)
                     ContactsAccounts.applyAutoSync(context)
@@ -149,34 +197,23 @@ class SettingsActivity : TesseraSettingsActivity() {
             )
         }
         if (access) {
-            SettingsHeader(stringResource(R.string.settings_group_method))
-            Column(Modifier.selectableGroup()) {
-                GroupMethod.entries.forEach { m ->
-                    RadioSetting(
-                        title =
-                            stringResource(
-                                if (m ==
-                                    GroupMethod.SeparateVCards
-                                ) {
-                                    R.string.group_method_vcards
-                                } else {
-                                    R.string.group_method_categories
-                                },
-                            ),
-                        selected = method == m,
-                        onSelect = {
-                            if (m != method) {
-                                if (dav == null) {
-                                    method = m
-                                    ContactsAccounts.setGroupMethod(context, m)
-                                } else {
-                                    confirmMethod = m
-                                }
-                            }
-                        },
-                    )
-                }
-            }
+            SettingsHeader(stringResource(R.string.settings_groups))
+            ChoiceSetting(
+                title = stringResource(R.string.settings_group_method),
+                options = GroupMethod.entries,
+                selected = method,
+                label = {
+                    stringResource(if (it == GroupMethod.SeparateVCards) R.string.group_method_vcards else R.string.group_method_categories)
+                },
+                onSelect = { m ->
+                    if (dav == null) {
+                        method = m
+                        ContactsAccounts.setGroupMethod(context, m)
+                    } else {
+                        confirmMethod = m
+                    }
+                },
+            )
         }
 
         if (signingIn) {
@@ -186,7 +223,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                 onDismiss = { signingIn = false },
             ) { books ->
                 signingIn = false
-                dav = store.account
+                onDav(store.account)
                 picking = books
             }
         }
@@ -228,13 +265,34 @@ class SettingsActivity : TesseraSettingsActivity() {
                 confirmButton = {
                     TextButton(onClick = {
                         ContactsAccounts.signOut(context)
-                        dav = null
+                        onDav(null)
                         signingOut = false
                     }) { Text(stringResource(R.string.sign_out)) }
                 },
                 dismissButton = { TextButton(onClick = { signingOut = false }) { Text(stringResource(R.string.cancel)) } },
             )
         }
+    }
+
+    /** "michael · every hour": who syncs and how often, under Sync on the settings list. */
+    @Composable
+    private fun syncSummary(
+        user: String,
+        interval: SyncInterval,
+    ): String {
+        val minutes = interval.minutes.toInt()
+        return when {
+            interval == SyncInterval.Manual -> stringResource(R.string.settings_sync_summary_manual, user)
+            interval == SyncInterval.Day -> stringResource(R.string.settings_sync_summary_day, user)
+            minutes < 60 -> pluralStringResource(R.plurals.settings_sync_summary_minutes, minutes, user, minutes)
+            else -> pluralStringResource(R.plurals.settings_sync_summary_hours, minutes / 60, user, minutes / 60)
+        }
+    }
+
+    companion object {
+        /** Category keys, to open settings straight on one. */
+        const val NEW_CONTACTS = "new_contacts"
+        const val SYNC = "sync"
     }
 }
 

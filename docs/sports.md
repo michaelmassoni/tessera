@@ -54,7 +54,7 @@ Sports needs the network; this spec is the justification CLAUDE.md asks for.
   Division"), the next five games, the last ten results (newest first) and the roster (number,
   name, position) where ESPN has one: US leagues do, the AFL and NRL don't. A star in the top bar
   follows or unfollows the team.
-- **Spoiler-free** (0.3, Settings → Hide scores, off by default): live and final games show a
+- **Spoiler-free** (0.3, Settings → Scores → Hide scores, off by default): live and final games show a
   dash for each score and no winner dimming; tapping a card shows that game's score (for this
   session), and opening a game shows it too. Live scores then show the teams and clock only
   ("Rockets at Nuggets", "3:20 - 4th", a "Live" chip), and so does the widget.
