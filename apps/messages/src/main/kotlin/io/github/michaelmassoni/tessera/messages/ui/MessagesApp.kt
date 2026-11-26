@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
@@ -129,6 +132,12 @@ fun MessagesApp(
     val composing = state.composing
     BackHandler(open != null) { actions.close() }
     BackHandler(open == null && composing) { actions.cancelCompose() }
+    // The list keeps its scroll position, search and Archived view while a conversation is open over
+    // it; a closed conversation's state is dropped.
+    val saveable = rememberSaveableStateHolder()
+    val pages = remember(saveable) { PageStack(saveable::removeState) }
+    val stack = messagePages(open?.addresses, composing)
+    SideEffect { pages.show(stack) }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= Wide
         val list: @Composable (
@@ -161,9 +170,9 @@ fun MessagesApp(
                 detail(Modifier.weight(1f).fillMaxHeight())
             }
         } else if (open != null || composing) {
-            detail(Modifier.fillMaxSize())
+            saveable.SaveableStateProvider(stack.last()) { detail(Modifier.fillMaxSize()) }
         } else {
-            list(Modifier.fillMaxSize())
+            saveable.SaveableStateProvider(LIST_PAGE) { list(Modifier.fillMaxSize()) }
         }
     }
 }

@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +80,7 @@ import io.github.michaelmassoni.tessera.feeds.engine.ArticleState
 import io.github.michaelmassoni.tessera.feeds.engine.Library
 import io.github.michaelmassoni.tessera.feeds.engine.Selection
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** Feeds' main screen: the drawer, the article list and, on wide screens, the article beside it. */
@@ -94,9 +96,16 @@ fun FeedsApp(
     var managing by rememberSaveable { mutableStateOf(false) }
     // Articles read while this list is shown stay in "Unread" until it changes, so they don't jump away.
     var keep by remember(state.selection) { mutableStateOf(emptySet<String>()) }
+    // The list keeps its scroll position while an article or Manage feeds covers it; a closed article forgets its own.
+    val saveable = rememberSaveableStateHolder()
+
+    fun show(id: String?) {
+        openId?.let { if (it != id) saveable.removeState(articleKey(it)) }
+        openId = id
+    }
 
     fun open(id: String) {
-        openId = id
+        show(id)
         keep = keep + id
         actions.setState(setOf(id), ArticleState.Read)
     }
@@ -123,7 +132,7 @@ fun FeedsApp(
                 state,
                 onSelect = {
                     actions.select(it)
-                    if (!wide) openId = null
+                    if (!wide) show(null)
                     scope.launch { drawer.close() }
                 },
                 onManage = {
@@ -140,18 +149,22 @@ fun FeedsApp(
             when {
                 wide -> {
                     Row(Modifier.fillMaxSize()) {
-                        ArticleList(
-                            state,
-                            actions,
-                            keep,
-                            onOpen = ::open,
-                            onKeep = { keep = keep + it },
-                            openDrawer = openDrawer,
-                            modifier = Modifier.width(LIST_WIDTH),
-                        )
+                        saveable.SaveableStateProvider(LIST_KEY) {
+                            ArticleList(
+                                state,
+                                actions,
+                                keep,
+                                onOpen = ::open,
+                                onKeep = { keep = keep + it },
+                                openDrawer = openDrawer,
+                                modifier = Modifier.width(LIST_WIDTH),
+                            )
+                        }
                         VerticalDivider()
                         if (article != null) {
-                            ArticleScreen(article, state, actions, onBack = null, modifier = Modifier.weight(1f))
+                            saveable.SaveableStateProvider(articleKey(article.id)) {
+                                ArticleScreen(article, state, actions, onBack = null, modifier = Modifier.weight(1f))
+                            }
                         } else {
                             Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.pick_article), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -161,12 +174,16 @@ fun FeedsApp(
                 }
 
                 article != null -> {
-                    BackHandler { openId = null }
-                    ArticleScreen(article, state, actions, onBack = { openId = null })
+                    BackHandler { show(null) }
+                    saveable.SaveableStateProvider(articleKey(article.id)) {
+                        ArticleScreen(article, state, actions, onBack = { show(null) })
+                    }
                 }
 
                 else -> {
-                    ArticleList(state, actions, keep, onOpen = ::open, onKeep = { keep = keep + it }, openDrawer = openDrawer)
+                    saveable.SaveableStateProvider(LIST_KEY) {
+                        ArticleList(state, actions, keep, onOpen = ::open, onKeep = { keep = keep + it }, openDrawer = openDrawer)
+                    }
                 }
             }
         }
@@ -186,6 +203,13 @@ fun FeedsApp(
 private val WIDE = 840.dp
 private val PERMANENT_DRAWER = 1200.dp
 private val LIST_WIDTH = 400.dp
+
+// Saved-state keys: the article list, and each article opened over it.
+private const val LIST_KEY = "list"
+
+private fun articleKey(id: String) = "article:$id"
+
+private fun selectionKey(selection: Selection) = Json.encodeToString(Selection.serializer(), selection)
 
 @Composable
 private fun Drawer(
@@ -299,7 +323,15 @@ private fun ArticleList(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    LaunchedEffect(state.selection) { listState.scrollToItem(0) }
+    // Another feed or folder starts at the top, but coming back to the same one (or rotating) keeps the place.
+    var listed by rememberSaveable { mutableStateOf(selectionKey(state.selection)) }
+    LaunchedEffect(state.selection) {
+        val now = selectionKey(state.selection)
+        if (now != listed) {
+            listed = now
+            listState.scrollToItem(0)
+        }
+    }
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
     val markedText = LocalResources.current
     val undo = stringResource(R.string.undo)

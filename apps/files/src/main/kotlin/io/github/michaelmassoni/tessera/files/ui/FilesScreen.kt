@@ -51,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ import io.github.michaelmassoni.tessera.files.TrashState
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
 import io.github.michaelmassoni.tessera.files.engine.FileEntry
+import io.github.michaelmassoni.tessera.files.engine.FolderKeys
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
 import io.github.michaelmassoni.tessera.files.engine.Search
 import io.github.michaelmassoni.tessera.files.engine.SortField
@@ -139,6 +141,12 @@ interface FilesActions {
 
 private val ExpandedWidth = 840.dp
 
+// Saved-state keys of what the main pane shows.
+private const val HOME_KEY = "home"
+private const val SEARCH_KEY = "search"
+
+private fun folderKey(path: String) = "folder:$path"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
@@ -193,6 +201,18 @@ fun FilesScreen(
     BackHandler(enabled = state.location != null || state.selection.isNotEmpty() || state.search != null || state.trash != null) {
         actions.back()
     }
+    // Home, each folder you're inside and the search results keep their scroll position while
+    // something else is shown (a subfolder, Trash), so going back up lands where you were.
+    val saveable = rememberSaveableStateHolder()
+    var kept by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val location = state.location?.path
+    val searching = state.search != null
+    LaunchedEffect(location) {
+        val stale = FolderKeys.stale(kept, location)
+        stale.forEach { saveable.removeState(folderKey(it)) }
+        kept = kept - stale.toSet() + listOfNotNull(location).filter { it !in kept }
+    }
+    LaunchedEffect(searching) { if (!searching) saveable.removeState(SEARCH_KEY) }
     state.trash?.let { trash ->
         TrashScreen(trash, actions, snackbar, modifier)
         return
@@ -273,36 +293,44 @@ fun FilesScreen(
                     VerticalDivider()
                 }
                 Box(Modifier.weight(1f).fillMaxHeight()) {
-                    when {
-                        state.location == null && state.search == null && !wide -> {
-                            HomeContent(
-                                state.volumes,
-                                actions::open,
-                                actions::openTrash,
-                                compact = false,
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                    val shown =
+                        when {
+                            searching -> SEARCH_KEY
+                            location == null -> HOME_KEY
+                            else -> folderKey(location)
                         }
+                    saveable.SaveableStateProvider(shown) {
+                        when {
+                            state.location == null && state.search == null && !wide -> {
+                                HomeContent(
+                                    state.volumes,
+                                    actions::open,
+                                    actions::openTrash,
+                                    compact = false,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
 
-                        state.location == null && state.search == null -> {
-                            Empty(stringResource(R.string.pick_a_location))
-                        }
+                            state.location == null && state.search == null -> {
+                                Empty(stringResource(R.string.pick_a_location))
+                            }
 
-                        else -> {
-                            BrowserContent(
-                                state = state,
-                                entries = entriesShown,
-                                columnsHint = width,
-                                onItemClick = { entry ->
-                                    when {
-                                        state.selection.isNotEmpty() -> actions.toggleSelection(entry.file)
-                                        entry.isDirectory -> actions.open(entry.file)
-                                        else -> actions.openFile(entry.file)
-                                    }
-                                },
-                                onItemLongClick = { actions.toggleSelection(it.file) },
-                                onRefresh = actions::refresh,
-                            )
+                            else -> {
+                                BrowserContent(
+                                    state = state,
+                                    entries = entriesShown,
+                                    columnsHint = width,
+                                    onItemClick = { entry ->
+                                        when {
+                                            state.selection.isNotEmpty() -> actions.toggleSelection(entry.file)
+                                            entry.isDirectory -> actions.open(entry.file)
+                                            else -> actions.openFile(entry.file)
+                                        }
+                                    },
+                                    onItemLongClick = { actions.toggleSelection(it.file) },
+                                    onRefresh = actions::refresh,
+                                )
+                            }
                         }
                     }
                 }

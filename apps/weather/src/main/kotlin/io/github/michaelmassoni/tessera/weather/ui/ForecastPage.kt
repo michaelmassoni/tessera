@@ -408,7 +408,7 @@ private fun RangeBarView(
         if (now != null) {
             Box(
                 Modifier
-                    .offset(x = (width * now - 4.dp).coerceIn(0.dp, width - 8.dp))
+                    .offset(x = (width * now - 4.dp).coerceIn(0.dp, (width - 8.dp).coerceAtLeast(0.dp)))
                     .size(8.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.onPrimary),

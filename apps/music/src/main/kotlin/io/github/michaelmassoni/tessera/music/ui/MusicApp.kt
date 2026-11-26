@@ -64,6 +64,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -88,6 +89,7 @@ import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
 import io.github.michaelmassoni.tessera.music.engine.Library
 import io.github.michaelmassoni.tessera.music.engine.Lyrics
+import io.github.michaelmassoni.tessera.music.engine.PageKeys
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
@@ -206,6 +208,20 @@ private data class Screen(
     val tab: Int,
     val stack: List<Page> = emptyList(),
 ) {
+    /** The saved-state key of the tab and of each page on it; the last is the one shown. */
+    val keys: List<String>
+        get() =
+            PageKeys.levels(
+                "tab:$tab",
+                stack.map {
+                    when (it) {
+                        is Page.AlbumPage -> "album:${it.id}"
+                        is Page.ArtistPage -> "artist:${it.id}"
+                        is Page.PlaylistPage -> "playlist:${it.id}"
+                    }
+                },
+            )
+
     companion object {
         // Kept across rotation: the tab, then each page as its kind (0 album, 1 artist, 2 playlist) and id.
         val Saver =
@@ -279,12 +295,19 @@ fun MusicApp(
     val context = LocalContext.current
     val view = remember { LibraryView(MusicSettings(context)) }
     var screen by rememberSaveable(stateSaver = Screen.Saver) { mutableStateOf(Screen(0)) }
+    // Each tab and page keeps its scroll position while another is shown; a page closed for good forgets it.
+    val saveable = rememberSaveableStateHolder()
+
+    fun navigate(to: Screen) {
+        PageKeys.closed(screen.keys, to.keys).forEach(saveable::removeState)
+        screen = to
+    }
     // How far a predictive back gesture has gone on a page, 0 to 1.
     var backProgress by remember { mutableFloatStateOf(0f) }
     PredictiveBackHandler(enabled = screen.stack.isNotEmpty()) { events ->
         try {
             events.collect { backProgress = it.progress }
-            screen = screen.copy(stack = screen.stack.dropLast(1))
+            navigate(screen.copy(stack = screen.stack.dropLast(1)))
         } finally {
             backProgress = 0f
         }
@@ -292,7 +315,7 @@ fun MusicApp(
 
     fun open(page: Page) {
         // Already there (Go to album from that album's page): stay.
-        if (screen.stack.lastOrNull() != page) screen = screen.copy(stack = screen.stack + page)
+        if (screen.stack.lastOrNull() != page) navigate(screen.copy(stack = screen.stack + page))
     }
     val openAlbum: (Long) -> Unit = { open(Page.AlbumPage(it)) }
     val openArtist: (Long) -> Unit = { open(Page.ArtistPage(it)) }
@@ -309,7 +332,7 @@ fun MusicApp(
         remember(playback.from, library.albums, library.artists, library.albumArtists, library.playlists) {
             playback.from?.sourceId(library.albums, library.albumArtists + library.artists, library.playlists)
         }
-    val back: () -> Unit = { screen = screen.copy(stack = screen.stack.dropLast(1)) }
+    val back: () -> Unit = { navigate(screen.copy(stack = screen.stack.dropLast(1))) }
 
     PlayerSheet(
         hasMedia = playback.hasMedia,
@@ -348,7 +371,7 @@ fun MusicApp(
                                         PlayingFrom.Kind.Album -> openAlbum
                                         PlayingFrom.Kind.Artist -> openArtist
                                         PlayingFrom.Kind.Playlist -> { id -> open(Page.PlaylistPage(id)) }
-                                        PlayingFrom.Kind.Songs -> { _ -> screen = Screen(Tab.Songs.ordinal) }
+                                        PlayingFrom.Kind.Songs -> { _ -> navigate(Screen(Tab.Songs.ordinal)) }
                                         PlayingFrom.Kind.Search -> null
                                     }
                                 val id = if (from.kind == PlayingFrom.Kind.Songs) 0L else playingSource
@@ -379,7 +402,7 @@ fun MusicApp(
                 Tab.entries.forEach { t ->
                     item(
                         selected = screen.tab == t.ordinal && screen.stack.isEmpty(),
-                        onClick = { screen = Screen(t.ordinal) },
+                        onClick = { navigate(Screen(t.ordinal)) },
                         icon = { Icon(painterResource(t.icon), contentDescription = null) },
                         label = { Text(stringResource(t.label)) },
                     )
@@ -390,6 +413,8 @@ fun MusicApp(
                 SharedTransitionLayout(Modifier.weight(1f)) {
                     AnimatedContent(
                         targetState = screen,
+                        // The same key as the saved state, so a page is never composed twice during a transition.
+                        contentKey = { it.keys.last() },
                         transitionSpec = {
                             val deeper = targetState.stack.size > initialState.stack.size
                             val shallower = targetState.stack.size < initialState.stack.size
@@ -421,50 +446,52 @@ fun MusicApp(
                             },
                     ) { s ->
                         CompositionLocalProvider(LocalSharedScope provides this@SharedTransitionLayout, LocalPageScope provides this) {
-                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-                                when (val p = s.stack.lastOrNull()) {
-                                    is Page.AlbumPage -> {
-                                        library.albums.firstOrNull { it.id == p.id }?.let {
-                                            AlbumScreen(
-                                                it,
-                                                library.playlists,
+                            saveable.SaveableStateProvider(s.keys.last()) {
+                                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                                    when (val p = s.stack.lastOrNull()) {
+                                        is Page.AlbumPage -> {
+                                            library.albums.firstOrNull { it.id == p.id }?.let {
+                                                AlbumScreen(
+                                                    it,
+                                                    library.playlists,
+                                                    libraryActions,
+                                                    openArtist,
+                                                    back,
+                                                )
+                                            }
+                                        }
+
+                                        is Page.ArtistPage -> {
+                                            (library.albumArtists + library.artists).firstOrNull { it.id == p.id }?.let {
+                                                ArtistScreen(it, library.playlists, libraryActions, openAlbum, back)
+                                            }
+                                        }
+
+                                        is Page.PlaylistPage -> {
+                                            library.playlists.firstOrNull { it.id == p.id }?.let { playlist ->
+                                                PlaylistScreen(
+                                                    playlist,
+                                                    Playlists.songs(playlist, library.byId),
+                                                    library.playlists,
+                                                    libraryActions,
+                                                    back,
+                                                    onAlbum = openAlbum,
+                                                    onArtist = openArtist,
+                                                )
+                                            }
+                                        }
+
+                                        null -> {
+                                            LibraryScreen(
+                                                Tab.entries[s.tab],
+                                                library,
+                                                view,
                                                 libraryActions,
+                                                openAlbum,
                                                 openArtist,
-                                                back,
+                                                { open(Page.PlaylistPage(it)) },
                                             )
                                         }
-                                    }
-
-                                    is Page.ArtistPage -> {
-                                        (library.albumArtists + library.artists).firstOrNull { it.id == p.id }?.let {
-                                            ArtistScreen(it, library.playlists, libraryActions, openAlbum, back)
-                                        }
-                                    }
-
-                                    is Page.PlaylistPage -> {
-                                        library.playlists.firstOrNull { it.id == p.id }?.let { playlist ->
-                                            PlaylistScreen(
-                                                playlist,
-                                                Playlists.songs(playlist, library.byId),
-                                                library.playlists,
-                                                libraryActions,
-                                                back,
-                                                onAlbum = openAlbum,
-                                                onArtist = openArtist,
-                                            )
-                                        }
-                                    }
-
-                                    null -> {
-                                        LibraryScreen(
-                                            Tab.entries[s.tab],
-                                            library,
-                                            view,
-                                            libraryActions,
-                                            openAlbum,
-                                            openArtist,
-                                            { open(Page.PlaylistPage(it)) },
-                                        )
                                     }
                                 }
                             }

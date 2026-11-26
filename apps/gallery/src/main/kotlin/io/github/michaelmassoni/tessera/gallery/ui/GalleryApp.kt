@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,9 +129,16 @@ fun GalleryApp(
     var viewing by rememberSaveable(stateSaver = ViewingSaver) { mutableStateOf<Pair<Collection, Long>?>(null) }
     // The photo open in the editor, by id.
     var editing by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Each tab and the open album keep their scroll position while another is shown; a closed album forgets its own.
+    val saveable = rememberSaveableStateHolder()
+
+    fun closeAlbum() {
+        album?.let { saveable.removeState(it.stateKey()) }
+        album = null
+    }
 
     BackHandler(viewing == null && state.selection.isNotEmpty()) { gridActions.clearSelection() }
-    BackHandler(viewing == null && state.selection.isEmpty() && album != null) { album = null }
+    BackHandler(viewing == null && state.selection.isEmpty() && album != null) { closeAlbum() }
 
     val open: (Collection, MediaItem) -> Unit = { c, item ->
         if (pickMode) {
@@ -148,7 +156,7 @@ fun GalleryApp(
                         selected = tab == t.ordinal && album == null,
                         onClick = {
                             tab = t.ordinal
-                            album = null
+                            closeAlbum()
                         },
                         icon = { Icon(painterResource(t.icon), contentDescription = null) },
                         label = { Text(stringResource(t.label)) },
@@ -157,35 +165,37 @@ fun GalleryApp(
             },
         ) {
             val current = album
-            when {
-                current != null -> {
-                    CollectionScreen(
-                        state,
-                        current,
-                        itemsOf(current),
-                        gridActions,
-                        { album = null },
-                        { open(current, it) },
-                        now,
-                        pickMode,
-                    )
-                }
+            saveable.SaveableStateProvider(current?.stateKey() ?: "tab:$tab") {
+                when {
+                    current != null -> {
+                        CollectionScreen(
+                            state,
+                            current,
+                            itemsOf(current),
+                            gridActions,
+                            ::closeAlbum,
+                            { open(current, it) },
+                            now,
+                            pickMode,
+                        )
+                    }
 
-                tab == 0 -> {
-                    CollectionScreen(
-                        state,
-                        Collection.All,
-                        state.items,
-                        gridActions,
-                        null,
-                        { open(Collection.All, it) },
-                        now,
-                        pickMode,
-                    )
-                }
+                    tab == 0 -> {
+                        CollectionScreen(
+                            state,
+                            Collection.All,
+                            state.items,
+                            gridActions,
+                            null,
+                            { open(Collection.All, it) },
+                            now,
+                            pickMode,
+                        )
+                    }
 
-                else -> {
-                    AlbumsScreen(state, itemsOf, { album = it }, gridActions)
+                    else -> {
+                        AlbumsScreen(state, itemsOf, { album = it }, gridActions)
+                    }
                 }
             }
         }
@@ -572,6 +582,9 @@ private fun Collection.encode(): List<Any> =
         Collection.Videos -> listOf("videos")
         Collection.Trash -> listOf("trash")
     }
+
+/** The saved-state key of an album's grid. */
+private fun Collection.stateKey(): String = "album:" + encode().joinToString("/")
 
 private fun decodeCollection(v: List<Any>): Collection =
     when (v[0]) {

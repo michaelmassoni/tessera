@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -116,216 +117,230 @@ fun ClockRoot(
     )
 
     var sleeping by rememberSaveable { mutableStateOf(false) }
+    // The tabs leave composition while the sleep screen is shown: this keeps their scroll.
+    val saveable = rememberSaveableStateHolder()
     if (sleeping) {
-        androidx.activity.compose.BackHandler { sleeping = false }
+        val closeSleep = {
+            saveable.removeState(SLEEP_KEY)
+            sleeping = false
+        }
+        androidx.activity.compose.BackHandler(onBack = closeSleep)
         val nowMillis by rememberTicker(60_000) { System.currentTimeMillis() }
         val settings by viewModel.settings.collectAsStateWithLifecycle()
         val bedtime by viewModel.bedtime.collectAsStateWithLifecycle()
-        SleepScreen(
-            now =
-                java.time.Instant
-                    .ofEpochMilli(nowMillis)
-                    .atZone(java.time.ZoneId.systemDefault()),
-            settings = settings,
-            alarms = alarms,
-            reminder = bedtime,
-            actions =
-                object : SleepActions {
-                    override fun onSetAlarm(wake: java.time.ZonedDateTime) {
-                        ensureNotifications()
-                        viewModel.setWakeAlarm(wake.hour, wake.minute)
-                    }
+        saveable.SaveableStateProvider(SLEEP_KEY) {
+            SleepScreen(
+                now =
+                    java.time.Instant
+                        .ofEpochMilli(nowMillis)
+                        .atZone(java.time.ZoneId.systemDefault()),
+                settings = settings,
+                alarms = alarms,
+                reminder = bedtime,
+                actions =
+                    object : SleepActions {
+                        override fun onSetAlarm(wake: java.time.ZonedDateTime) {
+                            ensureNotifications()
+                            viewModel.setWakeAlarm(wake.hour, wake.minute)
+                        }
 
-                    override fun onSetBedtime(
-                        bedtime: java.time.ZonedDateTime,
-                        wake: java.time.ZonedDateTime?,
-                    ) {
-                        ensureNotifications()
-                        viewModel.setBedtime(bedtime.toInstant().toEpochMilli(), wake?.toInstant()?.toEpochMilli())
-                    }
+                        override fun onSetBedtime(
+                            bedtime: java.time.ZonedDateTime,
+                            wake: java.time.ZonedDateTime?,
+                        ) {
+                            ensureNotifications()
+                            viewModel.setBedtime(bedtime.toInstant().toEpochMilli(), wake?.toInstant()?.toEpochMilli())
+                        }
 
-                    override fun onCancelBedtime() = viewModel.cancelBedtime()
-                },
-            onBack = { sleeping = false },
-            modifier = modifier,
-            snackbar = snackbar,
-        )
+                        override fun onCancelBedtime() = viewModel.cancelBedtime()
+                    },
+                onBack = closeSleep,
+                modifier = modifier,
+                snackbar = snackbar,
+            )
+        }
         return
     }
 
-    NavigationSuiteScaffold(
-        modifier = modifier,
-        navigationSuiteItems = {
-            ClockTab.entries.forEach { t ->
-                item(
-                    selected = t == current,
-                    onClick = { tab = t.ordinal },
-                    icon = { Icon(painterResource(t.icon), contentDescription = null) },
-                    label = { Text(stringResource(t.title)) },
-                )
-            }
-        },
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(current.title)) },
-                    actions = {
-                        if (current == ClockTab.Alarms) {
-                            IconButton(onClick = { sleeping = true }) {
+    saveable.SaveableStateProvider(MAIN_KEY) {
+        // Each tab keeps its own scroll when another tab is shown.
+        val tabStates = rememberSaveableStateHolder()
+        NavigationSuiteScaffold(
+            modifier = modifier,
+            navigationSuiteItems = {
+                ClockTab.entries.forEach { t ->
+                    item(
+                        selected = t == current,
+                        onClick = { tab = t.ordinal },
+                        icon = { Icon(painterResource(t.icon), contentDescription = null) },
+                        label = { Text(stringResource(t.title)) },
+                    )
+                }
+            },
+        ) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(stringResource(current.title)) },
+                        actions = {
+                            if (current == ClockTab.Alarms) {
+                                IconButton(onClick = { sleeping = true }) {
+                                    Icon(
+                                        painterResource(R.drawable.ic_bedtime),
+                                        contentDescription = stringResource(R.string.sleep_calculator),
+                                    )
+                                }
+                            }
+                            IconButton(onClick = onOpenSettings) {
                                 Icon(
-                                    painterResource(R.drawable.ic_bedtime),
-                                    contentDescription = stringResource(R.string.sleep_calculator),
+                                    painterResource(DesignR.drawable.ic_settings),
+                                    contentDescription = stringResource(R.string.settings),
                                 )
                             }
+                        },
+                    )
+                },
+                floatingActionButton = {
+                    val fab: (() -> Unit)? =
+                        when (current) {
+                            ClockTab.Alarms -> {
+                                {
+                                    ensureNotifications()
+                                    addingAlarm = true
+                                }
+                            }
+
+                            ClockTab.World -> {
+                                { pickingCity = true }
+                            }
+
+                            ClockTab.Timer -> {
+                                if (timers.isNotEmpty() && !addingTimer) ({ addingTimer = true }) else null
+                            }
+
+                            ClockTab.Stopwatch -> {
+                                null
+                            }
                         }
-                        IconButton(onClick = onOpenSettings) {
+                    if (fab != null) {
+                        MediumFloatingActionButton(onClick = fab) {
                             Icon(
-                                painterResource(DesignR.drawable.ic_settings),
-                                contentDescription = stringResource(R.string.settings),
+                                painterResource(DesignR.drawable.ic_add),
+                                contentDescription = stringResource(R.string.action_add),
+                                modifier = Modifier.padding(4.dp),
                             )
                         }
-                    },
-                )
-            },
-            floatingActionButton = {
-                val fab: (() -> Unit)? =
+                    }
+                },
+                snackbarHost = { SnackbarHost(snackbar) },
+            ) { padding ->
+                val listPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = padding.calculateTopPadding() + 8.dp,
+                        bottom =
+                            padding.calculateBottomPadding() + 96.dp,
+                    )
+                tabStates.SaveableStateProvider(tabKey(current, keypad = timers.isEmpty() || addingTimer)) {
                     when (current) {
                         ClockTab.Alarms -> {
-                            {
-                                ensureNotifications()
-                                addingAlarm = true
-                            }
+                            AlarmsScreen(
+                                alarms = alarms,
+                                actions =
+                                    object : AlarmActions {
+                                        override fun onUpdate(alarm: Alarm) = viewModel.updateAlarm(alarm)
+
+                                        override fun onDelete(alarm: Alarm) = viewModel.deleteAlarm(alarm)
+
+                                        override fun onCancelSnooze(alarm: Alarm) = viewModel.cancelSnooze(alarm)
+
+                                        override fun onSkip(
+                                            alarm: Alarm,
+                                            skip: Boolean,
+                                        ) = viewModel.skipAlarm(alarm, skip)
+                                    },
+                                banners = { PermissionBanners() },
+                                contentPadding = listPadding,
+                            )
                         }
 
                         ClockTab.World -> {
-                            { pickingCity = true }
+                            val now by rememberTicker(60_000) { System.currentTimeMillis() }
+                            val zoned =
+                                java.time.Instant
+                                    .ofEpochMilli(now)
+                                    .atZone(java.time.ZoneId.systemDefault())
+                            WorldClockScreen(
+                                now = zoned,
+                                cities = cityIds.mapNotNull(catalog::find),
+                                onRemove = { viewModel.removeCity(it.zoneId) },
+                                contentPadding = listPadding,
+                            )
                         }
 
                         ClockTab.Timer -> {
-                            if (timers.isNotEmpty() && !addingTimer) ({ addingTimer = true }) else null
+                            if (timers.isEmpty() || addingTimer) {
+                                androidx.activity.compose.BackHandler(enabled = addingTimer) { addingTimer = false }
+                                TimerKeypad(
+                                    input = timerInput,
+                                    onInput = { timerInput = it },
+                                    onStart = {
+                                        ensureNotifications()
+                                        viewModel.createTimer(timerInput.durationMillis)
+                                        timerInput = TimerInput()
+                                        addingTimer = false
+                                    },
+                                    modifier = Modifier.padding(padding),
+                                )
+                            } else {
+                                val elapsed by rememberTicker(100) { SystemClock.elapsedRealtime() }
+                                TimerList(
+                                    timers = timers,
+                                    elapsedNow = elapsed,
+                                    actions =
+                                        object : TimerActions {
+                                            override fun onStart(id: Int) = viewModel.startTimer(id)
+
+                                            override fun onPause(id: Int) = viewModel.pauseTimer(id)
+
+                                            override fun onReset(id: Int) = viewModel.resetTimer(id)
+
+                                            override fun onAddMinute(id: Int) = viewModel.addMinute(id)
+
+                                            override fun onLabel(
+                                                id: Int,
+                                                label: String,
+                                            ) = viewModel.setTimerLabel(id, label)
+
+                                            override fun onDelete(id: Int) = viewModel.deleteTimer(id)
+                                        },
+                                    contentPadding = listPadding,
+                                )
+                            }
                         }
 
                         ClockTab.Stopwatch -> {
-                            null
+                            val elapsed by rememberTicker(
+                                if (stopwatch.running) 16 else 1_000,
+                            ) { SystemClock.elapsedRealtime() }
+                            StopwatchScreen(
+                                stopwatch = stopwatch,
+                                elapsedNow = elapsed,
+                                actions =
+                                    object : StopwatchActions {
+                                        override fun onStart() = viewModel.startStopwatch()
+
+                                        override fun onPause() = viewModel.pauseStopwatch()
+
+                                        override fun onLap() = viewModel.lap()
+
+                                        override fun onReset() = viewModel.resetStopwatch()
+                                    },
+                                modifier = Modifier.padding(padding),
+                            )
                         }
                     }
-                if (fab != null) {
-                    MediumFloatingActionButton(onClick = fab) {
-                        Icon(
-                            painterResource(DesignR.drawable.ic_add),
-                            contentDescription = stringResource(R.string.action_add),
-                            modifier = Modifier.padding(4.dp),
-                        )
-                    }
-                }
-            },
-            snackbarHost = { SnackbarHost(snackbar) },
-        ) { padding ->
-            val listPadding =
-                PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom =
-                        padding.calculateBottomPadding() + 96.dp,
-                )
-            when (current) {
-                ClockTab.Alarms -> {
-                    AlarmsScreen(
-                        alarms = alarms,
-                        actions =
-                            object : AlarmActions {
-                                override fun onUpdate(alarm: Alarm) = viewModel.updateAlarm(alarm)
-
-                                override fun onDelete(alarm: Alarm) = viewModel.deleteAlarm(alarm)
-
-                                override fun onCancelSnooze(alarm: Alarm) = viewModel.cancelSnooze(alarm)
-
-                                override fun onSkip(
-                                    alarm: Alarm,
-                                    skip: Boolean,
-                                ) = viewModel.skipAlarm(alarm, skip)
-                            },
-                        banners = { PermissionBanners() },
-                        contentPadding = listPadding,
-                    )
-                }
-
-                ClockTab.World -> {
-                    val now by rememberTicker(60_000) { System.currentTimeMillis() }
-                    val zoned =
-                        java.time.Instant
-                            .ofEpochMilli(now)
-                            .atZone(java.time.ZoneId.systemDefault())
-                    WorldClockScreen(
-                        now = zoned,
-                        cities = cityIds.mapNotNull(catalog::find),
-                        onRemove = { viewModel.removeCity(it.zoneId) },
-                        contentPadding = listPadding,
-                    )
-                }
-
-                ClockTab.Timer -> {
-                    if (timers.isEmpty() || addingTimer) {
-                        androidx.activity.compose.BackHandler(enabled = addingTimer) { addingTimer = false }
-                        TimerKeypad(
-                            input = timerInput,
-                            onInput = { timerInput = it },
-                            onStart = {
-                                ensureNotifications()
-                                viewModel.createTimer(timerInput.durationMillis)
-                                timerInput = TimerInput()
-                                addingTimer = false
-                            },
-                            modifier = Modifier.padding(padding),
-                        )
-                    } else {
-                        val elapsed by rememberTicker(100) { SystemClock.elapsedRealtime() }
-                        TimerList(
-                            timers = timers,
-                            elapsedNow = elapsed,
-                            actions =
-                                object : TimerActions {
-                                    override fun onStart(id: Int) = viewModel.startTimer(id)
-
-                                    override fun onPause(id: Int) = viewModel.pauseTimer(id)
-
-                                    override fun onReset(id: Int) = viewModel.resetTimer(id)
-
-                                    override fun onAddMinute(id: Int) = viewModel.addMinute(id)
-
-                                    override fun onLabel(
-                                        id: Int,
-                                        label: String,
-                                    ) = viewModel.setTimerLabel(id, label)
-
-                                    override fun onDelete(id: Int) = viewModel.deleteTimer(id)
-                                },
-                            contentPadding = listPadding,
-                        )
-                    }
-                }
-
-                ClockTab.Stopwatch -> {
-                    val elapsed by rememberTicker(
-                        if (stopwatch.running) 16 else 1_000,
-                    ) { SystemClock.elapsedRealtime() }
-                    StopwatchScreen(
-                        stopwatch = stopwatch,
-                        elapsedNow = elapsed,
-                        actions =
-                            object : StopwatchActions {
-                                override fun onStart() = viewModel.startStopwatch()
-
-                                override fun onPause() = viewModel.pauseStopwatch()
-
-                                override fun onLap() = viewModel.lap()
-
-                                override fun onReset() = viewModel.resetStopwatch()
-                            },
-                        modifier = Modifier.padding(padding),
-                    )
                 }
             }
         }
@@ -499,3 +514,12 @@ private fun Banner(
         }
     }
 }
+
+private const val SLEEP_KEY = "sleep"
+private const val MAIN_KEY = "main"
+
+/** The saved-state key of a tab's content; adding a timer (the keypad) is apart from the timer list. */
+internal fun tabKey(
+    tab: ClockTab,
+    keypad: Boolean,
+): String = if (tab == ClockTab.Timer && keypad) "timer:keypad" else "tab:${tab.name}"
