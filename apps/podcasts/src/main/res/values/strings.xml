@@ -131,4 +131,15 @@
     <!-- First run -->
     <string name="setup_notifications_title">Notifications</string>
     <string name="setup_notifications_text">Shows the progress of episode downloads. Playback controls work without it.</string>
+    <!-- New-episode notifications (docs/podcasts.md, Notifications). -->
+    <string name="channel_new_episodes_description">New episodes of shows you follow</string>
+    <!-- %1$s: the newest episode's title; %2$d: how many more. -->
+    <plurals name="new_episode_more">
+        <item quantity="one">%1$s and %2$d more</item>
+        <item quantity="other">%1$s and %2$d more</item>
+    </plurals>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_on">On</string>
+    <string name="settings_off">Off</string>
+    <string name="settings_new_episodes_summary">When a show you follow has a new episode</string>
 </resources>

@@ -21,6 +21,7 @@ class RefreshWorker(
         val podcasts = applicationContext.podcasts
         val added = podcasts.refresh()
         autoDownload(applicationContext, added)
+        NewEpisodeNotifier.notify(applicationContext, added, podcasts.store.library.value)
         return Result.success()
     }
 

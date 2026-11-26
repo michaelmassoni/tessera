@@ -42,6 +42,7 @@ class SettingsActivity : TesseraSettingsActivity() {
         var auto by remember { mutableStateOf(Prefs.autoDownload(context)) }
         var deletePlayed by remember { mutableStateOf(Prefs.deletePlayed(context)) }
         var mobile by remember { mutableStateOf(Prefs.mobileDownloads(context)) }
+        var newEpisodes by remember { mutableStateOf(Prefs.newEpisodeNotifications(context)) }
         val summary =
             listOfNotNull(
                 stringResource(if (auto) R.string.settings_downloads_auto else R.string.settings_downloads_manual),
@@ -80,6 +81,22 @@ class SettingsActivity : TesseraSettingsActivity() {
                     onCheckedChange = {
                         mobile = it
                         Prefs.setMobileDownloads(context, it)
+                    },
+                )
+            },
+            SettingsCategory(
+                key = "notifications",
+                title = stringResource(R.string.settings_notifications),
+                icon = DesignR.drawable.ic_notifications,
+                summary = stringResource(if (newEpisodes) R.string.settings_on else R.string.settings_off),
+            ) {
+                SwitchSetting(
+                    title = stringResource(R.string.new_episodes),
+                    summary = stringResource(R.string.settings_new_episodes_summary),
+                    checked = newEpisodes,
+                    onCheckedChange = {
+                        newEpisodes = it
+                        Prefs.setNewEpisodeNotifications(context, it)
                     },
                 )
             },

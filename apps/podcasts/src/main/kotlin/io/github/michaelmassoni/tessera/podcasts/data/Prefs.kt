@@ -9,6 +9,7 @@ object Prefs {
     private const val AUTO_DOWNLOAD = "auto_download"
     private const val DELETE_PLAYED = "delete_played"
     private const val MOBILE_DOWNLOADS = "mobile_downloads"
+    private const val NEW_EPISODES = "new_episode_notifications"
 
     private fun prefs(context: Context) = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
@@ -32,4 +33,12 @@ object Prefs {
         context: Context,
         on: Boolean,
     ) = prefs(context).edit { putBoolean(MOBILE_DOWNLOADS, on) }
+
+    /** Notify about new episodes of followed shows (on by default). */
+    fun newEpisodeNotifications(context: Context) = prefs(context).getBoolean(NEW_EPISODES, true)
+
+    fun setNewEpisodeNotifications(
+        context: Context,
+        on: Boolean,
+    ) = prefs(context).edit { putBoolean(NEW_EPISODES, on) }
 }
