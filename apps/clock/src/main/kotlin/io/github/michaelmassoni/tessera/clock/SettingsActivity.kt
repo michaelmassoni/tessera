@@ -32,6 +32,14 @@ class SettingsActivity : TesseraSettingsActivity() {
         val minutes = @Composable { m: Int -> pluralStringResource(R.plurals.duration_minutes, m, m) }
         val silenceLabel = @Composable { m: Int -> if (m == 0) stringResource(R.string.settings_never) else minutes(m) }
         val fallAsleepLabel = @Composable { m: Int -> if (m == 0) stringResource(R.string.settings_none) else minutes(m) }
+        val crescendoLabel =
+            @Composable { s: Int ->
+                when {
+                    s == 0 -> stringResource(R.string.settings_off)
+                    s < 60 -> pluralStringResource(R.plurals.duration_seconds, s, s)
+                    else -> minutes(s / 60)
+                }
+            }
 
         return listOf(
             SettingsCategory(
@@ -62,6 +70,13 @@ class SettingsActivity : TesseraSettingsActivity() {
                     selected = settings.silenceAfterMinutes,
                     label = silenceLabel,
                     onSelect = { m -> update { it.copy(silenceAfterMinutes = m) } },
+                )
+                ChoiceSetting(
+                    title = stringResource(R.string.settings_crescendo),
+                    options = ClockSettings.CRESCENDO_CHOICES,
+                    selected = settings.crescendoSeconds,
+                    label = crescendoLabel,
+                    onSelect = { s -> update { it.copy(crescendoSeconds = s) } },
                 )
             },
             SettingsCategory(

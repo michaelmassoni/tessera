@@ -41,6 +41,10 @@ grid (two or more columns).
   the label, and Snooze and Dismiss buttons. The heads-up notification has the same two actions.
 - **Snooze:** 10 minutes by default (configurable: 5, 10, 15 or 20). A snoozed alarm shows
   "Snoozed until 7:40" in the list, with a way to cancel the snooze.
+- **Gradually increasing volume (0.7):** with it on, an alarm starts just audible (5%) and rises to
+  full over the chosen time, along a cubed curve so it sounds like a steady climb (`Crescendo`,
+  unit tested). Only alarms: timers ring at full volume at once. The last-resort generated beep
+  can't change volume, so it plays at full.
 - **Auto-silence:** after 10 minutes of ringing (configurable: 5, 10, 15 or never) the alarm
   stops and a "Missed alarm" notification is posted.
 - **Next alarm:** the system shows it in the status bar and on the lock screen, because
@@ -196,6 +200,7 @@ For waking between sleep cycles rather than in the middle of one, as apps like S
 
 - Snooze length: 5, 10, 15 or 20 minutes.
 - Silence after: 5, 10 or 15 minutes, or Never.
+- Gradually increase volume (0.7): Off (default), 15 or 30 seconds, or 1, 2 or 5 minutes.
 - Sleep calculator: sleep cycle length (80, 90 or 100 minutes; 90 by default) and time to fall
   asleep (0, 5, 10, 15, 20 or 30 minutes; 15 by default).
 - Permission and status checks, with links to the system settings: exact alarms, full-screen
@@ -245,7 +250,6 @@ Not requested: storage, location (cities are chosen by hand), network.
 ## Out of scope for v0.1
 
 - Bedtime mode.
-- Gradually increasing volume.
 - Wake-up challenges.
 - Spotify and other streaming sounds.
 - Analog clock faces.
