@@ -1,5 +1,10 @@
 package io.github.michaelmassoni.tessera.files
 
+import io.github.michaelmassoni.tessera.files.engine.Archives
+import io.github.michaelmassoni.tessera.files.data.Transfers
+import io.github.michaelmassoni.tessera.files.data.TransferOutcome
+import io.github.michaelmassoni.tessera.files.data.RunningOperation
+import io.github.michaelmassoni.tessera.files.data.OperationKind
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.michaelmassoni.tessera.files.data.FilesSettings
@@ -38,11 +43,6 @@ data class Clipboard(
     val files: List<File>,
 )
 
-data class RunningOperation(
-    val mode: ClipMode?,
-    val progress: Progress?,
-)
-
 data class SearchState(
     val query: String = "",
     val results: List<FileEntry> = emptyList(),
@@ -58,6 +58,8 @@ data class FilesUiState(
     val unreadable: Boolean = false,
     val selection: Set<File> = emptySet(),
     val options: ViewOptions = ViewOptions(),
+    /** Bookmarked folders that still exist. */
+    val bookmarks: List<File> = emptyList(),
     val clipboard: Clipboard? = null,
     val operation: RunningOperation? = null,
     val search: SearchState? = null,
@@ -74,7 +76,7 @@ data class TrashState(
 
 sealed interface FilesEvent {
     data class Done(
-        val mode: ClipMode,
+        val kind: OperationKind,
         val count: Int,
     ) : FilesEvent
 
@@ -95,7 +97,7 @@ sealed interface FilesEvent {
         val reason: Reason,
     ) : FilesEvent
 
-    enum class Reason { IntoItself, NoSpace, Io, Cancelled, NoApp }
+    enum class Reason { IntoItself, NoSpace, Io, Cancelled, NoApp, BadArchive }
 }
 
 private const val SEARCH_DELAY_MS = 250L
@@ -109,8 +111,10 @@ class FilesViewModel(
     private val io: CoroutineDispatcher,
     private val ops: FileOperations,
     private val trash: Trash,
+    // Starts a transfer in the foreground service ([Transfers]); null runs it here (tests).
+    private val startTransfer: ((OperationKind, List<File>, File?) -> Boolean)? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(FilesUiState(options = settings.options))
+    private val _state = MutableStateFlow(FilesUiState(options = settings.options, bookmarks = bookmarked(settings)))
     val state: StateFlow<FilesUiState> = _state.asStateFlow()
 
     private val eventChannel = Channel<FilesEvent>(Channel.BUFFERED)
@@ -122,6 +126,18 @@ class FilesViewModel(
 
     init {
         refreshVolumes()
+        if (startTransfer != null) {
+            // A transfer runs in the service: its progress shows here, and how it ended.
+            viewModelScope.launch {
+                Transfers.running.collect { r -> _state.update { it.copy(operation = r ?: it.operation?.takeIf { op -> op.kind == null }) } }
+            }
+            viewModelScope.launch {
+                Transfers.outcomes.collect { o ->
+                    eventChannel.trySend(if (o.failure == null) FilesEvent.Done(o.kind, o.count) else FilesEvent.Failed(reasonOf(o.failure)))
+                    reload()
+                }
+            }
+        }
         // Items kept longer than 30 days go for good.
         viewModelScope.launch(io) { runCatching { trash.purge() } }
     }
@@ -219,6 +235,14 @@ class FilesViewModel(
 
     // ------------------------------------------------------------------ copy / move / delete
 
+    /** Adds [dir] to the bookmarks, or removes it if it's there. */
+    fun toggleBookmark(dir: File) {
+        val paths = settings.bookmarks
+        val path = dir.absolutePath
+        settings.bookmarks = if (path in paths) paths - path else paths + path
+        _state.update { it.copy(bookmarks = bookmarked(settings), selection = emptySet()) }
+    }
+
     fun copySelection() = clip(ClipMode.Copy)
 
     fun moveSelection() = clip(ClipMode.Move)
@@ -232,17 +256,42 @@ class FilesViewModel(
         val s = _state.value
         val clip = s.clipboard ?: return
         val target = s.location ?: return
+        val kind = if (clip.mode == ClipMode.Copy) OperationKind.Copy else OperationKind.Move
+        if (transfer(kind, clip.files, target)) _state.update { it.copy(clipboard = null) }
+    }
+
+    /** Zips the selection into a new .zip in this folder. */
+    fun compressSelection() {
+        val s = _state.value
+        val target = s.location ?: return
+        if (transfer(OperationKind.Compress, s.selection.toList(), target)) _state.update { it.copy(selection = emptySet()) }
+    }
+
+    /** Extracts a zip into a new folder beside it. */
+    fun extract(zip: File) {
+        transfer(OperationKind.Extract, listOf(zip), null)
+    }
+
+    private fun transfer(
+        kind: OperationKind,
+        files: List<File>,
+        target: File?,
+    ): Boolean {
+        if (files.isEmpty()) return false
+        startTransfer?.let { return it(kind, files, target) }
         cancelOperation = AtomicBoolean(false)
         val cancel = cancelOperation
-        _state.update { it.copy(operation = RunningOperation(clip.mode, null), clipboard = null) }
+        _state.update { it.copy(operation = RunningOperation(kind, null)) }
         viewModelScope.launch {
             val error =
                 withContext(io) {
                     try {
-                        val report: (Progress) -> Unit = { p -> _state.update { it.copy(operation = RunningOperation(clip.mode, p)) } }
-                        when (clip.mode) {
-                            ClipMode.Copy -> ops.copy(clip.files, target, cancel, report)
-                            ClipMode.Move -> ops.move(clip.files, target, cancel, report)
+                        val report: (Progress) -> Unit = { p -> _state.update { it.copy(operation = RunningOperation(kind, p)) } }
+                        when (kind) {
+                            OperationKind.Copy -> ops.copy(files, target!!, cancel, report)
+                            OperationKind.Move -> ops.move(files, target!!, cancel, report)
+                            OperationKind.Compress -> Archives.compress(files, target!!, cancel, report)
+                            OperationKind.Extract -> files.forEach { Archives.extract(it, cancel, report) }
                         }
                         null
                     } catch (e: IOException) {
@@ -250,12 +299,16 @@ class FilesViewModel(
                     }
                 }
             _state.update { it.copy(operation = null) }
-            eventChannel.trySend(if (error == null) FilesEvent.Done(clip.mode, clip.files.size) else FilesEvent.Failed(reasonOf(error)))
+            eventChannel.trySend(if (error == null) FilesEvent.Done(kind, files.size) else FilesEvent.Failed(reasonOf(Transfers.failureOf(error))))
             reload()
         }
+        return true
     }
 
-    fun cancelRunningOperation() = cancelOperation.set(true)
+    fun cancelRunningOperation() {
+        cancelOperation.set(true)
+        Transfers.cancel()
+    }
 
     /** No installed app can open a file the user tapped. */
     fun reportNoApp() {
@@ -456,11 +509,14 @@ class FilesViewModel(
         _state.update { it.copy(search = null) }
     }
 
-    private fun reasonOf(e: IOException) =
-        when (e) {
-            is OperationException.IntoItself -> FilesEvent.Reason.IntoItself
-            is OperationException.NotEnoughSpace -> FilesEvent.Reason.NoSpace
-            is OperationException.Cancelled -> FilesEvent.Reason.Cancelled
-            else -> FilesEvent.Reason.Io
+    private fun reasonOf(f: TransferOutcome.Failure) =
+        when (f) {
+            TransferOutcome.Failure.IntoItself -> FilesEvent.Reason.IntoItself
+            TransferOutcome.Failure.NoSpace -> FilesEvent.Reason.NoSpace
+            TransferOutcome.Failure.Cancelled -> FilesEvent.Reason.Cancelled
+            TransferOutcome.Failure.BadArchive -> FilesEvent.Reason.BadArchive
+            TransferOutcome.Failure.Io -> FilesEvent.Reason.Io
         }
 }
+
+private fun bookmarked(settings: FilesSettings) = settings.bookmarks.map(::File).filter { it.isDirectory }

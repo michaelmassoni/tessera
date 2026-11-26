@@ -13,11 +13,20 @@ data class ViewOptions(
 
 interface FilesSettings {
     var options: ViewOptions
+
+    /** Bookmarked folders, as paths, in the order added. */
+    var bookmarks: List<String>
+        get() = emptyList()
+        set(@Suppress("UNUSED_PARAMETER") value) {}
 }
 
 class SharedPreferencesFilesSettings(
     private val prefs: SharedPreferences,
 ) : FilesSettings {
+    override var bookmarks: List<String>
+        get() = prefs.getString("bookmarks", null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+        set(value) = prefs.edit { putString("bookmarks", value.joinToString("\n")) }
+
     override var options: ViewOptions
         get() =
             ViewOptions(

@@ -186,4 +186,24 @@
     <string name="viewer_password">Password</string>
     <string name="viewer_password_wrong">That password isn\'t right</string>
     <string name="viewer_open">Open</string>
+    <!-- Transfers in the background (docs/files.md, Transfers) and zip (Zip). -->
+    <string name="channel_transfers">Copying and moving</string>
+    <string name="channel_transfers_description">Progress of copies, moves and zips that carry on outside the app</string>
+    <string name="progress_compressing">Compressing</string>
+    <string name="progress_extracting">Extracting</string>
+    <!-- %1$s: what was done, e.g. "Copying…" -->
+    <string name="transfer_done">Finished: %1$s</string>
+    <string name="transfer_failed">Couldn\'t finish: %1$s</string>
+    <string name="action_compress">Compress</string>
+    <string name="action_extract">Extract here</string>
+    <string name="error_bad_archive">That zip can\'t be read</string>
+    <plurals name="compressed">
+        <item quantity="one">Compressed %d item</item>
+        <item quantity="other">Compressed %d items</item>
+    </plurals>
+    <string name="extracted">Extracted</string>
+    <!-- Bookmarks (docs/files.md, Bookmarks). -->
+    <string name="bookmarks">Bookmarks</string>
+    <string name="action_bookmark">Add to bookmarks</string>
+    <string name="action_unbookmark">Remove from bookmarks</string>
 </resources>

@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.files.ui
 
+import io.github.michaelmassoni.tessera.files.data.OperationKind
 import android.text.format.Formatter
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -137,6 +138,12 @@ interface FilesActions {
     fun closeSearch()
 
     fun openSettings()
+
+    fun compressSelection() {}
+
+    fun extract(zip: File) {}
+
+    fun toggleBookmark(dir: File) {}
 }
 
 private val ExpandedWidth = 840.dp
@@ -162,7 +169,12 @@ fun FilesScreen(
             val message =
                 when (e) {
                     is FilesEvent.Done -> {
-                        resources.getQuantityString(if (e.mode == ClipMode.Copy) R.plurals.copied else R.plurals.moved, e.count, e.count)
+                        when (e.kind) {
+                            OperationKind.Copy -> resources.getQuantityString(R.plurals.copied, e.count, e.count)
+                            OperationKind.Move -> resources.getQuantityString(R.plurals.moved, e.count, e.count)
+                            OperationKind.Compress -> resources.getQuantityString(R.plurals.compressed, e.count, e.count)
+                            OperationKind.Extract -> resources.getString(R.string.extracted)
+                        }
                     }
 
                     is FilesEvent.Deleted -> {
@@ -191,6 +203,7 @@ fun FilesScreen(
                                 FilesEvent.Reason.Io -> R.string.error_io
                                 FilesEvent.Reason.Cancelled -> R.string.error_cancelled
                                 FilesEvent.Reason.NoApp -> R.string.error_no_app
+                                FilesEvent.Reason.BadArchive -> R.string.error_bad_archive
                             },
                         )
                     }
@@ -237,6 +250,10 @@ fun FilesScreen(
                         onDelete = { dialog = FileDialog.Delete(selected) },
                         onRename = selected.singleOrNull()?.let { f -> { dialog = FileDialog.Rename(f) } },
                         onDetails = selected.singleOrNull()?.let { f -> { dialog = FileDialog.Details(f) } },
+                        onCompress = actions::compressSelection,
+                        onExtract = selected.singleOrNull()?.takeIf(Archives::isZip)?.let { z -> { actions.extract(z) } },
+                        onBookmark = selected.singleOrNull()?.takeIf { it.isDirectory }?.let { d -> { actions.toggleBookmark(d) } },
+                        bookmarked = selected.singleOrNull()?.let { s -> state.bookmarks.any { it.absolutePath == s.absolutePath } } == true,
                         shareEnabled = selected.any { it.isFile },
                     )
                 }
@@ -530,6 +547,10 @@ private fun SelectionBar(
     onRename: (() -> Unit)?,
     onDetails: (() -> Unit)?,
     shareEnabled: Boolean,
+    onCompress: () -> Unit = {},
+    onExtract: (() -> Unit)? = null,
+    onBookmark: (() -> Unit)? = null,
+    bookmarked: Boolean = false,
 ) {
     var more by remember { mutableStateOf(false) }
     TopAppBar(
@@ -560,6 +581,25 @@ private fun SelectionBar(
                     MenuItem(stringResource(R.string.action_move), DesignR.drawable.ic_drive_file_move) {
                         close()
                         onMove()
+                    }
+                    MenuItem(stringResource(R.string.action_compress), DesignR.drawable.ic_folder_zip) {
+                        close()
+                        onCompress()
+                    }
+                    onExtract?.let {
+                        MenuItem(stringResource(R.string.action_extract), DesignR.drawable.ic_unarchive) {
+                            close()
+                            it()
+                        }
+                    }
+                    onBookmark?.let {
+                        MenuItem(
+                            stringResource(if (bookmarked) R.string.action_unbookmark else R.string.action_bookmark),
+                            if (bookmarked) DesignR.drawable.ic_bookmark_filled else DesignR.drawable.ic_bookmark,
+                        ) {
+                            close()
+                            it()
+                        }
                     }
                     onRename?.let {
                         MenuItem(stringResource(R.string.action_rename), DesignR.drawable.ic_edit) {

@@ -28,9 +28,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import io.github.michaelmassoni.tessera.files.ClipMode
 import io.github.michaelmassoni.tessera.files.R
-import io.github.michaelmassoni.tessera.files.RunningOperation
+import io.github.michaelmassoni.tessera.files.data.OperationKind
+import io.github.michaelmassoni.tessera.files.data.RunningOperation
 import io.github.michaelmassoni.tessera.files.data.FileIntents
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
@@ -52,9 +52,11 @@ fun OperationDialog(
         title = {
             Text(
                 stringResource(
-                    when (operation.mode) {
-                        ClipMode.Copy -> R.string.progress_copying
-                        ClipMode.Move -> R.string.progress_moving
+                    when (operation.kind) {
+                        OperationKind.Copy -> R.string.progress_copying
+                        OperationKind.Move -> R.string.progress_moving
+                        OperationKind.Compress -> R.string.progress_compressing
+                        OperationKind.Extract -> R.string.progress_extracting
                         null -> R.string.progress_deleting
                     },
                 ),
@@ -79,7 +81,7 @@ fun OperationDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { if (operation.mode != null) TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { if (operation.kind != null) TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
