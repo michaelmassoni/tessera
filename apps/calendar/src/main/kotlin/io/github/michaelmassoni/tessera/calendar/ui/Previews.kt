@@ -3,6 +3,7 @@ package io.github.michaelmassoni.tessera.calendar.ui
 import androidx.compose.runtime.Composable
 import io.github.michaelmassoni.tessera.calendar.CalendarState
 import io.github.michaelmassoni.tessera.calendar.EditorState
+import io.github.michaelmassoni.tessera.calendar.SearchState
 import io.github.michaelmassoni.tessera.calendar.ViewMode
 import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.DayLayout
@@ -167,6 +168,36 @@ private object NoActions : CalendarActions {
 @Composable
 private fun MonthPreview() {
     TesseraTheme(dynamicColor = false) { CalendarApp(state, null, null, emptyFlow(), NoActions) }
+}
+
+// Search for "shift": the next one upcoming, the past ones under Past events, with years.
+@TesseraPreviews
+@Composable
+private fun SearchPreview() {
+    val arranged =
+        io.github.michaelmassoni.tessera.calendar.engine.SearchResults.arrange(
+            listOf(
+                at(11, 10, title = "10am Shift", color = yellow),
+                at(24, 10, title = "Shift swap", color = yellow),
+                at(3, 9, title = "Shift handover"),
+            ),
+            LocalDate
+                .of(2026, 11, 19)
+                .atStartOfDay(utc)
+                .toInstant()
+                .toEpochMilli(),
+            utc,
+        )
+    TesseraTheme(dynamicColor = false) {
+        CalendarApp(
+            state.copy(mode = ViewMode.Schedule),
+            null,
+            null,
+            emptyFlow(),
+            NoActions,
+            search = SearchState("shift", arranged.upcoming, arranged.past, searched = true),
+        )
+    }
 }
 
 @TesseraPreviews

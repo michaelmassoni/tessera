@@ -194,4 +194,11 @@
     <string name="sync_also_other">Another app already syncs this one: syncing it here too shows its events twice</string>
     <string name="calendar_colour">Colour of %1$s</string>
     <string name="calendar_colour_title">%1$s colour</string>
+    <!-- Event search (top bar, then the search screen). -->
+    <string name="search">Search</string>
+    <string name="search_events">Search events</string>
+    <string name="close_search">Close search</string>
+    <string name="clear_search">Clear search</string>
+    <string name="no_matching_events">No matching events</string>
+    <string name="past_events">Past events</string>
 </resources>

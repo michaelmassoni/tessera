@@ -132,6 +132,26 @@ class CalendarRepository(
         )
     }
 
+    /**
+     * Instances in [begin, end) of visible calendars whose title, description, location or
+     * attendees contain [query]: the provider's own search (`Instances.CONTENT_SEARCH_URI`).
+     */
+    fun search(
+        query: String,
+        begin: Long,
+        end: Long,
+    ): List<Instance> {
+        val uri =
+            Instances.CONTENT_SEARCH_URI
+                .buildUpon()
+                .also {
+                    ContentUris.appendId(it, begin)
+                    ContentUris.appendId(it, end)
+                    it.appendPath(query)
+                }.build()
+        return query(uri)
+    }
+
     /** Instances overlapping [begin, end) in visible calendars. */
     fun instances(
         begin: Long,
@@ -144,6 +164,10 @@ class CalendarRepository(
                     ContentUris.appendId(it, begin)
                     ContentUris.appendId(it, end)
                 }.build()
+        return query(uri)
+    }
+
+    private fun query(uri: android.net.Uri): List<Instance> {
         val list = mutableListOf<Instance>()
         resolver
             .query(
