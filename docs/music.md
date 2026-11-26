@@ -308,7 +308,7 @@ built in. Google's Cast SDK (and Media3's cast module) needs Google Play Service
 doesn't use (docs/decisions.md, 2026-11-26), so Music speaks the Cast protocol itself, like
 other open-source senders do.
 
-- **The Cast button** is in the player's top bar. It opens "Cast to": the devices found on the
+- **The Cast button** is under the playback controls, on the left (since 0.11.2). It opens "Cast to": the devices found on the
   Wi-Fi (TV or speaker icon, by what the device says it can do), "Searching…" while looking, and
   a hint about the same Wi-Fi when nothing turns up. Picking one moves playback there: the queue,
   the song, the position and whether it was playing. While casting the sheet shows the device,
@@ -359,6 +359,15 @@ other open-source senders do.
 - Cast devices in Android's own output switcher (needs a `MediaRoute2ProviderService`).
 - Speaker groups (they appear like any device, but untested).
 - DLNA / UPnP renderers.
+
+## Player layout (0.11.2)
+
+Asked for by the maintainer, after the way other players lay it out:
+
+- **Top bar:** only Close on the left, "Playing from" in the middle and More options (go to album,
+  go to artist) on the right.
+- **Under the controls:** the Cast button on the left, with "Casting to <device>" beside it while
+  casting, and the queue on the right. No share button.
 
 ## Out of scope for v0.1
 

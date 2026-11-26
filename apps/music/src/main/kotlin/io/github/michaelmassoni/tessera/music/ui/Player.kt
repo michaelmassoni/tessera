@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -334,10 +335,6 @@ fun FullPlayer(
                         }
                     },
                     actions = {
-                        castButton()
-                        IconButton(onClick = { queue = true }) {
-                            Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = stringResource(R.string.queue))
-                        }
                         if (links.onAlbum != null || links.onArtist != null) {
                             Box {
                                 IconButton(onClick = { menu = true }) {
@@ -379,7 +376,7 @@ fun FullPlayer(
                     TitleRow(state, explicit, playlists, libraryActions, links, onSave = { saving = true })
                     SeekBar(progress, actions)
                     Controls(state, actions)
-                    castingTo?.let { CastingLine(it) }
+                    OutputRow(castButton, castingTo, onQueue = { queue = true })
                     LyricsCard(
                         lyrics,
                         progress,
@@ -649,6 +646,42 @@ fun rememberSmoothProgress(progress: () -> Progress): () -> Progress {
         {
             frame.longValue // read, so whoever shows the position follows every frame
             progress().at(SystemClock.elapsedRealtime())
+        }
+    }
+}
+
+/**
+ * Under the controls, as in other players: where it's playing on the left (the Cast button, and
+ * the device while casting) and the queue on the right.
+ */
+@Composable
+private fun OutputRow(
+    castButton: @Composable () -> Unit,
+    castingTo: String?,
+    onQueue: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // The buttons' icons line up with the title and seek bar, their touch targets reaching past them.
+    Row(
+        modifier.fillMaxWidth().layout { measurable, constraints ->
+            val extra = 24.dp.roundToPx()
+            val wider = constraints.copy(minWidth = constraints.minWidth + extra, maxWidth = constraints.maxWidth + extra)
+            val placeable = measurable.measure(wider)
+            layout(constraints.maxWidth, placeable.height) { placeable.place(-extra / 2, 0) }
+        },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        castButton()
+        Text(
+            castingTo?.let { stringResource(R.string.cast_casting_to, it) }.orEmpty(),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onQueue) {
+            Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = stringResource(R.string.queue))
         }
     }
 }
