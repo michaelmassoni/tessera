@@ -17,7 +17,7 @@ the reason.
 - minSdk 31, targetSdk 37, compileSdk 37, build-tools 37.0.0 (pinned for reproducible
   F-Droid builds).
 - Use the latest **stable** versions. Any pre-release needs a comment in the catalog and an entry
-  in `docs/decisions.md` (the only current one is material3; see there).
+  in `docs/decisions.md` (none today; material3 moved to 1.5.0 stable on 2026-11-26).
 
 ## Layout
 

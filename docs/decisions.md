@@ -513,7 +513,15 @@ never change after publication. The `io.github.<user>` namespace is one the main
 controls, at no cost. The GitHub account name "Tessera" is also taken. The project name
 Tessera itself is unchanged: there are no F-Droid or Android collisions.
 
-## 2026-11-19: material3 pinned to 1.5.0-rc01 (Accepted)
+## 2026-11-19: material3 pinned to 1.5.0-rc01 (Superseded 2026-11-26)
+
+**Superseded 2026-11-26:** material3 1.5.0 stable shipped on 2026-11-18. The catalog now uses it
+(still over BOM 2026.09.00: 1.5.0 needs only Compose 1.12), so the pre-release exception is
+closed. BOM 2026.11.01, which ships 1.5.0, also brings Compose 1.13; that needs compileSdk 37.1
+and moving the remaining `TextFieldValue` / `VisualTransformation` fields (core:dav, Messages,
+Notes, Music) to the state-based API, so it's a separate step on the roadmap. Dependabot offered 1.6.0-alpha01 only because we were on a
+release candidate; on a stable version it proposes stable updates only.
+
 
 **Decision:** Override the Compose BOM (2026.09.00, which ships material3 1.4.0) with
 material3 `1.5.0-rc01`. Every other Compose artifact stays on the stable BOM (Compose 1.12.1).
