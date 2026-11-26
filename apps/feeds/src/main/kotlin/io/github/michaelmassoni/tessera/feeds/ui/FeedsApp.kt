@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.feeds.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -53,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -79,6 +82,7 @@ import io.github.michaelmassoni.tessera.feeds.engine.Article
 import io.github.michaelmassoni.tessera.feeds.engine.ArticleState
 import io.github.michaelmassoni.tessera.feeds.engine.Library
 import io.github.michaelmassoni.tessera.feeds.engine.Selection
+import io.github.michaelmassoni.tessera.feeds.engine.SwipeAction
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -453,7 +457,11 @@ private fun ArticleList(
                                 onKeep(setOf(a.id))
                                 actions.setState(setOf(a.id), if (a.unread) ArticleState.Read else ArticleState.Unread)
                             },
-                            onToggleStar = { actions.setState(setOf(a.id), if (a.starred) ArticleState.Read else ArticleState.Starred) },
+                            onToggleStar = {
+                                // Starring marks it read too (the states are exclusive): keep it in view in Unread.
+                                onKeep(setOf(a.id))
+                                actions.setState(setOf(a.id), if (a.starred) ArticleState.Read else ArticleState.Starred)
+                            },
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -531,22 +539,56 @@ private fun ArticleRow(
             a.title,
             age,
         ).joinToString(". ")
+    val actionFor = { direction: SwipeToDismissBoxValue ->
+        if (direction == SwipeToDismissBoxValue.StartToEnd) state.swipeRight else state.swipeLeft
+    }
+    val run by rememberUpdatedState { direction: SwipeToDismissBoxValue ->
+        when (actionFor(direction)) {
+            SwipeAction.ToggleRead -> onToggleRead()
+            SwipeAction.ToggleStar -> onToggleStar()
+            SwipeAction.None -> Unit
+        }
+    }
     SwipeToDismissBox(
         state = swipe,
         modifier = modifier,
-        onDismiss = {
-            onToggleRead()
-            scope.launch { swipe.reset() }
-        },
+        enableDismissFromStartToEnd = state.swipeRight != SwipeAction.None,
+        enableDismissFromEndToStart = state.swipeLeft != SwipeAction.None,
+        // SwipeToDismissBox restarts its effect whenever onDismiss changes, and calls it again while
+        // the row is still swiped away: a new lambda on each recomposition toggled the article back
+        // and forth and left the row stuck off-screen. Keep it the same lambda for the row's life.
+        onDismiss =
+            remember(swipe, scope) {
+                { direction ->
+                    run(direction)
+                    scope.launch { swipe.reset() }
+                }
+            },
         backgroundContent = {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                val icon = if (a.unread) DesignR.drawable.ic_check else DesignR.drawable.ic_radio_button_unchecked
-                Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            val direction = swipe.dismissDirection
+            val action = actionFor(direction)
+            if (direction != SwipeToDismissBoxValue.Settled && action != SwipeAction.None) {
+                Row(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .padding(horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement =
+                        if (direction == SwipeToDismissBoxValue.StartToEnd) Arrangement.Start else Arrangement.End,
+                ) {
+                    val icon =
+                        when (action) {
+                            SwipeAction.ToggleStar -> {
+                                if (a.starred) DesignR.drawable.ic_star else DesignR.drawable.ic_star_filled
+                            }
+
+                            else -> {
+                                if (a.unread) DesignR.drawable.ic_check else DesignR.drawable.ic_radio_button_unchecked
+                            }
+                        }
+                    Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
             }
         },
     ) {

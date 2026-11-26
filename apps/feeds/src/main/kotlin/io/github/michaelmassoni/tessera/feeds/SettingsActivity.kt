@@ -32,11 +32,13 @@ import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
 import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
+import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.feeds.data.AccountStore
 import io.github.michaelmassoni.tessera.feeds.data.FeedsPrefs
 import io.github.michaelmassoni.tessera.feeds.data.Source
 import io.github.michaelmassoni.tessera.feeds.data.Subscriptions
+import io.github.michaelmassoni.tessera.feeds.engine.SwipeAction
 import io.github.michaelmassoni.tessera.feeds.sync.SyncWorker
 import io.github.michaelmassoni.tessera.feeds.ui.YarrSignInDialog
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +66,8 @@ class SettingsActivity : TesseraSettingsActivity() {
         var prefs by remember { mutableStateOf(SyncPrefs.load(context)) }
         var keep by remember { mutableIntStateOf(FeedsPrefs.keepReadDays(context)) }
         var scale by remember { mutableFloatStateOf(FeedsPrefs.textScale(context)) }
+        var swipeRight by remember { mutableStateOf(FeedsPrefs.swipeRight(context)) }
+        var swipeLeft by remember { mutableStateOf(FeedsPrefs.swipeLeft(context)) }
         val sourceLabel = stringResource(if (source is Source.Yarr) R.string.source_yarr else R.string.source_phone)
         val minutes = prefs.interval.minutes.toInt()
         val syncSummary =
@@ -113,6 +117,27 @@ class SettingsActivity : TesseraSettingsActivity() {
                     onSelect = {
                         scale = it
                         FeedsPrefs.setTextScale(context, it)
+                    },
+                )
+                SettingsHeader(stringResource(R.string.settings_swipe))
+                ChoiceSetting(
+                    title = stringResource(R.string.swipe_right),
+                    options = SwipeAction.entries,
+                    selected = swipeRight,
+                    label = { swipeLabel(it) },
+                    onSelect = {
+                        swipeRight = it
+                        FeedsPrefs.setSwipeRight(context, it)
+                    },
+                )
+                ChoiceSetting(
+                    title = stringResource(R.string.swipe_left),
+                    options = SwipeAction.entries,
+                    selected = swipeLeft,
+                    label = { swipeLabel(it) },
+                    onSelect = {
+                        swipeLeft = it
+                        FeedsPrefs.setSwipeLeft(context, it)
                     },
                 )
             },
@@ -274,3 +299,13 @@ class SettingsActivity : TesseraSettingsActivity() {
             },
         )
 }
+
+@Composable
+private fun swipeLabel(action: SwipeAction): String =
+    stringResource(
+        when (action) {
+            SwipeAction.ToggleRead -> R.string.swipe_toggle_read
+            SwipeAction.ToggleStar -> R.string.swipe_toggle_star
+            SwipeAction.None -> R.string.swipe_none
+        },
+    )

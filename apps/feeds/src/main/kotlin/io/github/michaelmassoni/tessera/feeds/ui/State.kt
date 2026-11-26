@@ -12,6 +12,7 @@ import io.github.michaelmassoni.tessera.feeds.engine.Feed
 import io.github.michaelmassoni.tessera.feeds.engine.FeedData
 import io.github.michaelmassoni.tessera.feeds.engine.Folder
 import io.github.michaelmassoni.tessera.feeds.engine.Selection
+import io.github.michaelmassoni.tessera.feeds.engine.SwipeAction
 
 /** What the screens show. */
 @Immutable
@@ -27,6 +28,9 @@ data class FeedsState(
     val icons: Map<String, String> = emptyMap(),
     /** Article text size, as a factor of the system's. */
     val textScale: Float = 1f,
+    /** What swiping an article row right and left does. */
+    val swipeRight: SwipeAction = SwipeAction.ToggleRead,
+    val swipeLeft: SwipeAction = SwipeAction.ToggleStar,
 )
 
 /** What the screens can do. */
