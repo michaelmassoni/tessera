@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <!-- A speaker cabinet with a tweeter and a woofer. -->
+  <path
+      android:fillColor="@android:color/white"
+      android:fillType="evenOdd"
+      android:pathData="M280,80L680,80Q760,80 760,160L760,800Q760,880 680,880L280,880Q200,880 200,800L200,160Q200,80 280,80ZM280,160L280,800L680,800L680,160ZM340,580A140,140 0 1,0 620,580A140,140 0 1,0 340,580ZM410,580A70,70 0 1,0 550,580A70,70 0 1,0 410,580ZM430,300A50,50 0 1,0 530,300A50,50 0 1,0 430,300Z"/>
+</vector>
