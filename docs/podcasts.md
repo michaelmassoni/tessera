@@ -49,16 +49,19 @@ bar. A mini player sits above the navigation whenever something is loaded.
 - **Episode:** cover, show, title, date and duration, the play and download buttons, and the
   show notes (HTML rendered as text with links; images are left out).
 - **Player** (a full-screen sheet from the mini player): cover, title, show (tap to open it),
-  seek slider with elapsed and remaining time, back 10 s, play/pause, forward 30 s, speed
-  (0.5× to 3×, remembered for all episodes) and sleep timer (5, 15, 30, 45, 60 min, end of
-  episode). Up Next itself is on Home.
+  seek slider with elapsed and remaining time (and the chapter playing, with a break in the
+  track where each chapter begins), then, as Spotify lays it out (0.3): speed (0.5× to 3×,
+  remembered for all episodes), back 15 s, play/pause, forward 15 s and the sleep timer (5, 15,
+  30, 45, 60 min, end of episode; the icon turns the accent colour while it's set). Under them,
+  Cast on the left and Up Next on the right (a sheet: tap an episode to play it, or take it
+  out). Up Next is also on Home.
 
 ## Playback
 
 - A Media3 `MediaSessionService` with ExoPlayer: media notification, lock screen, Bluetooth and
   headset buttons, output switcher, audio focus (pauses for calls, ducks for navigation),
   "becoming noisy" pauses. Content type speech.
-- The media notification shows back 10 s and forward 30 s (Media3 media button preferences) in
+- The media notification shows back 15 s and forward 15 s (Media3 media button preferences) in
   place of previous/next, as podcast apps do. Headset and Bluetooth next/previous still move
   through Up Next.
 - **The queue is the player's playlist:** the episode playing first, then Up Next. Playing an
@@ -144,12 +147,12 @@ permission); restore.
 Asked for by the maintainer once casting worked in Music. It uses the same Cast client,
 now in `core:cast` (docs/music.md, Casting, for how it works; docs/decisions.md, 2026-11-26).
 
-- **The Cast button** sits with speed and the sleep timer under the controls; "Casting to
-  <device>" shows below them while casting.
+- **The Cast button** is under the controls on the left, with "Casting to <device>" beside it
+  while casting.
 - **The episode is served from the phone**, download or stream alike: the phone follows the
   publisher's http/https redirects, which the Default Media Receiver may not, and reads the
   stream as it does to play it. The cover is served the same way.
-- **Up Next, speed and skips carry over.** Back 10 / forward 30 seek on the device. Speed is
+- **Up Next, speed and skips carry over.** Back and forward 15 seek on the device. Speed is
   sent to the device, which plays 0.5× to 2×: faster settings play at 2× while casting, and
   the setting itself is kept.
 - **Episodes finish as on the phone:** one that plays to the end on the device is marked played
@@ -158,6 +161,22 @@ now in `core:cast` (docs/music.md, Casting, for how it works; docs/decisions.md,
 - **The sleep timer** pauses the cast device.
 - Stopping casting, or losing the device, brings playback back to the phone, paused where it
   was.
+
+## Chapters (0.3)
+
+Asked for by the maintainer, with Spotify's player as the reference.
+
+- **Where they come from:** the feed's Podcasting 2.0 `<podcast:chapters>` file (JSON: start,
+  title, image, link; ones marked `"toc": false` are left out) or, failing that, ID3 `CHAP`
+  frames in the audio, which ExoPlayer reads as it opens the file (so they appear once the
+  episode has started on the phone). The feed's file wins. Kept in memory for the session
+  (`EpisodeChapters`); the file is fetched when the episode starts.
+- **In the player:** a Chapters button above the titles opens the list (each chapter's start, the
+  one playing highlighted; tap to go there); the seek bar breaks where each chapter begins and
+  the chapter playing is named between the times. Untitled chapters are "Chapter n".
+- **Engine (unit tested):** `Chapters` (the JSON file, sorting, the chapter at a position, the
+  marks) and the feed parser's chapters link.
+- Not yet: chapter images in place of the cover as they come round, and skipping by chapter.
 
 ## Accessibility
 

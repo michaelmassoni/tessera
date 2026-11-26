@@ -41,6 +41,8 @@ data class Episode(
     /** The episode's own cover, when it has one. */
     val artworkUrl: String? = null,
     val link: String? = null,
+    /** Podcasting 2.0 chapters (JSON), when the feed links them. */
+    val chaptersUrl: String? = null,
 )
 
 /** What the person has done with an episode. */

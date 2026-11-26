@@ -9,6 +9,7 @@ import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.podcasts.Progress
 import io.github.michaelmassoni.tessera.podcasts.SleepTimer
+import io.github.michaelmassoni.tessera.podcasts.engine.Chapter
 import io.github.michaelmassoni.tessera.podcasts.engine.Episode
 import io.github.michaelmassoni.tessera.podcasts.engine.Library
 import io.github.michaelmassoni.tessera.podcasts.engine.SearchResult
@@ -109,6 +110,13 @@ private val state =
                 speed = 1.25f,
                 queue = library.upNext,
                 sleep = SleepTimer.Sleep.EndOfEpisode,
+                chapters =
+                    listOf(
+                        Chapter(0, "Intro"),
+                        Chapter(540_000, "Why galaxies spin too fast"),
+                        Chapter(1_380_000, "Weighing with light"),
+                        Chapter(2_820_000, "Listener questions"),
+                    ),
             ),
         now = at(25, 12),
     )

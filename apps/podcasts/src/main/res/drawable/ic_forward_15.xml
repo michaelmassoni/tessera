@@ -3,15 +3,15 @@
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960">
-  <!-- ic_forward_30's circle and arrow mirrored, with "10" in the same digits, so the two match. -->
+  <!-- A clockwise arrow round 15: forward 15 seconds. -->
   <group android:translateY="960">
     <path
         android:fillColor="@android:color/white"
-        android:pathData="M380-320v-180h-60v-60h120v240h-60Zm140 0q-17 0-28.5-11.5T480-360v-160q0-17 11.5-28.5T520-560h80q17 0 28.5 11.5T640-520v160q0 17-11.5 28.5T600-320h-80Zm20-60h40v-120h-40v120Z"/>
+        android:pathData="M380-320v-180h-60v-60h120v240h-60Zm100 0v-60h100v-30h-100v-150h160v60h-100v30h60q17 0 28.5 11.5T640-430v70q0 17-11.5 28.5T600-320H480Z"/>
   </group>
   <group
       android:pivotX="480"
-      android:scaleX="-1"
+      android:scaleX="1"
       android:translateY="960">
     <path
         android:fillColor="@android:color/white"

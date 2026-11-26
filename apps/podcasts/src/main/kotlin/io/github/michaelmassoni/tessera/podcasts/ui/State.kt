@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.podcasts.ui
 
 import androidx.compose.runtime.Immutable
 import io.github.michaelmassoni.tessera.podcasts.SleepTimer
+import io.github.michaelmassoni.tessera.podcasts.engine.Chapter
 import io.github.michaelmassoni.tessera.podcasts.engine.Episode
 import io.github.michaelmassoni.tessera.podcasts.engine.EpisodeState
 import io.github.michaelmassoni.tessera.podcasts.engine.Library
@@ -41,6 +42,8 @@ data class PlayerUi(
     val speed: Float = 1f,
     val queue: List<String> = emptyList(),
     val sleep: SleepTimer.Sleep = SleepTimer.Sleep.Off,
+    /** The episode's chapters, when it has any. */
+    val chapters: List<Chapter> = emptyList(),
 )
 
 /** What the screens can do. Suspending ones report problems by throwing. */

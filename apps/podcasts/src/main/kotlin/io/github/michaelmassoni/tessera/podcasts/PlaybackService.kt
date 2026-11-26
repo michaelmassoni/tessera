@@ -9,6 +9,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -89,20 +90,29 @@ class PlaybackService : MediaSessionService() {
                 .setMediaButtonPreferences(
                     listOf(
                         CommandButton
-                            .Builder(CommandButton.ICON_SKIP_BACK_10)
-                            .setDisplayName(getString(R.string.back_10))
+                            .Builder(CommandButton.ICON_SKIP_BACK_15)
+                            .setDisplayName(getString(R.string.back_15))
                             .setPlayerCommand(Player.COMMAND_SEEK_BACK)
                             .setSlots(CommandButton.SLOT_BACK)
                             .build(),
                         CommandButton
-                            .Builder(CommandButton.ICON_SKIP_FORWARD_30)
-                            .setDisplayName(getString(R.string.forward_30))
+                            .Builder(CommandButton.ICON_SKIP_FORWARD_15)
+                            .setDisplayName(getString(R.string.forward_15))
                             .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
                             .setSlots(CommandButton.SLOT_FORWARD)
                             .build(),
                     ),
                 ).build()
         player.addListener(Listener(player))
+        // Chapters in the audio itself (ID3 CHAP), which only the phone's player reads.
+        player.addListener(
+            object : Player.Listener {
+                override fun onTracksChanged(tracks: Tracks) {
+                    val id = player.currentMediaItem?.mediaId ?: return
+                    EpisodeChapters.fromAudio(id, EpisodeChapters.id3(tracks))
+                }
+            },
+        )
         scope.launch { restore(player) }
         scope.launch { sleepTimer() }
         exo = player
@@ -137,6 +147,7 @@ class PlaybackService : MediaSessionService() {
         player.setMediaItems(items, 0, lib.state(first).positionMs)
         player.prepare()
         currentId = first
+        loadChapters(first)
     }
 
     private suspend fun sleepTimer() {
@@ -231,6 +242,13 @@ class PlaybackService : MediaSessionService() {
             ).build()
     }
 
+    /** Fetches the episode's chapters file, when its feed links one and it isn't loaded yet. */
+    private fun loadChapters(id: String) {
+        val url = store.episode(id)?.chaptersUrl ?: return
+        if (!EpisodeChapters.shouldFetch(id)) return
+        scope.launch(Dispatchers.IO) { EpisodeChapters.fetched(id, EpisodeChapters.fetch(url)) }
+    }
+
     private fun savePosition(player: Player) {
         val id = currentId ?: return
         if (player.currentMediaItem?.mediaId == id) {
@@ -288,6 +306,7 @@ class PlaybackService : MediaSessionService() {
             lastPositionMs = 0
             lastDurationMs = 0
             val id = currentId ?: return
+            loadChapters(id)
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                 val state = store.library.value.state(id)
                 if (!state.played && state.positionMs > 0) player.seekTo(state.positionMs)
@@ -374,8 +393,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     private companion object {
-        const val BACK_MS = 10_000L
-        const val FORWARD_MS = 30_000L
+        const val BACK_MS = 15_000L
+        const val FORWARD_MS = 15_000L
         const val SAVE_EVERY_S = 10
     }
 }
