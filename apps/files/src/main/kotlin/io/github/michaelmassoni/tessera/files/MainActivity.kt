@@ -1,16 +1,21 @@
 package io.github.michaelmassoni.tessera.files
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -22,6 +27,7 @@ import io.github.michaelmassoni.tessera.files.data.AndroidFreeSpace
 import io.github.michaelmassoni.tessera.files.data.FileIntents
 import io.github.michaelmassoni.tessera.files.data.SharedPreferencesFilesSettings
 import io.github.michaelmassoni.tessera.files.data.StorageVolumes
+import io.github.michaelmassoni.tessera.files.data.Transfers
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
@@ -42,9 +48,26 @@ class MainActivity : ComponentActivity() {
                     io = Dispatchers.IO,
                     ops = FileOperations(freeSpace = AndroidFreeSpace(applicationContext)),
                     trash = Trash(File(filesDir, "trash.json")),
+                    // Copies, moves and zips run in a foreground service, so they finish after the app is left.
+                    startTransfer = { kind, files, target ->
+                        askForNotifications()
+                        Transfers.start(applicationContext, kind, files, target)
+                    },
                 )
             }
         }
+    }
+
+    private val notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    /** The first time a transfer starts: ask to show its progress (Android 13 and later), once. */
+    private fun askForNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        if (prefs.getBoolean("asked_notifications", false)) return
+        prefs.edit { putBoolean("asked_notifications", true) }
+        notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,4 +161,10 @@ private class Actions(
     override fun closeSearch() = vm.closeSearch()
 
     override fun openSettings() = activity.startActivity(Intent(activity, SettingsActivity::class.java))
+
+    override fun compressSelection() = vm.compressSelection()
+
+    override fun extract(zip: File) = vm.extract(zip)
+
+    override fun toggleBookmark(dir: File) = vm.toggleBookmark(dir)
 }
