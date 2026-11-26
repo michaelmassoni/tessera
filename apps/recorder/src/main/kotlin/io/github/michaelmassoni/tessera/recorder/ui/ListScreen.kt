@@ -116,7 +116,12 @@ internal fun ListScreen(
 
                 searching -> {
                     val focus = remember { FocusRequester() }
-                    LaunchedEffect(Unit) { focus.requestFocus() }
+                    // Only when search opens, not when the list comes back from a recording.
+                    var focused by rememberSaveable { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        if (!focused) focus.requestFocus()
+                        focused = true
+                    }
                     TopAppBar(
                         title = {
                             TextField(
