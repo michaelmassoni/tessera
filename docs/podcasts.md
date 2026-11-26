@@ -9,7 +9,7 @@ shows, see their new episodes, play them with an Up Next queue, and download the
 listening. Not a power-user app (no filters, playlists, statistics or per-show rules in v0.1).
 
 Out of scope for v0.1: sync with a server (gPodder, Nextcloud), chapters, transcripts, video
-episodes (they play as audio), new-episode notifications, a widget, per-show
+episodes (they play as audio), a widget, per-show
 settings, charts or a "Browse" page.
 
 ## Finding shows
@@ -161,6 +161,15 @@ now in `core:cast` (docs/music.md, Casting, for how it works; docs/decisions.md,
 - **The sleep timer** pauses the cast device.
 - Stopping casting, or losing the device, brings playback back to the phone, paused where it
   was.
+
+## Notifications (0.5)
+
+After the 6-hourly background refresh, a notification per followed show with new episodes:
+the show's name and its newest episode ("… and 2 more" when there are several), grouped when
+several shows have news; tapping opens the app (Home lists them). Episodes already marked played
+aren't announced, nor are shows that are only kept (not followed). A manual refresh in the app
+doesn't notify. Settings › Notifications › New episodes turns them off (on by default). The
+notification permission is the one asked for at setup. `NewEpisodeNotices` (unit tested) decides.
 
 ## Android Auto (0.4)
 
