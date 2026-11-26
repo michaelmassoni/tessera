@@ -311,6 +311,8 @@ fun FullPlayer(
     libraryActions: LibraryActions? = null,
     links: NowPlayingLinks = NowPlayingLinks(),
     explicit: Boolean = false,
+    // The heart: null hides it (no song, or previews without a library).
+    liked: Boolean? = null,
     // The Cast button (a slot, so previews show the bar without discovery) and the device being cast to.
     castButton: @Composable () -> Unit = {},
     castingTo: String? = null,
@@ -374,7 +376,7 @@ fun FullPlayer(
                     AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = m)
                 }
                 val details: @Composable () -> Unit = {
-                    TitleRow(state, explicit, playlists, libraryActions, links, onSave = { saving = true })
+                    TitleRow(state, explicit, liked, playlists, libraryActions, links, onSave = { saving = true })
                     SeekBar(progress, actions)
                     Controls(state, actions)
                     OutputRow(castButton, castingTo, onQueue = { queue = true })
@@ -431,11 +433,12 @@ fun FullPlayer(
     }
 }
 
-/** Title, then "Artist · Album" (each a link to its page when it has one), and save to playlist. */
+/** Title, then "Artist · Album" (each a link to its page when it has one), the heart, and save to playlist. */
 @Composable
 private fun TitleRow(
     state: PlaybackState,
     explicit: Boolean,
+    liked: Boolean?,
     playlists: List<Playlist>,
     libraryActions: LibraryActions?,
     links: NowPlayingLinks,
@@ -482,6 +485,15 @@ private fun TitleRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (libraryActions != null && state.songId != 0L && liked != null) {
+            IconToggleButton(checked = liked, onCheckedChange = { libraryActions.setLiked(state.songId, it) }) {
+                Icon(
+                    painterResource(if (liked) DesignR.drawable.ic_favorite_filled else DesignR.drawable.ic_favorite),
+                    contentDescription = stringResource(R.string.like),
+                    tint = if (liked) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                )
+            }
         }
         if (libraryActions != null && state.songId != 0L) {
             val saved = playlists.any { !it.readOnly && state.songId in it.songIds }

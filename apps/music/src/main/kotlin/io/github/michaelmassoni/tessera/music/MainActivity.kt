@@ -25,6 +25,7 @@ import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.music.data.LikeStore
 import io.github.michaelmassoni.tessera.music.data.LyricsQuery
 import io.github.michaelmassoni.tessera.music.data.LyricsRepository
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
@@ -120,6 +121,17 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(playback.uri) { loadLyrics(playback) }
                     // A new song started: "Recently played" moves it up.
                     LaunchedEffect(playback.songId) { refreshHistory() }
+                    // Likes from the car (the service) show here too.
+                    LaunchedEffect(Unit) {
+                        withContext(Dispatchers.IO) { LikeStore.read(this@MainActivity) }
+                        LikeStore.flow.collect { likes ->
+                            if (likes != null &&
+                                likes != library.likes
+                            ) {
+                                library = library.copy(likes = likes)
+                            }
+                        }
+                    }
                     MusicApp(library, playback, { progress.value }, libraryActions, playerActions, lyrics = lyrics)
                 }
             }
@@ -232,6 +244,8 @@ class MainActivity : ComponentActivity() {
                         val songs = client.allSongs()
                         val playlists = client.playlists()
                         ServerLibrary.save(this@MainActivity, account, songs, playlists)
+                        // Likes made here (or in the car) that the server hasn't got yet.
+                        LikeStore.sync(this@MainActivity, songs, client)
                         songs to playlists
                     }
                 if (store.source != MusicSource.Server) return@launch
@@ -330,6 +344,7 @@ class MainActivity : ComponentActivity() {
         playlists = playlists,
         albumArtists = Library.albumArtists(songs),
         history = PlayHistory.read(this),
+        likes = LikeStore.read(this),
         fromServer = fromServer,
     )
 
@@ -398,6 +413,14 @@ class MainActivity : ComponentActivity() {
             } else {
                 editPlaylists { Playlists.delete(it, id) }
             }
+
+        override fun setLiked(
+            songId: Long,
+            liked: Boolean,
+        ) {
+            val song = library.byId[songId] ?: return
+            lifecycleScope.launch(Dispatchers.IO) { LikeStore.set(this@MainActivity, song, liked) }
+        }
 
         override fun addToPlaylist(
             id: Long,

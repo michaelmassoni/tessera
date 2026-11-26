@@ -13,6 +13,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.ShuffleOrder
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService
@@ -20,7 +21,9 @@ import androidx.media3.session.MediaLibraryService.LibraryParams
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -30,6 +33,7 @@ import io.github.michaelmassoni.tessera.core.cast.CastContent
 import io.github.michaelmassoni.tessera.core.cast.CastMedia
 import io.github.michaelmassoni.tessera.core.cast.RemotePlayer
 import io.github.michaelmassoni.tessera.music.data.LibraryLoader
+import io.github.michaelmassoni.tessera.music.data.LikeStore
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.data.PlayHistory
 import io.github.michaelmassoni.tessera.music.engine.BrowseTree
@@ -37,6 +41,7 @@ import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.QueueOrder
 import io.github.michaelmassoni.tessera.music.engine.SavedItem
 import io.github.michaelmassoni.tessera.music.engine.SavedQueue
+import io.github.michaelmassoni.tessera.music.engine.Song
 import io.github.michaelmassoni.tessera.music.server.ArtProvider
 import io.github.michaelmassoni.tessera.music.server.MusicSource
 import io.github.michaelmassoni.tessera.music.server.Scrobbler
@@ -54,6 +59,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
@@ -113,6 +119,9 @@ class PlaybackService : MediaLibraryService() {
         }
         player.addListener(listener)
         exo = player
+        updateButtons(player)
+        // A like made in the app shows on the heart too.
+        scope.launch { LikeStore.flow.collect { session?.player?.let(::updateButtons) } }
         // What the cast device gets for a song: the song and its cover, served from the phone through
         // the same reading as playing here (files, and server songs through the cache).
         val sources = ServerPlayback.dataSourceFactory(this)
@@ -160,6 +169,14 @@ class PlaybackService : MediaLibraryService() {
                 }
                 if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) scrobbler.started(player)
                 if (events.containsAny(
+                        Player.EVENT_MEDIA_ITEM_TRANSITION,
+                        Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                        Player.EVENT_REPEAT_MODE_CHANGED,
+                    )
+                ) {
+                    updateButtons(player)
+                }
+                if (events.containsAny(
                         Player.EVENT_MEDIA_METADATA_CHANGED,
                         Player.EVENT_IS_PLAYING_CHANGED,
                         Player.EVENT_MEDIA_ITEM_TRANSITION,
@@ -195,6 +212,7 @@ class PlaybackService : MediaLibraryService() {
             session.player = r
             remote = r
         }
+        updateButtons(session.player)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -265,6 +283,87 @@ class PlaybackService : MediaLibraryService() {
         player.removeMediaItems(0, current)
         player.addMediaItems(0, order.subList(0, at).map(items::get))
         player.addMediaItems(at + 1, order.subList(at + 1, order.size).map(items::get))
+    }
+
+    /** The song playing, as the library has it (for its like), or null before the library loads. */
+    private suspend fun currentSong(player: Player): Song? {
+        val id = player.currentMediaItem?.mediaId?.toLongOrNull() ?: return null
+        return tree().song(id)
+    }
+
+    private var buttonsJob: Job? = null
+
+    /**
+     * The now-playing buttons beyond play and skip: like, shuffle and repeat, for Android Auto and
+     * the media notification. Their icons follow the state, so they're rebuilt when it changes.
+     */
+    @OptIn(UnstableApi::class)
+    private fun updateButtons(player: Player) {
+        buttonsJob?.cancel()
+        buttonsJob =
+            scope.launch {
+                val song = currentSong(player)
+                val liked = song != null && LikeStore.isLiked(applicationContext, song)
+                val like =
+                    CommandButton
+                        .Builder(if (liked) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+                        .setDisplayName(getString(if (liked) R.string.unlike else R.string.like))
+                        .setSessionCommand(LIKE)
+                        .setEnabled(song != null)
+                        .setSlots(CommandButton.SLOT_OVERFLOW)
+                        .build()
+                val shuffle =
+                    CommandButton
+                        .Builder(if (player.shuffleModeEnabled) CommandButton.ICON_SHUFFLE_ON else CommandButton.ICON_SHUFFLE_OFF)
+                        .setDisplayName(getString(if (player.shuffleModeEnabled) R.string.shuffle_on else R.string.shuffle_off))
+                        .setSessionCommand(SHUFFLE)
+                        .setSlots(CommandButton.SLOT_OVERFLOW)
+                        .build()
+                val (repeatIcon, repeatName) =
+                    when (player.repeatMode) {
+                        Player.REPEAT_MODE_ALL -> CommandButton.ICON_REPEAT_ALL to R.string.repeat_all
+                        Player.REPEAT_MODE_ONE -> CommandButton.ICON_REPEAT_ONE to R.string.repeat_one
+                        else -> CommandButton.ICON_REPEAT_OFF to R.string.repeat_off
+                    }
+                val repeat =
+                    CommandButton
+                        .Builder(repeatIcon)
+                        .setDisplayName(getString(repeatName))
+                        .setSessionCommand(REPEAT)
+                        .setSlots(CommandButton.SLOT_OVERFLOW)
+                        .build()
+                session?.setMediaButtonPreferences(listOf(like, shuffle, repeat))
+            }
+    }
+
+    /** A tap on one of [updateButtons]' buttons. */
+    private suspend fun onButton(
+        command: String,
+        player: Player,
+    ) {
+        when (command) {
+            SHUFFLE.customAction -> {
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
+            }
+
+            REPEAT.customAction -> {
+                player.repeatMode =
+                    when (player.repeatMode) {
+                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                        else -> Player.REPEAT_MODE_OFF
+                    }
+            }
+
+            LIKE.customAction -> {
+                val song = currentSong(player) ?: return
+                val liked = !LikeStore.isLiked(applicationContext, song)
+                withContext(Dispatchers.IO) { LikeStore.set(applicationContext, song, liked) }
+                // Liked songs in the car changes too.
+                reloadTree()
+                session?.notifyChildrenChanged(BrowseTree.LIKED, Int.MAX_VALUE, null)
+            }
+        }
     }
 
     private var positionSaver: Job? = null
@@ -351,7 +450,13 @@ class PlaybackService : MediaLibraryService() {
             .async(Dispatchers.IO) {
                 serverSource = ServerStore(applicationContext).source == MusicSource.Server
                 val (songs, playlists) = LibraryLoader.load(applicationContext)
-                BrowseTree(songs, playlists, MusicSettings(applicationContext).albumArtists)
+                BrowseTree(
+                    songs,
+                    playlists,
+                    MusicSettings(applicationContext).albumArtists,
+                    history = PlayHistory.read(applicationContext),
+                    likes = LikeStore.read(applicationContext),
+                )
             }.also { treeLoad = it }
 
     private suspend fun tree(): BrowseTree = (treeLoad ?: reloadTree()).await()
@@ -380,8 +485,17 @@ class PlaybackService : MediaLibraryService() {
             BrowseTree.PLAYLISTS -> getString(R.string.tab_playlists)
             BrowseTree.ALBUMS -> getString(R.string.tab_albums)
             BrowseTree.ARTISTS -> getString(R.string.tab_artists)
-            BrowseTree.SONGS -> getString(R.string.tab_songs)
+            BrowseTree.SONGS -> getString(R.string.all_songs)
+            BrowseTree.RECENT -> getString(R.string.browse_recent)
+            BrowseTree.LIKED -> getString(R.string.liked_songs)
             else -> fallback
+        }
+
+    private fun groupTitle(group: String): String? =
+        when (group) {
+            BrowseTree.RECENTLY_PLAYED -> getString(R.string.sort_played)
+            BrowseTree.RECENTLY_ADDED -> getString(R.string.sort_added)
+            else -> null
         }
 
     /**
@@ -410,17 +524,17 @@ class PlaybackService : MediaLibraryService() {
                     .setIsPlayable(node.playable)
                     .setMediaType(if (node.playable) MediaMetadata.MEDIA_TYPE_MUSIC else MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
                     .apply {
+                        val extras = Bundle()
                         // Albums show as a grid of covers; everything else as lists.
                         if (node.grid && !node.playable) {
-                            setExtras(
-                                Bundle().apply {
-                                    putInt(
-                                        MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
-                                        MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
-                                    )
-                                },
+                            extras.putInt(
+                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM,
                             )
                         }
+                        // Recent's headings: Auto lists items with the same group title under it.
+                        groupTitle(node.group)?.let { extras.putString(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_GROUP_TITLE, it) }
+                        if (!extras.isEmpty) setExtras(extras)
                     }.build(),
             ).build()
     }
@@ -452,6 +566,40 @@ class PlaybackService : MediaLibraryService() {
     // the documented way to serve Android Auto.
     @OptIn(UnstableApi::class)
     private inner class Callback : MediaLibrarySession.Callback {
+        // The now-playing buttons' commands (like, shuffle, repeat) on top of Media3's defaults.
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            val defaults =
+                if (controller.isTrusted) {
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+                } else {
+                    MediaSession.ConnectionResult.DEFAULT_UNTRUSTED_SESSION_AND_LIBRARY_COMMANDS
+                }
+            return MediaSession.ConnectionResult
+                .AcceptedResultBuilder(session, controller)
+                .setAvailableSessionCommands(
+                    defaults
+                        .buildUpon()
+                        .add(LIKE)
+                        .add(SHUFFLE)
+                        .add(REPEAT)
+                        .build(),
+                ).build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> =
+            later {
+                onButton(customCommand.customAction, session.player)
+                SessionResult(SessionResult.RESULT_SUCCESS)
+            }
+
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
@@ -577,6 +725,10 @@ class PlaybackService : MediaLibraryService() {
 
     companion object {
         const val EXTRA_ALBUM_ID = "album_id"
+
+        private val LIKE = SessionCommand("io.github.michaelmassoni.tessera.music.LIKE", Bundle.EMPTY)
+        private val SHUFFLE = SessionCommand("io.github.michaelmassoni.tessera.music.SHUFFLE", Bundle.EMPTY)
+        private val REPEAT = SessionCommand("io.github.michaelmassoni.tessera.music.REPEAT", Bundle.EMPTY)
         const val EXTRA_ART = "art"
         private const val POSITION_SAVE_MS = 10_000L
 

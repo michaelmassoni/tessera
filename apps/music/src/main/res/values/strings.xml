@@ -27,6 +27,14 @@
     <string name="repeat_off">Repeat off</string>
     <string name="repeat_all">Repeat all</string>
     <string name="repeat_one">Repeat one</string>
+    <string name="shuffle_on">Shuffle on</string>
+    <string name="shuffle_off">Shuffle off</string>
+    <!-- The heart: likes the song (a star on the server). -->
+    <string name="like">Like</string>
+    <string name="unlike">Remove like</string>
+    <string name="liked_songs">Liked songs</string>
+    <!-- Android Auto tab: recently played and recently added albums. -->
+    <string name="browse_recent">Recent</string>
     <string name="queue">Queue</string>
     <string name="close_player">Close player</string>
     <string name="position">Playback position</string>

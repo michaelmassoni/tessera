@@ -288,6 +288,24 @@ library is involved. `PlaybackService` is a Media3 `MediaLibraryService`, so the
   browser alone missed the spinner. Not run in the Desktop Head Unit: Android Auto isn't on the
   AOSP emulator.
 
+## Car controls, likes and Recent (0.12)
+
+- **Now-playing buttons** beyond play and skip, for Android Auto and the media notification:
+  **Like** (heart), **Shuffle** and **Repeat** (off → all → one). They're custom session commands
+  (`onConnect` adds them to Media3's defaults; `onCustomCommand` runs them) shown as media button
+  preferences in the overflow slots, rebuilt whenever shuffle, repeat, the song or a like changes.
+- **Likes:** a server song's like is its Subsonic **star** (Navidrome shows it as a favourite), so
+  it's the same in Navidrome and other clients. `likes.json` keeps this phone's changes on top of
+  the server's `starred` until a library refresh shows the server agrees; one that couldn't be
+  sent (offline, in the car) is sent again after the next refresh (`LikeStore.sync`). Songs on the
+  phone have no server and MediaStore's favourite flag needs a consent dialog per change (useless
+  in the car), so for them `likes.json` is the record. `Likes` (pure, unit tested) decides.
+- **Heart in the player:** beside save to playlist; filled and in the accent colour when liked.
+- **Car root (Auto shows at most four tabs):** **Recent** (Recently played albums, then Recently
+  added albums, 12 of each, under Auto's group headings), **Playlists** (Liked songs and All songs
+  first, then the playlists), **Albums**, **Artists**. Liked songs plays last liked first, with
+  Shuffle. The Songs tab moved into Playlists as All songs.
+
 ## Now playing in lists, album options, smooth progress (0.11)
 
 Asked for by the maintainer alongside casting.

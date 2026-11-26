@@ -182,6 +182,14 @@ class SubsonicClient(
         size: Int,
     ) = url("getCoverArt", listOf("id" to art, "size" to size.toString()))
 
+    /** Stars (likes) or unstars a song. */
+    fun star(
+        id: String,
+        starred: Boolean,
+    ) {
+        call(if (starred) "star" else "unstar", listOf("id" to id))
+    }
+
     /** "Now playing" ([submission] false), or "played" (true). Failures don't matter. */
     fun scrobble(
         id: String,
