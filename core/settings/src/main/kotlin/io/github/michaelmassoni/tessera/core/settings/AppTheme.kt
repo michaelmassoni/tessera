@@ -71,7 +71,9 @@ fun ComponentActivity.setTesseraContent(content: @Composable () -> Unit) {
     if (started.compareAndSet(false, true)) {
         val app = applicationContext
         if (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) strictMode()
-        val settings = TesseraSettings.get(app)
+        // The theme must be known before the first frame (or it flashes): this small read stays on
+        // the main thread on purpose, so StrictMode is told not to report it.
+        val settings = StrictMode.allowThreadDiskReads().let { old -> TesseraSettings.get(app).also { StrictMode.setThreadPolicy(old) } }
         thread(name = "tessera-settings-pull") {
             val version = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode }.getOrDefault(-1L)
             if (settings.needsPull(version)) settings.pullFromPeers(version)

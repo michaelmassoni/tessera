@@ -20,6 +20,7 @@ import io.github.michaelmassoni.tessera.weather.data.weatherSettings
 import io.github.michaelmassoni.tessera.weather.engine.Forecast
 import io.github.michaelmassoni.tessera.weather.engine.ForecastCodec
 import io.github.michaelmassoni.tessera.weather.engine.Place
+import io.github.michaelmassoni.tessera.weather.engine.TemperatureUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +28,14 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
+
+/** What a weather widget shows, read off the main thread. */
+internal data class Loaded(
+    val settings: WeatherWidgetSettings,
+    val place: Place?,
+    val forecast: Forecast?,
+    val unit: TemperatureUnit,
+)
 
 /** What both weather widgets share: their places, forecasts, redraws and taps. */
 object WeatherWidgets {

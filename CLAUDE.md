@@ -75,6 +75,10 @@ docs/decisions.md dated decision log
   them.
 - All user-facing strings go in `strings.xml`. Provide content descriptions for icons and
   check TalkBack order, touch target size (48dp) and font scaling up to 200%.
+  - Never put `clearAndSetSemantics` on a container that holds buttons: it hides them from TalkBack.
+    Give an icon button its label (the icon's `contentDescription`) and hide a duplicate caption instead.
+- Glance calls `provideGlance` on the main thread: read files, preferences and providers inside
+  `withContext(Dispatchers.IO)`. Debug builds log main-thread disk and network use (StrictMode).
 - `TesseraTheme(dynamicColor = false)` gives deterministic colors for previews and screenshot
   tests.
 - **Every app has:**

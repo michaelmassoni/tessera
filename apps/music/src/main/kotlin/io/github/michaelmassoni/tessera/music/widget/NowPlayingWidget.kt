@@ -53,6 +53,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** What's playing, as the widget shows it. Written by [PlaybackService], read by the widget. */
@@ -103,8 +104,12 @@ class NowPlayingWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
-        val now = NowPlaying.read(context)
-        val art = now?.albumId?.takeIf { it > 0 }?.let { albumArt(context, it) }
+        // Glance calls this on the main thread: read the file and the art off it.
+        val (now, art) =
+            withContext(Dispatchers.IO) {
+                val now = NowPlaying.read(context)
+                now to now?.albumId?.takeIf { it > 0 }?.let { albumArt(context, it) }
+            }
         provideContent { GlanceTheme { Content(context, now, art) } }
     }
 
