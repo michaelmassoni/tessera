@@ -14,7 +14,7 @@ the reason.
   plugin version lives in the catalog, never inline.
 - AGP 9 uses built-in Kotlin. Don't apply `org.jetbrains.kotlin.android` in modules. It's
   declared `apply false` at the root only to pin the Kotlin version.
-- minSdk 31, targetSdk 37, compileSdk 37, build-tools 37.0.0 (pinned for reproducible
+- minSdk 31, targetSdk 37, compileSdk 37.1, build-tools 37.0.0 (pinned for reproducible
   F-Droid builds).
 - Use the latest **stable** versions. Any pre-release needs a comment in the catalog and an entry
   in `docs/decisions.md` (today only `androidx.pdf` for Files; material3 moved to 1.5.0 stable on 2026-11-26).
