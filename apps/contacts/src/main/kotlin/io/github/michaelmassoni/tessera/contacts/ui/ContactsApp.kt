@@ -43,10 +43,12 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -98,6 +100,14 @@ interface EditActions {
 
 private val ExpandedWidth = 840.dp
 
+/** What the single pane shows on compact and medium widths: the top of [contactPages]. */
+private data class Screen(
+    val detail: ContactDetail?,
+    val editor: EditorState?,
+) {
+    val key = contactPages(detail?.id, editor != null, editor?.contactId).last()
+}
+
 /**
  * The app: list, detail and editor. One at a time on compact and medium widths; list beside
  * detail (or editor) on expanded widths. Back leaves the editor (asking about unsaved changes),
@@ -134,6 +144,13 @@ fun ContactsApp(
     BackHandler(enabled = editor == null && detail != null) { detailActions.back() }
     BackHandler(enabled = editor == null && detail == null && list.search.isNotEmpty()) { listActions.setSearch("") }
 
+    // The list (and a contact under its editor) keeps its scroll position while a page is open over
+    // it; a closed page's is dropped.
+    val saveable = rememberSaveableStateHolder()
+    val pages = remember(saveable) { PageStack(saveable::removeState) }
+    val stack = contactPages(detail?.id, editor != null, editor?.contactId)
+    SideEffect { pages.show(stack) }
+
     BoxWithConstraints(modifier.fillMaxSize()) {
         val expanded = maxWidth >= ExpandedWidth
         val listWidth = (maxWidth * 0.38f).coerceIn(360.dp, 440.dp)
@@ -167,17 +184,18 @@ fun ContactsApp(
                 }
             }
         } else {
-            val screen =
-                when {
-                    editor != null -> 2
-                    detail != null -> 1
-                    else -> 0
-                }
-            AnimatedContent(screen, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "screen") { s ->
-                when {
-                    s == 2 && editor != null -> editorPane(editor)
-                    s == 1 && detail != null -> ContactDetailScreen(detail, actions)
-                    else -> listPane(Modifier.fillMaxSize())
+            AnimatedContent(
+                Screen(detail, editor),
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                contentKey = { it.key },
+                label = "screen",
+            ) { s ->
+                saveable.SaveableStateProvider(s.key) {
+                    when {
+                        s.editor != null -> editorPane(s.editor)
+                        s.detail != null -> ContactDetailScreen(s.detail, actions)
+                        else -> listPane(Modifier.fillMaxSize())
+                    }
                 }
             }
         }

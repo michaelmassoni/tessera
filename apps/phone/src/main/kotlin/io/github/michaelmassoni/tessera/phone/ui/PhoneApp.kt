@@ -55,12 +55,14 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -167,27 +169,37 @@ fun PhoneApp(
     var tab by rememberSaveable(initialTab, initialNumber) { mutableIntStateOf(initialTab) }
     var keypadNumber by rememberSaveable(initialNumber) { mutableStateOf(initialNumber) }
     var history by rememberSaveable { mutableStateOf<String?>(null) }
+    // The tabs keep their scroll positions while a call history is open over them; a closed history's
+    // is dropped.
+    val saveable = rememberSaveableStateHolder()
+    val pages = remember(saveable) { PageStack(saveable::removeState) }
+    val stack = listOfNotNull(LIST_PAGE, history?.let(::historyPageKey))
+    SideEffect { pages.show(stack) }
     history?.let { number ->
         BackHandler { history = null }
-        CallHistory(number, state, actions, modifier, onBack = { history = null })
+        saveable.SaveableStateProvider(historyPageKey(number)) {
+            CallHistory(number, state, actions, modifier, onBack = { history = null })
+        }
         return
     }
-    NavigationSuiteScaffold(
-        modifier = modifier,
-        navigationSuiteItems = {
-            Tab.entries.forEach { t ->
-                item(
-                    selected = tab == t.ordinal,
-                    onClick = { tab = t.ordinal },
-                    icon = { Icon(painterResource(t.icon), contentDescription = null) },
-                    label = { Text(stringResource(t.label)) },
-                )
+    saveable.SaveableStateProvider(LIST_PAGE) {
+        NavigationSuiteScaffold(
+            modifier = modifier,
+            navigationSuiteItems = {
+                Tab.entries.forEach { t ->
+                    item(
+                        selected = tab == t.ordinal,
+                        onClick = { tab = t.ordinal },
+                        icon = { Icon(painterResource(t.icon), contentDescription = null) },
+                        label = { Text(stringResource(t.label)) },
+                    )
+                }
+            },
+        ) {
+            PhoneTab(Tab.entries[tab], state, actions, keypadNumber, onHistory = { history = it }) { number ->
+                keypadNumber = number
+                tab = Tab.Keypad.ordinal
             }
-        },
-    ) {
-        PhoneTab(Tab.entries[tab], state, actions, keypadNumber, onHistory = { history = it }) { number ->
-            keypadNumber = number
-            tab = Tab.Keypad.ordinal
         }
     }
 }
@@ -203,6 +215,8 @@ private fun PhoneTab(
     onEdit: (String) -> Unit,
 ) {
     val search = rememberTextFieldState()
+    // Each list tab keeps its own scroll position when switching tabs.
+    val tabs = rememberSaveableStateHolder()
     BackHandler(enabled = tab == Tab.Contacts && search.text.isNotEmpty()) { search.clearText() }
     Scaffold(
         topBar = {
@@ -235,11 +249,18 @@ private fun PhoneTab(
             } else if (!state.isDefault && tab != Tab.Keypad) {
                 Banner(stringResource(R.string.not_default), stringResource(R.string.make_default), actions::makeDefault)
             }
-            when (tab) {
-                Tab.Favourites -> Favourites(state, actions)
-                Tab.Recents -> Recents(state, actions, onHistory, onEdit)
-                Tab.Contacts -> Contacts(state, actions, search.text.toString())
-                Tab.Keypad -> Keypad(state, actions, initialNumber)
+            if (tab == Tab.Keypad) {
+                // Not kept: the keypad starts from the number it is opened with.
+                Keypad(state, actions, initialNumber)
+            } else {
+                tabs.SaveableStateProvider(tabKey(tab.name)) {
+                    when (tab) {
+                        Tab.Favourites -> Favourites(state, actions)
+                        Tab.Recents -> Recents(state, actions, onHistory, onEdit)
+                        Tab.Contacts -> Contacts(state, actions, search.text.toString())
+                        Tab.Keypad -> Unit
+                    }
+                }
             }
         }
     }

@@ -53,11 +53,13 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -164,6 +166,12 @@ fun NotesApp(
     }
     BackHandler(enabled = editor != null) { editorActions.close() }
 
+    // The list keeps its scroll position while a note is open over it; a closed note's is dropped.
+    val saveable = rememberSaveableStateHolder()
+    val pages = remember(saveable) { PageStack(saveable::removeState) }
+    val stack = listOfNotNull(LIST_PAGE, editor?.let { notePageKey(it.note.id) })
+    SideEffect { pages.show(stack) }
+
     BoxWithConstraints(modifier.fillMaxSize()) {
         val expanded = maxWidth >= ExpandedWidth
         val listWidth = (maxWidth * 0.4f).coerceIn(360.dp, 480.dp)
@@ -193,14 +201,17 @@ fun NotesApp(
             }
         } else {
             AnimatedContent(
-                targetState = editor != null,
+                targetState = editor,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
+                contentKey = { notePageKey(it?.note?.id) },
                 label = "editor",
-            ) { editing ->
-                if (editing && editor != null) {
-                    NoteEditor(editor, checkedLast, wrapped)
-                } else {
-                    listPane(Modifier.fillMaxSize())
+            ) { shown ->
+                saveable.SaveableStateProvider(notePageKey(shown?.note?.id)) {
+                    if (shown != null) {
+                        NoteEditor(shown, checkedLast, wrapped)
+                    } else {
+                        listPane(Modifier.fillMaxSize())
+                    }
                 }
             }
         }
