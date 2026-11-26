@@ -3,10 +3,13 @@ package io.github.michaelmassoni.tessera.calculator.engine
 /**
  * What the user has typed. [justEvaluated] is true right after "=", when [expression] holds the
  * result: the next digit starts a new calculation, the next operator continues from it.
+ * [cursor] is where input goes when the user has tapped inside the expression (an index into
+ * [expression]); null means at the end, as usual.
  */
 data class InputState(
     val expression: String = "",
     val justEvaluated: Boolean = false,
+    val cursor: Int? = null,
 )
 
 /** Things the user can enter. The UI and hardware keyboard both map onto these. */
@@ -84,6 +87,8 @@ object InputEditor {
         input: Input,
     ): InputState {
         if (input == Input.Clear) return InputState()
+        val cursor = state.cursor
+        if (cursor != null && cursor < state.expression.length) return applyAt(state.expression, cursor, input)
         if (input == Input.Backspace) return InputState(backspace(state.expression))
         if (state.expression.length >= MAX_LENGTH) return state
 
@@ -131,22 +136,125 @@ object InputEditor {
         }
     }
 
+    /**
+     * [input] at [cursor]: the rules see only what's before the cursor (as if it were the end), and
+     * what's after it is kept. The cursor stays after what was entered.
+     */
+    private fun applyAt(
+        expression: String,
+        cursor: Int,
+        input: Input,
+    ): InputState {
+        val before = expression.substring(0, cursor.coerceIn(0, expression.length))
+        val after = expression.substring(before.length)
+        if (input == Input.Backspace && before.isEmpty()) return InputState(expression, cursor = 0)
+        // One decimal point per number, counting the part after the cursor.
+        if (input == Input.Decimal && (trailingNumber(before) + leadingNumber(after)).contains('.')) {
+            return InputState(expression, cursor = cursor)
+        }
+        val edited = apply(InputState(before), input).expression
+        val joined = edited + after
+        if (joined.length > MAX_LENGTH) return InputState(expression, cursor = cursor)
+        return InputState(joined, cursor = edited.length)
+    }
+
+    private fun leadingNumber(text: String): String = text.takeWhile { it.isDigit() || it == '.' }
+
     /** Inserts a value from history: its result, or its whole expression in parentheses. */
     fun insert(
         state: InputState,
         text: String,
         asGroup: Boolean,
     ): InputState {
-        val base = if (state.justEvaluated) "" else state.expression
-        val piece = if (asGroup && base.isNotEmpty()) "($text)" else text
+        if (text.isEmpty()) return state
+        val whole = if (state.justEvaluated) "" else state.expression
+        val at = state.cursor?.coerceIn(0, whole.length) ?: whole.length
+        val base = whole.substring(0, at)
+        val after = whole.substring(at)
+        val piece = if (asGroup && (base.isNotEmpty() || after.isNotEmpty())) "($text)" else text
         val joined =
             if (endsWithNumberChar(base) && (piece.first().isDigit() || piece.first() == '.')) {
                 base + Symbols.TIMES + piece
             } else {
                 base + piece
             }
-        return if (joined.length > MAX_LENGTH) state else InputState(joined)
+        if (joined.length + after.length > MAX_LENGTH) return state
+        return InputState(joined + after, cursor = if (after.isEmpty()) null else joined.length)
     }
+
+    /**
+     * Pasted text, inserted where the cursor is (or at the end): a number or expression written
+     * the usual ways ("-1,234.5", "3*4", "2÷x" is refused). Grouping separators and spaces are
+     * dropped, and the locale's [decimalSeparator] becomes the internal ".". Null when it isn't
+     * something the calculator can take.
+     */
+    fun paste(
+        state: InputState,
+        text: String,
+        decimalSeparator: Char,
+        groupingSeparator: Char,
+    ): InputState? {
+        val normalized = normalizePaste(text, decimalSeparator, groupingSeparator) ?: return null
+        val inserted = insert(state, normalized, asGroup = false)
+        return inserted.takeIf { it != state }
+    }
+
+    /** [text] in internal notation, or null if it has anything a calculator can't enter. */
+    fun normalizePaste(
+        text: String,
+        decimalSeparator: Char,
+        groupingSeparator: Char,
+    ): String? {
+        var t = text.trim()
+        if (t.isEmpty() || t.length > MAX_LENGTH) return null
+        // Grouping first ("1,234.5" in English, "1.234,5" in German), then the decimal separator.
+        t = t.filterNot { it.isWhitespace() || it == groupingSeparator || it == ' ' || it == ' ' }
+        if (decimalSeparator != '.') t = t.replace(decimalSeparator, '.')
+        t =
+            t
+                .replace('-', Symbols.MINUS)
+                .replace('−', Symbols.MINUS)
+                .replace('*', Symbols.TIMES)
+                .replace('x', Symbols.TIMES)
+                .replace('/', Symbols.DIVIDE)
+                .replace('e', Symbols.E)
+                .replace('E', 'E')
+        // Function names the keypad enters, then single characters.
+        var i = 0
+        val out = StringBuilder()
+        while (i < t.length) {
+            val function = Symbols.FUNCTIONS.firstOrNull { t.startsWith(it.removeSuffix("("), i) }
+            if (function != null) {
+                val name = function.removeSuffix("(")
+                out.append(name)
+                i += name.length
+                continue
+            }
+            val c = t[i]
+            if (!(c.isDigit() || c in PASTE_CHARS)) return null
+            out.append(c)
+            i++
+        }
+        return out.toString().takeIf { it.isNotEmpty() }
+    }
+
+    private val PASTE_CHARS =
+        setOf(
+            '.',
+            '+',
+            '(',
+            ')',
+            'E',
+            Symbols.MINUS,
+            Symbols.TIMES,
+            Symbols.DIVIDE,
+            Symbols.POWER,
+            Symbols.PERCENT,
+            Symbols.FACTORIAL,
+            Symbols.SQRT,
+            Symbols.PI,
+            Symbols.E,
+        )
 
     // -------------------------------------------------------------------- rules
 

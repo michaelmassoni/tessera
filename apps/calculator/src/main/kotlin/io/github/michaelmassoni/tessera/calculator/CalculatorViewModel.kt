@@ -26,6 +26,8 @@ import kotlinx.coroutines.withContext
 data class CalculatorUiState(
     val expression: String = "",
     val justEvaluated: Boolean = false,
+    /** Where input goes after a tap inside the expression (an index into it); null for the end. */
+    val cursor: Int? = null,
     /** Live result while typing; null when there's nothing useful to show. */
     val preview: String? = null,
     /** Set only after "=" fails. */
@@ -49,6 +51,7 @@ class CalculatorViewModel(
             CalculatorUiState(
                 expression = savedState[KEY_EXPRESSION] ?: "",
                 justEvaluated = savedState[KEY_JUST_EVALUATED] ?: false,
+                cursor = savedState[KEY_CURSOR],
                 angleUnit = settings.angleUnit,
                 scientificExpanded = settings.scientificExpanded,
             ).withPreview(),
@@ -110,6 +113,30 @@ class CalculatorViewModel(
         }
     }
 
+    /**
+     * A tap inside the expression: input goes at [index] (in the expression as stored) from now
+     * on, or at the end for null. After "=", the result as displayed becomes the expression.
+     */
+    fun onCursor(index: Int?) {
+        updateInput { current ->
+            val text = if (current.justEvaluated) ResultFormatter.shorten(current.expression) else current.expression
+            InputState(text, justEvaluated = false, cursor = index?.coerceIn(0, text.length))
+        }
+    }
+
+    /** Pastes [text] at the cursor. False when it isn't a number or expression. */
+    fun onPaste(
+        text: String,
+        decimalSeparator: Char,
+        groupingSeparator: Char,
+    ): Boolean {
+        var pasted = false
+        updateInput { current ->
+            InputEditor.paste(current, text, decimalSeparator, groupingSeparator)?.also { pasted = true } ?: current
+        }
+        return pasted
+    }
+
     fun onClearHistory() = updateHistory { emptyList() }
 
     fun onToggleAngleUnit() {
@@ -133,10 +160,15 @@ class CalculatorViewModel(
 
     private fun updateInput(transform: (InputState) -> InputState) {
         _state.update { current ->
-            val next = transform(InputState(current.expression, current.justEvaluated))
+            val next = transform(InputState(current.expression, current.justEvaluated, current.cursor))
+            // A cursor at the end is the same as none.
+            val cursor = next.cursor?.takeIf { it < next.expression.length }
             savedState[KEY_EXPRESSION] = next.expression
             savedState[KEY_JUST_EVALUATED] = next.justEvaluated
-            current.copy(expression = next.expression, justEvaluated = next.justEvaluated, error = null).withPreview()
+            savedState[KEY_CURSOR] = cursor
+            current
+                .copy(expression = next.expression, justEvaluated = next.justEvaluated, cursor = cursor, error = null)
+                .withPreview()
         }
     }
 
@@ -166,6 +198,7 @@ class CalculatorViewModel(
 
     private companion object {
         const val KEY_EXPRESSION = "expression"
+        const val KEY_CURSOR = "cursor"
         const val KEY_JUST_EVALUATED = "just_evaluated"
     }
 }
