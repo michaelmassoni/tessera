@@ -369,7 +369,14 @@ private fun SearchBar(
     onClose: () -> Unit,
 ) {
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    // Only when search opens: not again when coming back to the results from a conversation.
+    var focused by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!focused) {
+            focus.requestFocus()
+            focused = true
+        }
+    }
     TopAppBar(
         title = {
             TextField(
