@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <!-- Sync with the CardDAV server the person adds (docs/sync.md); nothing else is contacted. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 17 asks before an app reaches the local network: only asked for when that server is
+         on it (docs/decisions.md, 2026-11-26). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- The sync accounts: whether they sync on local changes. -->
     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />

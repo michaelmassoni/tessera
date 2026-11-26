@@ -158,6 +158,7 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
 | Permission | Why |
 |------------|-----|
 | `INTERNET` | Only to reach the server the person adds. Nothing else is contacted. |
+| `ACCESS_LOCAL_NETWORK` | Android 17 asks before an app reaches the local network. Asked for at sign-in, and once on launch, when the server is on it; the notice above the library says when it was refused. Also used for casting (below). |
 
 ## Player, queue, playlists and lyrics (0.5)
 

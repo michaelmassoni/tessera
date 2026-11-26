@@ -39,6 +39,7 @@ import io.github.michaelmassoni.tessera.core.settings.SetupIcon
 import io.github.michaelmassoni.tessera.core.settings.SetupPage
 import io.github.michaelmassoni.tessera.core.settings.SetupSpec
 import io.github.michaelmassoni.tessera.core.settings.SetupStep
+import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
 import io.github.michaelmassoni.tessera.feeds.data.Subscriptions
 import io.github.michaelmassoni.tessera.feeds.ui.YarrFields
 import io.github.michaelmassoni.tessera.feeds.ui.YarrFieldsSaver
@@ -115,7 +116,8 @@ private fun YarrPage(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var fields by rememberSaveable(stateSaver = YarrFieldsSaver) { mutableStateOf(YarrFields()) }
-    val sign = remember { YarrSignInState { Subscriptions(context).useYarr(it.address, it.username, it.password) } }
+    val network = rememberLocalNetworkAccess()
+    val sign = remember { YarrSignInState(network) { Subscriptions(context).useYarr(it.address, it.username, it.password) } }
     val connect = { scope.launch { sign.connect(fields, next) } }
     SetupPage(
         image = { SetupIcon(DesignR.drawable.ic_dns) },

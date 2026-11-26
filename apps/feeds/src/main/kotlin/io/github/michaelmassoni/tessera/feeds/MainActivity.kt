@@ -17,6 +17,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.github.michaelmassoni.tessera.core.dav.SyncProblem
+import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
+import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.feeds.data.AccountStore
@@ -38,6 +40,7 @@ import io.github.michaelmassoni.tessera.feeds.ui.FeedsState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import io.github.michaelmassoni.tessera.core.settings.R as SettingsR
 
 class MainActivity : ComponentActivity() {
     private var selection by mutableStateOf<Selection>(Selection.Unread)
@@ -62,6 +65,8 @@ class MainActivity : ComponentActivity() {
                 val data by app.store.data.collectAsStateWithLifecycle()
                 val infos by work.collectAsStateWithLifecycle(emptyList())
                 val syncing = infos.any { it.state == WorkInfo.State.RUNNING }
+                // An account made before Android 17 asked for the local network.
+                AskForLocalNetwork(accounts.yarr?.address) { SyncWorker.schedule.soon(this@MainActivity, delaySeconds = 0) }
                 // Say so when a sync that was running fails.
                 var wasSyncing by remember { mutableStateOf(false) }
                 LaunchedEffect(syncing) {
@@ -119,12 +124,24 @@ class MainActivity : ComponentActivity() {
         if (System.currentTimeMillis() - accounts.lastSync > RESYNC_AFTER_MS) SyncWorker.schedule.soon(this, delaySeconds = 0)
     }
 
-    private fun problemText(): String? =
+    private suspend fun problemText(): String? =
         when (accounts.lastProblem) {
-            null -> null
-            SyncProblem.WrongLogin.name -> getString(R.string.sync_failed_login)
-            SyncProblem.Unreachable.name -> getString(R.string.sync_failed_unreachable)
-            else -> getString(R.string.sync_failed)
+            null -> {
+                null
+            }
+
+            SyncProblem.WrongLogin.name -> {
+                getString(R.string.sync_failed_login)
+            }
+
+            SyncProblem.Unreachable.name -> {
+                val blocked = LocalNetwork.blocks(this, accounts.yarr?.address)
+                getString(if (blocked) SettingsR.string.local_network_sync_failed else R.string.sync_failed_unreachable)
+            }
+
+            else -> {
+                getString(R.string.sync_failed)
+            }
         }
 
     private inner class Actions : FeedsActions {

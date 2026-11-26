@@ -37,6 +37,7 @@ import io.github.michaelmassoni.tessera.core.settings.SetupIcon
 import io.github.michaelmassoni.tessera.core.settings.SetupPage
 import io.github.michaelmassoni.tessera.core.settings.SetupSpec
 import io.github.michaelmassoni.tessera.core.settings.SetupStep
+import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
 import io.github.michaelmassoni.tessera.music.server.MusicSource
 import io.github.michaelmassoni.tessera.music.server.ServerStore
@@ -124,13 +125,19 @@ private fun SignInPage(next: () -> Unit) {
     var fields by rememberSaveable(stateSaver = SignInSaver) { mutableStateOf(SignInFields()) }
     var problem by remember { mutableStateOf<ServerProblem?>(null) }
     var working by remember { mutableStateOf(false) }
+    val network = rememberLocalNetworkAccess()
 
     fun connect() {
         if (working) return
         working = true
         problem = null
         scope.launch {
-            problem = signIn(context, fields.address, fields.username, fields.password)
+            problem =
+                if (network.allow(fields.address)) {
+                    signIn(context, fields.address, fields.username, fields.password)
+                } else {
+                    ServerProblem.LocalNetwork
+                }
             working = false
             if (problem == null) next()
         }

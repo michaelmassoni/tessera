@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
 import kotlinx.coroutines.launch
 
 /** Keeps what was typed across rotation (the password too: it never leaves the process). */
@@ -43,12 +44,18 @@ fun <T> SignInDialog(
     var fields by rememberSaveable(stateSaver = SignInFieldsSaver) { mutableStateOf(SignInFields()) }
     var problem by remember { mutableStateOf<SignInProblem?>(null) }
     var working by remember { mutableStateOf(false) }
+    val network = rememberLocalNetworkAccess()
 
     fun connect() {
         if (working) return
         working = true
         problem = null
         scope.launch {
+            if (!network.allow(fields.address)) {
+                problem = SignInProblem.LocalNetwork
+                working = false
+                return@launch
+            }
             signIn(fields)
                 .onSuccess(onSignedIn)
                 .onFailure { problem = (it as? SignInError)?.problem ?: SignInProblem.Other }

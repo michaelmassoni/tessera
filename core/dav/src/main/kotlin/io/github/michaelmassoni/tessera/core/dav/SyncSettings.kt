@@ -9,12 +9,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
+import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.RadioSetting
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
+import io.github.michaelmassoni.tessera.core.settings.rememberIsLocal
+import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
+import kotlinx.coroutines.launch
+import io.github.michaelmassoni.tessera.core.settings.R as SettingsR
 
 @Composable
 fun SyncInterval.label(): String =
@@ -42,8 +49,15 @@ fun ColumnScope.SyncSettings(
     lastProblem: String?,
     syncing: Boolean,
     onSyncNow: () -> Unit,
+    /** The account's server: on the local network, Sync now first asks for Nearby devices. */
+    server: String? = null,
 ) {
     var choosing by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val network = rememberLocalNetworkAccess()
+    var refused by rememberSaveable { mutableStateOf(false) }
+    val blocked = rememberIsLocal(server) && !network.granted
     InfoSetting(
         title = stringResource(R.string.sync_every),
         summary = prefs.interval.label(),
@@ -68,6 +82,10 @@ fun ColumnScope.SyncSettings(
             when {
                 syncing -> {
                     stringResource(R.string.sync_syncing)
+                }
+
+                blocked -> {
+                    stringResource(SettingsR.string.local_network_sync)
                 }
 
                 lastProblem == SyncProblem.Unreachable.name -> {
@@ -97,7 +115,22 @@ fun ColumnScope.SyncSettings(
                     )
                 }
             },
-        onClick = onSyncNow,
+        onClick = {
+            when {
+                !blocked -> {
+                    onSyncNow()
+                }
+
+                // Refused before: Android may not ask again, so go where it can be allowed.
+                refused -> {
+                    context.startActivity(LocalNetwork.appSettings(context))
+                }
+
+                else -> {
+                    scope.launch { if (network.ask()) onSyncNow() else refused = true }
+                }
+            }
+        },
         external = false,
     )
     if (choosing) {

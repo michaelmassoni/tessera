@@ -65,8 +65,8 @@ open class DavAccountStore(
         set(value) = prefs.edit { putString("last_problem", value) }
 }
 
-/** What went wrong signing in, for the person. */
-enum class SignInProblem { BadAddress, Insecure, Unreachable, WrongLogin, NotCalDav, Other }
+/** What went wrong signing in. [LocalNetwork]: the server is on the local network and the person refused Nearby devices. */
+enum class SignInProblem { BadAddress, Insecure, Unreachable, WrongLogin, NotCalDav, LocalNetwork, Other }
 
 class SignInError(
     val problem: SignInProblem,

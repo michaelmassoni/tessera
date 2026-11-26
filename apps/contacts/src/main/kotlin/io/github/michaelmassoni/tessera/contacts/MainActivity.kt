@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
@@ -44,12 +45,15 @@ import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.ContactSummary
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
 import io.github.michaelmassoni.tessera.contacts.engine.VCard
+import io.github.michaelmassoni.tessera.contacts.sync.ContactsDavStore
+import io.github.michaelmassoni.tessera.contacts.sync.ContactsSyncWorker
 import io.github.michaelmassoni.tessera.contacts.ui.ContactsApp
 import io.github.michaelmassoni.tessera.contacts.ui.DetailActions
 import io.github.michaelmassoni.tessera.contacts.ui.EditActions
 import io.github.michaelmassoni.tessera.contacts.ui.ListActions
 import io.github.michaelmassoni.tessera.contacts.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.core.design.clearAvatarCache
+import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +104,10 @@ class MainActivity : ComponentActivity() {
         val editActions = EditActionsImpl()
         setTesseraContent {
             SetupGate(contactsSetup) {
+                // An account made before Android 17 asked for the local network.
+                AskForLocalNetwork(remember { ContactsDavStore(this@MainActivity).account?.address }) {
+                    ContactsSyncWorker.schedule.soon(this@MainActivity, delaySeconds = 0)
+                }
                 val request =
                     rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
                         granted = hasPermission()

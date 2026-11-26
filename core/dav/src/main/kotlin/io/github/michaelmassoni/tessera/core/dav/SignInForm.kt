@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.dav.R
+import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** What the sign-in form holds. */
@@ -99,7 +100,9 @@ fun SignInForm(
             },
             modifier = Modifier.fillMaxWidth(),
         )
-        if (problem != null) {
+        if (problem == SignInProblem.LocalNetwork) {
+            LocalNetworkDenied()
+        } else if (problem != null) {
             Text(
                 when (problem) {
                     SignInProblem.BadAddress -> stringResource(R.string.problem_bad_address)
@@ -107,6 +110,7 @@ fun SignInForm(
                     SignInProblem.Unreachable -> stringResource(R.string.problem_unreachable)
                     SignInProblem.WrongLogin -> stringResource(R.string.problem_wrong_login)
                     SignInProblem.NotCalDav -> notFound
+                    SignInProblem.LocalNetwork -> stringResource(R.string.problem_unreachable)
                     SignInProblem.Other -> stringResource(R.string.problem_other)
                 },
                 color = MaterialTheme.colorScheme.error,

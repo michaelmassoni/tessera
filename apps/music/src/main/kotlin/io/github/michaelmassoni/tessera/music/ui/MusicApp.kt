@@ -82,6 +82,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
@@ -99,6 +100,7 @@ import io.github.michaelmassoni.tessera.music.engine.Sorts
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
 import io.github.michaelmassoni.tessera.music.engine.sourceId
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
+import io.github.michaelmassoni.tessera.core.settings.R as SettingsR
 
 data class LibraryState(
     val loaded: Boolean = false,
@@ -125,6 +127,9 @@ enum class ServerNotice {
 
     /** No answer: the saved library and cached songs still play. */
     Unreachable,
+
+    /** No answer because Nearby devices isn't allowed and the server is on the local network. */
+    LocalNetwork,
 }
 
 /** Library-level actions. */
@@ -982,13 +987,30 @@ private fun Notice(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            val context = LocalContext.current
             Text(
-                stringResource(if (notice == ServerNotice.SignIn) R.string.notice_sign_in else R.string.notice_unreachable),
+                when (notice) {
+                    ServerNotice.SignIn -> stringResource(R.string.notice_sign_in)
+                    ServerNotice.Unreachable -> stringResource(R.string.notice_unreachable)
+                    ServerNotice.LocalNetwork -> stringResource(SettingsR.string.local_network_sync_failed)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = if (notice == ServerNotice.SignIn) actions::openSettings else actions::retry) {
-                Text(stringResource(if (notice == ServerNotice.SignIn) R.string.sign_in else R.string.retry))
+            when (notice) {
+                ServerNotice.SignIn -> {
+                    TextButton(onClick = actions::openSettings) { Text(stringResource(R.string.sign_in)) }
+                }
+
+                ServerNotice.Unreachable -> {
+                    TextButton(onClick = actions::retry) { Text(stringResource(R.string.retry)) }
+                }
+
+                ServerNotice.LocalNetwork -> {
+                    TextButton(onClick = { context.startActivity(LocalNetwork.appSettings(context)) }) {
+                        Text(stringResource(SettingsR.string.local_network_settings))
+                    }
+                }
             }
         }
     }
