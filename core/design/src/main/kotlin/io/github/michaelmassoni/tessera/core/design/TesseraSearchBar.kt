@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 /**
  * A search field that looks like Material's collapsed search bar and filters in place.
@@ -28,6 +30,8 @@ fun TesseraSearchBar(
     modifier: Modifier = Modifier,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
+    // Given, the field can be focused from outside (a search screen focuses it on opening).
+    focusRequester: FocusRequester? = null,
 ) {
     val searchState = rememberSearchBarState()
     val colors = SearchBarDefaults.colors()
@@ -39,6 +43,7 @@ fun TesseraSearchBar(
         SearchBarDefaults.InputField(
             textFieldState = text,
             searchBarState = searchState,
+            modifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
             onSearch = {},
             placeholder = { Text(placeholder) },
             leadingIcon = leadingIcon,

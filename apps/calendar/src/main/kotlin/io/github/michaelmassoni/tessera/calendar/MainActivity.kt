@@ -124,7 +124,8 @@ class MainActivity : ComponentActivity() {
                     val state by viewModel.state.collectAsStateWithLifecycle()
                     val detail by viewModel.detail.collectAsStateWithLifecycle()
                     val editor by viewModel.editor.collectAsStateWithLifecycle()
-                    CalendarApp(state, detail, editor, viewModel.events, actions)
+                    val search by viewModel.search.collectAsStateWithLifecycle()
+                    CalendarApp(state, detail, editor, viewModel.events, actions, search = search)
                 }
             }
         }
@@ -294,6 +295,12 @@ class MainActivity : ComponentActivity() {
         override fun open(instance: Instance) = viewModel.open(instance)
 
         override fun closeDetail() = viewModel.closeDetail()
+
+        override fun openSearch() = viewModel.openSearch()
+
+        override fun closeSearch() = viewModel.closeSearch()
+
+        override fun setSearchQuery(query: String) = viewModel.setSearchQuery(query)
 
         override fun create() = viewModel.create()
 

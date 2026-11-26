@@ -181,6 +181,18 @@ Redrawing, without polling:
 The widget picker shows generated previews with made-up events (Android 15 and later),
 published once per app version.
 
+## Search (0.10)
+
+- The search button in the top bar opens a search screen: a search field (focused, keyboard up)
+  and, as you type (after a 250 ms pause), the matching events.
+- Matching is the provider's own search (`Instances.CONTENT_SEARCH_URI`): title, description,
+  location and attendees, in visible calendars, from two years back to five years ahead.
+- Results (`SearchResults`, unit tested): upcoming events soonest first, then **Past events** most
+  recent first, each under its start date with the year. A repeating event appears once, at its
+  next occurrence (or its last, if the series is over).
+- Tap a result for its details. Back closes the keyboard, then the search. Search runs again
+  when events change (an edit, a delete, a sync).
+
 ## Out of scope for v0.1
 
 - Editing a single instance of a repeating event.
