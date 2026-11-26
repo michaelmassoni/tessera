@@ -100,6 +100,23 @@ object Library {
     }
 
     /**
+     * Unstars [ids]: a starred article becomes read (starred is a state of its own, as in yarr).
+     * [setState] with read leaves starred ones alone, so opening one or "mark all read" never
+     * unstars it.
+     */
+    fun unstar(
+        data: FeedData,
+        ids: Set<String>,
+        queue: Boolean,
+    ): FeedData {
+        val starred = data.articles.filter { it.id in ids && it.starred }
+        if (starred.isEmpty()) return data
+        val changed = starred.associate { it.id to ArticleState.Read }
+        val articles = data.articles.map { a -> if (a.id in changed) a.copy(state = ArticleState.Read) else a }
+        return data.copy(articles = articles, pending = if (queue) data.pending + changed else data.pending)
+    }
+
+    /**
      * Drops read articles older than [keepReadDays] (by date, or arrival when undated) and
      * articles of feeds no longer subscribed. Unread, starred and pending ones stay.
      */

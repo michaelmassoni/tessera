@@ -129,7 +129,13 @@ fun ArticleScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        actions.setState(setOf(article.id), if (article.starred) ArticleState.Read else ArticleState.Starred)
+                        if (article.starred) {
+                            actions.unstar(
+                                setOf(article.id),
+                            )
+                        } else {
+                            actions.setState(setOf(article.id), ArticleState.Starred)
+                        }
                     }) {
                         Icon(
                             painterResource(if (article.starred) DesignR.drawable.ic_star_filled else DesignR.drawable.ic_star),
