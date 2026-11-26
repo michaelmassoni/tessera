@@ -117,6 +117,12 @@
     <string name="settings_source">Source</string>
     <string name="settings_source_sync">Source &amp; sync</string>
     <string name="settings_reading">Reading</string>
+    <string name="settings_swipe">Swipe actions</string>
+    <string name="swipe_right">Swipe right</string>
+    <string name="swipe_left">Swipe left</string>
+    <string name="swipe_toggle_read">Mark read or unread</string>
+    <string name="swipe_toggle_star">Star or unstar</string>
+    <string name="swipe_none">Nothing</string>
     <string name="settings_sync_summary_manual">%1$s · manually</string>
     <string name="settings_sync_summary_day">%1$s · once a day</string>
     <plurals name="settings_sync_summary_minutes">
