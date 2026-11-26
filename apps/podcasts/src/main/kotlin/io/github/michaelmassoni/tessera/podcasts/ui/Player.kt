@@ -85,7 +85,7 @@ fun MiniPlayer(
                     )
                 }
                 IconButton(onClick = actions::back) {
-                    Icon(painterResource(DesignR.drawable.ic_replay_10), contentDescription = stringResource(R.string.back_10))
+                    Icon(painterResource(R.drawable.ic_back_10), contentDescription = stringResource(R.string.back_10))
                 }
                 IconButton(onClick = actions::togglePlay) {
                     Icon(
@@ -248,7 +248,7 @@ private fun Controls(
     ) {
         IconButton(onClick = actions::back, modifier = Modifier.size(64.dp)) {
             Icon(
-                painterResource(DesignR.drawable.ic_replay_10),
+                painterResource(R.drawable.ic_back_10),
                 contentDescription = stringResource(R.string.back_10),
                 modifier = Modifier.size(36.dp),
             )
