@@ -12,6 +12,19 @@ data class CalendarInfo(
 )
 
 /**
+ * The calendars the editor offers: writable ones that are shown (ticked in the app), plus [current],
+ * the event's own calendar, even when hidden. With none shown, every writable calendar, so a new
+ * event always has somewhere to go.
+ */
+fun editorCalendars(
+    all: List<CalendarInfo>,
+    current: Long?,
+): List<CalendarInfo> {
+    val writable = all.filter { it.writable }
+    return writable.filter { it.visible || it.id == current }.ifEmpty { writable }
+}
+
+/**
  * One occurrence of an event (CalendarContract.Instances). [begin] and [end] are epoch ms. For
  * all-day events they are UTC midnights, as the provider stores them.
  */

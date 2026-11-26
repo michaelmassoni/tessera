@@ -333,18 +333,23 @@ fun EventEditor(
                 Section {
                     MenuRow(
                         icon = null,
-                        leading = {
-                            Box(
-                                Modifier
-                                    .size(18.dp)
-                                    .clip(CircleShape)
-                                    .background(calendar?.let { Color(it.color).copy(alpha = 1f) } ?: MaterialTheme.colorScheme.primary),
-                            )
-                        },
+                        leading = { CalendarDot(calendar) },
                         label = stringResource(R.string.field_calendar),
                         value = calendar?.let { calendarName(it, resources) }.orEmpty(),
                         options = state.calendars.map { calendarName(it, resources) },
                         onSelect = { onChange(draft.copy(calendarId = state.calendars[it].id)) },
+                        // The account under each name: two accounts often both have a "Personal".
+                        details =
+                            state.calendars.map {
+                                if (it.accountType ==
+                                    android.provider.CalendarContract.ACCOUNT_TYPE_LOCAL
+                                ) {
+                                    ""
+                                } else {
+                                    it.accountName
+                                }
+                            },
+                        optionLeading = { CalendarDot(state.calendars[it]) },
                     )
                 }
 
@@ -608,7 +613,21 @@ private fun DateTimeRow(
     }
 }
 
-/** A row showing [value] that opens a menu of [options]. [label] is for TalkBack. */
+/** A calendar's colour, as a dot; the theme's primary when there is no calendar. */
+@Composable
+private fun CalendarDot(calendar: CalendarInfo?) {
+    Box(
+        Modifier
+            .size(18.dp)
+            .clip(CircleShape)
+            .background(calendar?.let { Color(it.color).copy(alpha = 1f) } ?: MaterialTheme.colorScheme.primary),
+    )
+}
+
+/**
+ * A row showing [value] that opens a menu of [options]. [label] is for TalkBack. Each option can
+ * have a [details] line under it and an [optionLeading] mark before it.
+ */
 @Composable
 private fun MenuRow(
     icon: Int?,
@@ -618,6 +637,8 @@ private fun MenuRow(
     onSelect: (Int) -> Unit,
     muted: Boolean = false,
     leading: (@Composable () -> Unit)? = null,
+    details: List<String> = emptyList(),
+    optionLeading: (@Composable (Int) -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -638,10 +659,26 @@ private fun MenuRow(
         }
         DropdownMenu(open, onDismissRequest = { open = false }) {
             options.forEachIndexed { i, option ->
-                DropdownMenuItem(text = { Text(option) }, onClick = {
-                    open = false
-                    onSelect(i)
-                })
+                val detail = details.getOrNull(i).orEmpty()
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(option)
+                            if (detail.isNotEmpty()) {
+                                Text(
+                                    detail,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    },
+                    leadingIcon = optionLeading?.let { { it(i) } },
+                    onClick = {
+                        open = false
+                        onSelect(i)
+                    },
+                )
             }
         }
     }
