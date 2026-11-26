@@ -62,14 +62,17 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.files.ClipMode
 import io.github.michaelmassoni.tessera.files.FilesEvent
 import io.github.michaelmassoni.tessera.files.FilesUiState
 import io.github.michaelmassoni.tessera.files.R
 import io.github.michaelmassoni.tessera.files.TrashState
+import io.github.michaelmassoni.tessera.files.data.OperationKind
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
+import io.github.michaelmassoni.tessera.files.engine.Archives
 import io.github.michaelmassoni.tessera.files.engine.FileEntry
 import io.github.michaelmassoni.tessera.files.engine.FolderKeys
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
@@ -137,6 +140,12 @@ interface FilesActions {
     fun closeSearch()
 
     fun openSettings()
+
+    fun compressSelection() {}
+
+    fun extract(zip: File) {}
+
+    fun toggleBookmark(dir: File) {}
 }
 
 private val ExpandedWidth = 840.dp
@@ -162,7 +171,12 @@ fun FilesScreen(
             val message =
                 when (e) {
                     is FilesEvent.Done -> {
-                        resources.getQuantityString(if (e.mode == ClipMode.Copy) R.plurals.copied else R.plurals.moved, e.count, e.count)
+                        when (e.kind) {
+                            OperationKind.Copy -> resources.getQuantityString(R.plurals.copied, e.count, e.count)
+                            OperationKind.Move -> resources.getQuantityString(R.plurals.moved, e.count, e.count)
+                            OperationKind.Compress -> resources.getQuantityString(R.plurals.compressed, e.count, e.count)
+                            OperationKind.Extract -> resources.getString(R.string.extracted)
+                        }
                     }
 
                     is FilesEvent.Deleted -> {
@@ -191,6 +205,7 @@ fun FilesScreen(
                                 FilesEvent.Reason.Io -> R.string.error_io
                                 FilesEvent.Reason.Cancelled -> R.string.error_cancelled
                                 FilesEvent.Reason.NoApp -> R.string.error_no_app
+                                FilesEvent.Reason.BadArchive -> R.string.error_bad_archive
                             },
                         )
                     }
@@ -237,6 +252,13 @@ fun FilesScreen(
                         onDelete = { dialog = FileDialog.Delete(selected) },
                         onRename = selected.singleOrNull()?.let { f -> { dialog = FileDialog.Rename(f) } },
                         onDetails = selected.singleOrNull()?.let { f -> { dialog = FileDialog.Details(f) } },
+                        onCompress = actions::compressSelection,
+                        onExtract = selected.singleOrNull()?.takeIf(Archives::isZip)?.let { z -> { actions.extract(z) } },
+                        onBookmark = selected.singleOrNull()?.takeIf { it.isDirectory }?.let { d -> { actions.toggleBookmark(d) } },
+                        bookmarked =
+                            selected.singleOrNull()?.let { s ->
+                                state.bookmarks.any { it.absolutePath == s.absolutePath }
+                            } == true,
                         shareEnabled = selected.any { it.isFile },
                     )
                 }
@@ -289,6 +311,7 @@ fun FilesScreen(
                         actions::openTrash,
                         compact = true,
                         modifier = Modifier.width(320.dp).fillMaxHeight(),
+                        bookmarks = state.bookmarks,
                     )
                     VerticalDivider()
                 }
@@ -308,6 +331,7 @@ fun FilesScreen(
                                     actions::openTrash,
                                     compact = false,
                                     modifier = Modifier.fillMaxSize(),
+                                    bookmarks = state.bookmarks,
                                 )
                             }
 
@@ -530,6 +554,10 @@ private fun SelectionBar(
     onRename: (() -> Unit)?,
     onDetails: (() -> Unit)?,
     shareEnabled: Boolean,
+    onCompress: () -> Unit = {},
+    onExtract: (() -> Unit)? = null,
+    onBookmark: (() -> Unit)? = null,
+    bookmarked: Boolean = false,
 ) {
     var more by remember { mutableStateOf(false) }
     TopAppBar(
@@ -560,6 +588,25 @@ private fun SelectionBar(
                     MenuItem(stringResource(R.string.action_move), DesignR.drawable.ic_drive_file_move) {
                         close()
                         onMove()
+                    }
+                    MenuItem(stringResource(R.string.action_compress), DesignR.drawable.ic_folder_zip) {
+                        close()
+                        onCompress()
+                    }
+                    onExtract?.let {
+                        MenuItem(stringResource(R.string.action_extract), DesignR.drawable.ic_unarchive) {
+                            close()
+                            it()
+                        }
+                    }
+                    onBookmark?.let {
+                        MenuItem(
+                            stringResource(if (bookmarked) R.string.action_unbookmark else R.string.action_bookmark),
+                            if (bookmarked) DesignR.drawable.ic_bookmark_filled else DesignR.drawable.ic_bookmark,
+                        ) {
+                            close()
+                            it()
+                        }
                     }
                     onRename?.let {
                         MenuItem(stringResource(R.string.action_rename), DesignR.drawable.ic_edit) {
@@ -693,6 +740,7 @@ fun HomeContent(
     onTrash: () -> Unit,
     compact: Boolean,
     modifier: Modifier = Modifier,
+    bookmarks: List<File> = emptyList(),
 ) {
     val context = LocalContext.current
     val primary = volumes.firstOrNull { it.isPrimary }
@@ -746,6 +794,40 @@ fun HomeContent(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+        if (bookmarks.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Text(
+                    stringResource(R.string.bookmarks),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+            items(bookmarks, key = { "b:" + it.path }, span = { GridItemSpan(maxLineSpan) }) { dir ->
+                Card(
+                    onClick = { onOpen(dir) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_bookmark_filled),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Column(Modifier.padding(start = 16.dp)) {
+                            Text(dir.name, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                dir.parent.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.StartEllipsis,
+                            )
+                        }
+                    }
                 }
             }
         }
