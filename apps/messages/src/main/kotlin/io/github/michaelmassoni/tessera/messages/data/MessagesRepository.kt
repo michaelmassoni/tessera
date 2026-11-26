@@ -25,7 +25,7 @@ class MessagesRepository(
     private val resolver = context.contentResolver
     private val addressCache = mutableMapOf<String, String>()
     private val senderCache get() = SENDERS
-    private var contactNumbers: List<Pair<String, String>>? = null
+    private var contactNumbers: List<ContactRow>? = null
     private val sentLog = SentLog(context)
 
     fun conversations(): List<Conversation> = conversations(null, null)
@@ -265,20 +265,82 @@ class MessagesRepository(
      */
     @Synchronized
     fun names(addresses: Collection<String>): Map<String, String> {
-        val numbers =
-            contactNumbers ?: runCatching {
-                val list = mutableListOf<Pair<String, String>>()
-                resolver
-                    .query(
-                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                        arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER, ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY),
-                        null,
-                        null,
-                        null,
-                    )?.use { c -> while (c.moveToNext()) list += c.getString(0).orEmpty() to c.getString(1).orEmpty() }
-                list.toList()
-            }.getOrNull()?.also { contactNumbers = it } ?: emptyList()
+        val numbers = contactRows().map { it.number to it.name }
         return Addresses.names(addresses, numbers)
+    }
+
+    /** Contact photos (thumbnail URIs) for [addresses], matched the same way as names. */
+    @Synchronized
+    fun photos(addresses: Collection<String>): Map<String, String> =
+        Addresses.names(addresses, contactRows().mapNotNull { r -> r.photo?.let { r.number to it } })
+
+    private data class ContactRow(
+        val number: String,
+        val name: String,
+        val photo: String?,
+    )
+
+    /** Every contact number, with its name and photo: read once, until [forgetContacts]. */
+    private fun contactRows(): List<ContactRow> =
+        contactNumbers ?: runCatching {
+            val list = mutableListOf<ContactRow>()
+            resolver
+                .query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY,
+                        ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
+                    ),
+                    null,
+                    null,
+                    null,
+                )?.use { c ->
+                    while (c.moveToNext()) list += ContactRow(c.getString(0).orEmpty(), c.getString(1).orEmpty(), c.getString(2))
+                }
+            list.toList()
+        }.getOrNull()?.also { contactNumbers = it } ?: emptyList()
+
+    /**
+     * Conversations with a message containing [query] (SMS bodies and MMS text), each with its
+     * newest matching message's text, for the list's search.
+     */
+    fun searchMessages(query: String): Map<Long, String> {
+        val q = query.trim()
+        if (q.length < 2) return emptyMap()
+        val like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        val hits = mutableMapOf<Long, Pair<Long, String>>()
+
+        fun hit(
+            thread: Long,
+            date: Long,
+            text: String,
+        ) {
+            if ((hits[thread]?.first ?: Long.MIN_VALUE) < date) hits[thread] = date to text
+        }
+        runCatching {
+            resolver
+                .query("content://sms".toUri(), arrayOf("thread_id", "date", "body"), "body LIKE ? ESCAPE '\\'", arrayOf(like), null)
+                ?.use { c -> while (c.moveToNext()) hit(c.getLong(0), c.getLong(1), c.getString(2).orEmpty()) }
+        }
+        runCatching {
+            val parts = mutableMapOf<Long, String>()
+            resolver
+                .query(
+                    "content://mms/part".toUri(),
+                    arrayOf("mid", "text"),
+                    "ct = 'text/plain' AND text LIKE ? ESCAPE '\\'",
+                    arrayOf(like),
+                    null,
+                )?.use { c -> while (c.moveToNext()) parts.putIfAbsent(c.getLong(0), c.getString(1).orEmpty()) }
+            parts.keys.chunked(500).forEach { chunk ->
+                resolver
+                    .query("content://mms".toUri(), arrayOf("_id", "thread_id", "date"), "_id IN (${chunk.joinToString(",")})", null, null)
+                    // MMS dates are in seconds.
+                    ?.use { c -> while (c.moveToNext()) hit(c.getLong(1), c.getLong(2) * 1000, parts[c.getLong(0)].orEmpty()) }
+            }
+        }
+        return hits.mapValues { it.value.second }
     }
 
     /** Contacts changed: read names again next time. */

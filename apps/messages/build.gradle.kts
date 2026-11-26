@@ -7,8 +7,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.messages"
-        versionCode = 14
-        versionName = "0.6.2"
+        versionCode = 15
+        versionName = "0.7.0"
     }
 }
 
