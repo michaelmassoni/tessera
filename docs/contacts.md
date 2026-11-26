@@ -114,6 +114,16 @@ needed.
 - Action buttons have text labels.
 - Phone numbers are read digit by digit (`TtsSpan`), as the system does.
 
+## Contacts made of several copies (0.5.1)
+
+A contact can join raw contacts from several accounts: the person's own (device, CardDAV,
+Google) and copies other apps add for themselves (Signal, WhatsApp, Telegram…), which repeat its
+numbers. The detail screen shows each number and email once (numbers match on their last nine
+digits, emails ignoring case), keeping the own copy's row. The editor edits the person's own copy:
+an account whose contacts sync adapter uploads changes, or the device; a mirroring app's copy
+(adapter that doesn't upload, or a known messaging app) is never edited, since the app would
+overwrite it. Name, company, birthday and note come from that copy too (`RawChoice`, unit tested).
+
 ## Photos, duplicates and addresses (0.5)
 
 - **Photo:** the editor shows the photo (or initials) with Add or Change photo and Remove. Change
