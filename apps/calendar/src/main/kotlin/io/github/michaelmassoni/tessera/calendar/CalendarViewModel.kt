@@ -10,6 +10,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
 import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import io.github.michaelmassoni.tessera.calendar.engine.SeriesSplit
+import io.github.michaelmassoni.tessera.calendar.engine.editorCalendars
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -290,15 +291,17 @@ class CalendarViewModel(
                         repository.calendars()
                     }
                 }
-            openEditor(calendars.filter { it.writable }, prefill)
+            openEditor(calendars, prefill)
         }
     }
 
     private fun openEditor(
-        writable: List<CalendarInfo>,
+        calendars: List<CalendarInfo>,
         prefill: EventDraft?,
     ) {
-        val calendar = writable.firstOrNull { it.visible } ?: writable.firstOrNull() ?: return
+        val current = prefill?.calendarId?.takeIf { it != 0L }
+        val choices = editorCalendars(calendars, current)
+        val calendar = choices.firstOrNull { it.visible } ?: choices.firstOrNull() ?: return
         val z = zone()
         val now = java.time.ZonedDateTime.now(z)
         val day = _state.value.selected
@@ -316,7 +319,7 @@ class CalendarViewModel(
         val base =
             EventDraft(calendarId = calendar.id, start = start, end = start + HOUR, timeZone = z.id, reminders = listOf(DEFAULT_REMINDER))
         val draft = prefill?.let { it.copy(calendarId = if (it.calendarId == 0L) calendar.id else it.calendarId) } ?: base
-        _editor.value = EditorState(draft, draft, writable)
+        _editor.value = EditorState(draft, draft, choices)
     }
 
     /**
@@ -326,8 +329,8 @@ class CalendarViewModel(
     fun edit(scope: Scope = Scope.All) {
         val d = _detail.value ?: return
         _detail.value = null
-        val writable = _state.value.calendars.filter { it.writable }
         val series = d.event
+        val writable = editorCalendars(_state.value.calendars, series.calendarId)
         val atInstance = series.copy(start = d.instance.begin, end = d.instance.begin + (series.end - series.start))
         _editor.value =
             when {
