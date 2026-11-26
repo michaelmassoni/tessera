@@ -2,6 +2,7 @@ package io.github.michaelmassoni.tessera.phone.ui
 
 import android.telecom.Call
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
@@ -23,6 +27,7 @@ import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -65,7 +71,19 @@ interface InCallActions {
 
     fun decline(id: String)
 
+    /** Declines and texts [message] to the caller (the default SMS app sends it). */
+    fun declineWithMessage(
+        id: String,
+        message: String,
+    ) {}
+
     fun hangUp(id: String)
+
+    /** Places the call on the SIM at [index] of [CallInfo.simChoices]. */
+    fun chooseSim(
+        id: String,
+        index: Int,
+    ) {}
 
     fun hold(
         id: String,
@@ -168,6 +186,7 @@ fun InCallScreen(
                 CallStatus(call)
                 Spacer(Modifier.weight(1f))
                 when {
+                    call.simChoices.isNotEmpty() -> SimChoice(call, actions)
                     call.ringing -> IncomingControls(call, waiting = other != null, actions)
                     call.ended -> Unit
                     keypad -> InCallKeypad(onDigit = { actions.dtmf(call.id, it) }, onClose = { keypad = false })
@@ -264,32 +283,45 @@ private fun IncomingControls(
     waiting: Boolean,
     actions: InCallActions,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        RoundAction(
-            DesignR.drawable.ic_call_end,
-            stringResource(R.string.decline),
-            MaterialTheme.colorScheme.error,
-            MaterialTheme.colorScheme.onError,
-        ) {
-            actions.decline(call.id)
-        }
-        if (waiting) {
+    var replying by remember { mutableStateOf(false) }
+    if (replying) {
+        QuickReplyDialog(onSend = { text -> actions.declineWithMessage(call.id, text) }, onDismiss = { replying = false })
+    }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             RoundAction(
-                DesignR.drawable.ic_call,
-                stringResource(R.string.end_and_answer),
-                MaterialTheme.colorScheme.tertiary,
-                MaterialTheme.colorScheme.onTertiary,
+                DesignR.drawable.ic_call_end,
+                stringResource(R.string.decline),
+                MaterialTheme.colorScheme.error,
+                MaterialTheme.colorScheme.onError,
             ) {
-                actions.endAndAnswer(call.id)
+                actions.decline(call.id)
+            }
+            if (waiting) {
+                RoundAction(
+                    DesignR.drawable.ic_call,
+                    stringResource(R.string.end_and_answer),
+                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.onTertiary,
+                ) {
+                    actions.endAndAnswer(call.id)
+                }
+            }
+            RoundAction(
+                if (waiting) DesignR.drawable.ic_pause else DesignR.drawable.ic_call,
+                stringResource(if (waiting) R.string.hold_and_answer else R.string.answer),
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.onPrimary,
+            ) {
+                actions.answer(call.id)
             }
         }
-        RoundAction(
-            if (waiting) DesignR.drawable.ic_pause else DesignR.drawable.ic_call,
-            stringResource(if (waiting) R.string.hold_and_answer else R.string.answer),
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.onPrimary,
-        ) {
-            actions.answer(call.id)
+        // Decline with a text: only for a number that can get one.
+        if (call.number.any(Char::isDigit) && !waiting) {
+            TextButton(onClick = { replying = true }, modifier = Modifier.padding(top = 16.dp)) {
+                Icon(painterResource(DesignR.drawable.ic_chat), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text(stringResource(R.string.reply_with_message))
+            }
         }
     }
 }
@@ -497,6 +529,19 @@ private fun RingingPreview() {
     }
 }
 
+// Dual SIM set to ask every time: pick the SIM.
+@TesseraPreviews
+@Composable
+private fun SimChoicePreview() {
+    TesseraTheme(dynamicColor = false) {
+        InCallScreen(
+            listOf(previewCall(Call.STATE_SELECT_PHONE_ACCOUNT).copy(incoming = false, simChoices = listOf("Telstra", "Vodafone"))),
+            AudioInfo(),
+            NoInCallActions,
+        )
+    }
+}
+
 /** On hold rather than active, so the screenshot has no running timer. */
 @TesseraPreviews
 @Composable
@@ -537,5 +582,83 @@ private fun CallWaitingPreview() {
 private fun OnHoldPreview() {
     TesseraTheme(dynamicColor = false) {
         InCallScreen(listOf(previewOther(Call.STATE_HOLDING), previewCall(Call.STATE_DIALING)), AudioInfo(), NoInCallActions)
+    }
+}
+
+/** Quick replies when declining a call, and a reply of your own. */
+@Composable
+private fun QuickReplyDialog(
+    onSend: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val replies =
+        listOf(
+            stringResource(R.string.reply_cant_talk),
+            stringResource(R.string.reply_call_back),
+            stringResource(R.string.reply_call_later),
+            stringResource(R.string.reply_on_my_way),
+        )
+    var writing by remember { mutableStateOf(false) }
+    val own = rememberTextFieldState()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.reply_with_message)) },
+        text = {
+            Column {
+                if (writing) {
+                    OutlinedTextField(
+                        state = own,
+                        label = { Text(stringResource(R.string.reply_write)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    replies.forEach { r ->
+                        Text(
+                            r,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable(role = Role.Button) {
+                                        onDismiss()
+                                        onSend(r)
+                                    }.padding(vertical = 14.dp),
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.reply_write),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { writing = true }.padding(vertical = 14.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (writing) {
+                TextButton(onClick = {
+                    onDismiss()
+                    onSend(own.text.toString())
+                }, enabled = own.text.isNotBlank()) { Text(stringResource(R.string.reply_send)) }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** "Call with": one button per SIM; the end button below cancels (a dual-SIM phone set to ask every time). */
+@Composable
+private fun SimChoice(
+    call: CallInfo,
+    actions: InCallActions,
+) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(stringResource(R.string.call_with), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 16.dp))
+        call.simChoices.forEachIndexed { i, label ->
+            Button(onClick = { actions.chooseSim(call.id, i) }, modifier = Modifier.fillMaxWidth(0.7f).padding(vertical = 4.dp)) {
+                Icon(painterResource(DesignR.drawable.ic_sim_card), contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text(label)
+            }
+        }
     }
 }

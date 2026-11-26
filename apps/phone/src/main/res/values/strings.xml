@@ -83,4 +83,17 @@
     <string name="setup_access_text">To make calls, show your recent calls and show your contacts\' names. Nothing leaves this phone.</string>
     <string name="setup_notifications_title">Notifications</string>
     <string name="setup_notifications_text">For incoming and missed calls, and the call in progress.</string>
+    <!-- Decline with a message (docs/phone.md, Quick replies). -->
+    <string name="reply_with_message">Reply with message</string>
+    <string name="reply_cant_talk">Can\'t talk now. What\'s up?</string>
+    <string name="reply_call_back">I\'ll call you right back.</string>
+    <string name="reply_call_later">I\'ll call you later.</string>
+    <string name="reply_on_my_way">On my way.</string>
+    <string name="reply_write">Write your own…</string>
+    <string name="reply_send">Send</string>
+    <!-- Recents search (docs/phone.md, Recents search). -->
+    <string name="search_recents">Search recents</string>
+    <string name="filter_missed">Missed</string>
+    <string name="no_matching_calls">No matching calls</string>
+    <string name="call_with">Call with</string>
 </resources>
