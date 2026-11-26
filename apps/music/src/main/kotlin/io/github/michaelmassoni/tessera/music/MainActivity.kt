@@ -15,11 +15,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
+import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.music.data.LyricsQuery
@@ -97,6 +100,8 @@ class MainActivity : ComponentActivity() {
         val playerActions = PlayerActionsImpl()
         setTesseraContent {
             SetupGate(musicSetup) {
+                // A server account made before Android 17 asked for the local network.
+                AskForLocalNetwork(remember(source) { if (source == MusicSource.Server) store.account?.address else null }) { load() }
                 // Setup may just have chosen the source.
                 LaunchedEffect(Unit) { checkSource() }
                 if (source == MusicSource.Local && !granted) {
@@ -232,7 +237,12 @@ class MainActivity : ComponentActivity() {
                 if (store.source != MusicSource.Server) return@launch
                 library = withContext(Dispatchers.Default) { state(songs, playlists, fromServer = true) }
             } catch (e: ServerException) {
-                val notice = if (e.problem == ServerProblem.WrongLogin) ServerNotice.SignIn else ServerNotice.Unreachable
+                val notice =
+                    when {
+                        e.problem == ServerProblem.WrongLogin -> ServerNotice.SignIn
+                        LocalNetwork.blocks(this@MainActivity, account.address) -> ServerNotice.LocalNetwork
+                        else -> ServerNotice.Unreachable
+                    }
                 library = library.copy(loaded = true, notice = notice)
             }
         }

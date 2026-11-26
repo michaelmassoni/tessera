@@ -15,6 +15,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.github.michaelmassoni.tessera.core.dav.DavClient
 import io.github.michaelmassoni.tessera.core.dav.SyncProblem
+import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.tasks.data.AccountStore
@@ -52,6 +53,8 @@ class MainActivity : ComponentActivity() {
         val syncing = WorkManager.getInstance(this).getWorkInfosForUniqueWorkFlow("sync-soon")
         setTesseraContent {
             SetupGate(tasksSetup) {
+                // An account made before Android 17 asked for the local network.
+                AskForLocalNetwork(accounts.account?.address) { SyncWorker.schedule.soon(this@MainActivity, delaySeconds = 0) }
                 val data by tasks.data.collectAsStateWithLifecycle()
                 val work by syncing.collectAsStateWithLifecycle(emptyList())
                 val running =

@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -92,7 +93,9 @@ fun ServerSignInFields(
             },
             modifier = Modifier.fillMaxWidth(),
         )
-        if (problem != null) {
+        if (problem == ServerProblem.LocalNetwork) {
+            LocalNetworkDenied()
+        } else if (problem != null) {
             Text(
                 stringResource(problem.message()),
                 color = MaterialTheme.colorScheme.error,
@@ -107,6 +110,7 @@ fun ServerSignInFields(
 fun ServerProblem.message(): Int =
     when (this) {
         ServerProblem.Unreachable -> R.string.problem_unreachable
+        ServerProblem.LocalNetwork -> R.string.problem_unreachable
         ServerProblem.WrongLogin -> R.string.problem_wrong_login
         ServerProblem.NotSubsonic -> R.string.problem_not_subsonic
         ServerProblem.TooOld -> R.string.problem_too_old

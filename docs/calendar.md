@@ -16,6 +16,7 @@ Package `io.github.michaelmassoni.tessera.calendar`. Status: v0.1, first impleme
 | `READ_CALENDAR`, `WRITE_CALENDAR` | Show, create, edit and delete events |
 | `POST_NOTIFICATIONS` | Event reminders |
 | `INTERNET` | Only to sync with the CalDAV server the person adds (docs/sync.md); nothing else is contacted |
+| `ACCESS_LOCAL_NETWORK` | Android 17 asks before an app reaches the local network. Asked for only when the server is on it: at sign-in, and once on launch for an account made earlier. Without it a server on the local network can't be reached; Settings says so and links to the permission. |
 | `READ_SYNC_SETTINGS`, `WRITE_SYNC_SETTINGS` | The sync account: whether it syncs on local changes |
 | `RECEIVE_BOOT_COMPLETED` | Not needed: the calendar provider re-arms its own alarms |
 

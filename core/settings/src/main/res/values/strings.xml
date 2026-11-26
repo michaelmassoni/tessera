@@ -99,4 +99,8 @@
     <string name="setup_restore_text">If you backed up this app, or all your Tessera apps, on another phone, restore it now. You can also do this later in Settings.</string>
     <string name="setup_restore_pick">Choose a backup</string>
     <string name="setup_restore_skip">Start fresh</string>
+    <string name="local_network_denied">Your server is on your local network, which Android only lets this app reach with the Nearby devices permission. Allow it in the app\'s settings, under Permissions.</string>
+    <string name="local_network_settings">Open settings</string>
+    <string name="local_network_sync">Needs the Nearby devices permission to reach your server. Tap to allow.</string>
+    <string name="local_network_sync_failed">Couldn\'t sync: reaching your server needs the Nearby devices permission. Allow it in the app\'s settings.</string>
 </resources>

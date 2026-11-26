@@ -19,6 +19,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -35,6 +36,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.Ics
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.Scope
 import io.github.michaelmassoni.tessera.calendar.sync.CalendarAccounts
+import io.github.michaelmassoni.tessera.calendar.sync.CalendarDavStore
 import io.github.michaelmassoni.tessera.calendar.sync.CalendarSyncWorker
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarActions
 import io.github.michaelmassoni.tessera.calendar.ui.CalendarApp
@@ -42,6 +44,7 @@ import io.github.michaelmassoni.tessera.calendar.ui.PermissionScreen
 import io.github.michaelmassoni.tessera.calendar.ui.firstDayOfWeek
 import io.github.michaelmassoni.tessera.calendar.widget.CalendarWidgets
 import io.github.michaelmassoni.tessera.calendar.widget.WidgetPreview
+import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import kotlinx.coroutines.Dispatchers
@@ -103,6 +106,10 @@ class MainActivity : ComponentActivity() {
         val actions = Actions()
         setTesseraContent {
             SetupGate(calendarSetup) {
+                // An account made before Android 17 asked for the local network.
+                AskForLocalNetwork(remember { CalendarDavStore(this@MainActivity).account?.address }) {
+                    CalendarSyncWorker.schedule.soon(this@MainActivity, delaySeconds = 0)
+                }
                 if (!granted) {
                     PermissionScreen(
                         denied = denied,
