@@ -9,6 +9,7 @@ import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.calendar.engine.MonthGrid
 import io.github.michaelmassoni.tessera.calendar.engine.Scope
+import io.github.michaelmassoni.tessera.calendar.engine.SearchResults
 import io.github.michaelmassoni.tessera.calendar.engine.SeriesSplit
 import io.github.michaelmassoni.tessera.calendar.engine.editorCalendars
 import kotlinx.coroutines.CoroutineDispatcher
@@ -78,6 +79,15 @@ sealed interface CalendarEvent {
     ) : CalendarEvent
 }
 
+/** Event search: what was typed and what matched (see [SearchResults]). */
+data class SearchState(
+    val query: String = "",
+    val upcoming: List<Pair<LocalDate, List<Instance>>> = emptyList(),
+    val past: List<Pair<LocalDate, List<Instance>>> = emptyList(),
+    /** A search ran for [query] (so "No matching events" can be shown). */
+    val searched: Boolean = false,
+)
+
 /** Month and schedule data, the open event and the editor. Provider access runs on [io]. */
 class CalendarViewModel(
     private val repository: CalendarRepository,
@@ -95,6 +105,12 @@ class CalendarViewModel(
 
     private val _editor = MutableStateFlow<EditorState?>(null)
     val editor: StateFlow<EditorState?> = _editor.asStateFlow()
+
+    private val _search = MutableStateFlow<SearchState?>(null)
+
+    /** The search screen, while open. */
+    val search: StateFlow<SearchState?> = _search.asStateFlow()
+    private var searching: Job? = null
 
     private val eventChannel = Channel<CalendarEvent>(Channel.BUFFERED)
     val events: Flow<CalendarEvent> = eventChannel.receiveAsFlow()
@@ -161,7 +177,48 @@ class CalendarViewModel(
                         calendars = calendars,
                     )
                 }
+                // An edit, a delete or a sync changes what search finds too.
+                _search.value
+                    ?.query
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { runSearch(it) }
             }
+    }
+
+    fun openSearch() {
+        if (_search.value == null) _search.value = SearchState()
+    }
+
+    fun closeSearch() {
+        searching?.cancel()
+        _search.value = null
+    }
+
+    /** Searches as the person types, [SEARCH_DELAY_MS] after they pause. */
+    fun setSearchQuery(query: String) {
+        val current = _search.value ?: return
+        _search.value = current.copy(query = query)
+        searching?.cancel()
+        if (query.isBlank()) {
+            _search.value = SearchState(query)
+            return
+        }
+        searching =
+            viewModelScope.launch {
+                delay(SEARCH_DELAY_MS)
+                runSearch(query)
+            }
+    }
+
+    private suspend fun runSearch(query: String) {
+        val z = zone()
+        val now = System.currentTimeMillis()
+        val today = LocalDate.now(z)
+        val (from, _) = DayLayout.range(today.minusDays(SearchResults.PAST_DAYS), today, z)
+        val (_, to) = DayLayout.range(today, today.plusDays(SearchResults.AHEAD_DAYS), z)
+        val found = withContext(io) { repository.search(query.trim(), from, to) }
+        val arranged = SearchResults.arrange(found, now, z)
+        if (_search.value?.query == query) _search.value = SearchState(query, arranged.upcoming, arranged.past, searched = true)
     }
 
     fun setMode(mode: ViewMode) = _state.update { it.copy(mode = mode) }
@@ -417,5 +474,6 @@ class CalendarViewModel(
     private companion object {
         const val HOUR = 3_600_000L
         const val DEFAULT_REMINDER = 10
+        const val SEARCH_DELAY_MS = 250L
     }
 }

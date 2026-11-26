@@ -293,18 +293,28 @@ fun EventList(
     empty: String = stringResource(R.string.no_events),
     onLoadMore: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(bottom = 96.dp),
+    // Search: past events after the upcoming ones, under [pastLabel], and headings with the year.
+    past: List<Pair<LocalDate, List<Instance>>> = emptyList(),
+    pastLabel: String = "",
+    withYear: Boolean = false,
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    if (days.all { it.second.isEmpty() }) {
+    if (days.all { it.second.isEmpty() } && past.all { it.second.isEmpty() }) {
         Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.TopCenter) {
             Text(empty, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
+    val pattern =
+        android.text.format.DateFormat
+            .getBestDateTimePattern(locale, if (withYear) "EEEEMMMMdy" else "EEEEMMMMd")
     LazyColumn(modifier = modifier, contentPadding = contentPadding) {
-        days.forEach { (day, events) ->
+        fun section(
+            list: List<Pair<LocalDate, List<Instance>>>,
+            prefix: String,
+        ) = list.forEach { (day, events) ->
             if (showHeadings) {
-                stickyHeader(key = "h$day") {
+                stickyHeader(key = "$prefix$day") {
                     val label =
                         when (day) {
                             today -> {
@@ -312,13 +322,7 @@ fun EventList(
                             }
 
                             else -> {
-                                day.format(
-                                    DateTimeFormatter.ofPattern(
-                                        android.text.format.DateFormat
-                                            .getBestDateTimePattern(locale, "EEEEMMMMd"),
-                                        locale,
-                                    ),
-                                )
+                                day.format(DateTimeFormatter.ofPattern(pattern, locale))
                             }
                         }
                     Text(
@@ -334,7 +338,19 @@ fun EventList(
                     )
                 }
             }
-            items(events, key = { "e$day-${it.eventId}-${it.begin}" }) { EventRow(it, onOpen) }
+            items(events, key = { "${prefix}e$day-${it.eventId}-${it.begin}" }) { EventRow(it, onOpen) }
+        }
+        section(days, "h")
+        if (past.isNotEmpty()) {
+            item(key = "past") {
+                Text(
+                    pastLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp).semantics { heading() },
+                )
+            }
+            section(past, "p")
         }
         if (onLoadMore != null) {
             item(key = "more") {

@@ -77,6 +77,7 @@ import io.github.michaelmassoni.tessera.calendar.CalendarState
 import io.github.michaelmassoni.tessera.calendar.Detail
 import io.github.michaelmassoni.tessera.calendar.EditorState
 import io.github.michaelmassoni.tessera.calendar.R
+import io.github.michaelmassoni.tessera.calendar.SearchState
 import io.github.michaelmassoni.tessera.calendar.ViewMode
 import io.github.michaelmassoni.tessera.calendar.engine.CalendarInfo
 import io.github.michaelmassoni.tessera.calendar.engine.EventDraft
@@ -141,6 +142,12 @@ interface CalendarActions {
     fun import()
 
     fun openSettings()
+
+    fun openSearch() {}
+
+    fun closeSearch() {}
+
+    fun setSearchQuery(query: String) {}
 }
 
 private val WideWidth = 840.dp
@@ -157,6 +164,8 @@ fun CalendarApp(
     // The week and day views' zone and clock; previews fix them so screenshots don't change.
     zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
     clock: () -> java.time.LocalTime = java.time.LocalTime::now,
+    // The search screen, while open (null otherwise).
+    search: SearchState? = null,
 ) {
     val snackbar = remember { SnackbarHostState() }
     var discard by rememberSaveable { mutableStateOf(false) }
@@ -176,6 +185,7 @@ fun CalendarApp(
         }
     }
     BackHandler(editor != null) { close() }
+    BackHandler(editor == null && search != null) { actions.closeSearch() }
 
     // The views leave composition while the editor is shown: this keeps their scroll and page.
     val saveable = rememberSaveableStateHolder()
@@ -183,6 +193,8 @@ fun CalendarApp(
         // Saved or cancelled: the next event opens a fresh editor.
         DisposableEffect(Unit) { onDispose { saveable.removeState(EDITOR_KEY) } }
         saveable.SaveableStateProvider(EDITOR_KEY) { EventEditor(editor, actions::update, actions::save, close, modifier) }
+    } else if (search != null) {
+        SearchScreen(search, state.today, actions::setSearchQuery, actions::open, actions::closeSearch, modifier)
     } else {
         saveable.SaveableStateProvider(VIEWS_KEY) {
             Scaffold(
@@ -298,6 +310,9 @@ private fun CalendarTopBar(
                 }
 
                 ViewMode.Schedule -> {}
+            }
+            IconButton(onClick = actions::openSearch) {
+                Icon(painterResource(DesignR.drawable.ic_search), contentDescription = stringResource(R.string.search))
             }
             IconButton(onClick = actions::today) {
                 Icon(painterResource(DesignR.drawable.ic_today), contentDescription = stringResource(R.string.today))
