@@ -23,6 +23,7 @@ import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.ContactSummary
 import io.github.michaelmassoni.tessera.contacts.engine.EditDiff
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
+import io.github.michaelmassoni.tessera.contacts.engine.RawChoice
 import io.github.michaelmassoni.tessera.contacts.engine.RowKind
 import io.github.michaelmassoni.tessera.contacts.engine.RowOp
 import io.github.michaelmassoni.tessera.contacts.engine.VCardContact
@@ -35,6 +36,20 @@ import java.io.File
 class ContactsRepository(
     private val resolver: ContentResolver,
 ) {
+    private companion object {
+        /** Messaging apps that add a copy of contacts for themselves, in case their adapter says otherwise. */
+        val KNOWN_MIRRORS =
+            setOf(
+                "org.thoughtcrime.securesms", // Signal
+                "im.molly.app", // Molly
+                "com.whatsapp",
+                "com.whatsapp.w4b",
+                "org.telegram.messenger",
+                "com.viber.voip",
+                "ch.threema.app",
+            )
+    }
+
     fun loadAll(): List<ContactSummary> {
         val phones = mutableMapOf<Long, MutableList<String>>()
         val emails = mutableMapOf<Long, MutableList<String>>()
@@ -131,11 +146,11 @@ class ContactsRepository(
         val addresses = mutableListOf<Labeled>()
         val events = mutableListOf<Labeled>()
         val websites = mutableListOf<String>()
-        var form = ContactForm()
-        var company = ""
-        var title = ""
-        var note = ""
-        var nameRaw: Long? = null
+        // Single-valued fields, per raw contact: the editor takes the editable raw contact's.
+        val names = mutableMapOf<Long, Triple<String, String, Long>>()
+        val companies = mutableMapOf<Long, Triple<String, String, Long>>()
+        val notes = mutableMapOf<Long, Pair<String, Long>>()
+        val birthdays = mutableMapOf<Long, Pair<String, Long>>()
         val rowRaws = mutableMapOf<Long, Long>()
         resolver
             .query(
@@ -154,11 +169,7 @@ class ContactsRepository(
                     val label = c.getString(5)
                     when (c.getString(2)) {
                         StructuredName.CONTENT_ITEM_TYPE -> {
-                            if (form.nameId == null) {
-                                form =
-                                    form.copy(givenName = c.getString(4).orEmpty(), familyName = c.getString(5).orEmpty(), nameId = rowId)
-                                nameRaw = raw
-                            }
+                            names.putIfAbsent(raw, Triple(c.getString(4).orEmpty(), c.getString(5).orEmpty(), rowId))
                         }
 
                         Phone.CONTENT_ITEM_TYPE -> {
@@ -176,27 +187,16 @@ class ContactsRepository(
                         Event.CONTENT_ITEM_TYPE -> {
                             if (d1.isNotBlank()) {
                                 events += Labeled(d1, type, label, rowId)
-                                if (type == Event.TYPE_BIRTHDAY &&
-                                    form.birthdayId == null
-                                ) {
-                                    form = form.copy(birthday = d1, birthdayId = rowId)
-                                }
+                                if (type == Event.TYPE_BIRTHDAY) birthdays.putIfAbsent(raw, d1 to rowId)
                             }
                         }
 
                         Organization.CONTENT_ITEM_TYPE -> {
-                            if (form.companyId == null) {
-                                company = d1
-                                title = c.getString(6).orEmpty()
-                                form = form.copy(company = d1, companyId = rowId)
-                            }
+                            companies.putIfAbsent(raw, Triple(d1, c.getString(6).orEmpty(), rowId))
                         }
 
                         Note.CONTENT_ITEM_TYPE -> {
-                            if (form.noteId == null && d1.isNotBlank()) {
-                                note = d1
-                                form = form.copy(note = d1, noteId = rowId)
-                            }
+                            if (d1.isNotBlank()) notes.putIfAbsent(raw, d1 to rowId)
                         }
 
                         Website.CONTENT_ITEM_TYPE -> {
@@ -205,32 +205,61 @@ class ContactsRepository(
                     }
                 }
             }
-        // The editor only edits rows of one raw contact; rows from other raw contacts are shown but read-only in the form.
-        val editRaw = nameRaw ?: rawAccounts.keys.firstOrNull() ?: return null
-        form =
-            form.copy(
+        // The editor edits one raw contact: the person's own copy, never one an app such as Signal
+        // mirrors (it would be overwritten). Rows from other raw contacts are shown, not edited.
+        val editRaw = RawChoice.editable(rawAccounts, mirroringAccountTypes) ?: return null
+
+        fun <T> pick(map: Map<Long, T>): T? = map[editRaw]
+        val name = pick(names)
+        val org = pick(companies)
+        val form =
+            ContactForm(
+                givenName = name?.first.orEmpty(),
+                familyName = name?.second.orEmpty(),
+                nameId = name?.third,
                 phones = phones.filter { rowRaws[it.id] == editRaw },
                 emails = emails.filter { rowRaws[it.id] == editRaw },
                 addresses = addresses.filter { rowRaws[it.id] == editRaw },
+                company = org?.first.orEmpty(),
+                companyId = org?.third,
+                birthday = pick(birthdays)?.first.orEmpty(),
+                birthdayId = pick(birthdays)?.second,
+                note = pick(notes)?.first.orEmpty(),
+                noteId = pick(notes)?.second,
             )
+        // Shown: each number and email once (an app's copy repeats them), the own copy's row kept.
+        val rawOf: (Labeled) -> Long? = { rowRaws[it.id] }
+        val shownOrg = org ?: companies.values.firstOrNull()
         return ContactDetail(
             id = id,
             lookupKey = head[0].orEmpty(),
             name = head[1].orEmpty(),
             starred = head[2] == "1",
             photoUri = head[3],
-            phones = phones,
-            emails = emails,
-            addresses = addresses,
-            events = events,
-            websites = websites,
-            company = company,
-            title = title,
-            note = note,
+            phones = RawChoice.distinct(phones, rawOf, editRaw, RawChoice::phoneKey),
+            emails = RawChoice.distinct(emails, rawOf, editRaw, RawChoice::emailKey),
+            addresses = RawChoice.distinct(addresses, rawOf, editRaw) { it.trim().lowercase() },
+            events = events.distinctBy { it.type to it.value },
+            websites = websites.distinct(),
+            company = shownOrg?.first.orEmpty(),
+            title = shownOrg?.second.orEmpty(),
+            note = (pick(notes) ?: notes.values.firstOrNull())?.first.orEmpty(),
             accounts = rawAccounts.values.toSet(),
             rawContactId = editRaw,
             form = form,
         )
+    }
+
+    /**
+     * Account types whose contacts sync adapter only mirrors another app's data (it doesn't upload
+     * changes): Signal, WhatsApp, Telegram and the like. Their raw contacts aren't edited.
+     */
+    private val mirroringAccountTypes: Set<String> by lazy {
+        ContentResolver
+            .getSyncAdapterTypes()
+            .filter { it.authority == ContactsContract.AUTHORITY && !it.supportsUploading() }
+            .map { it.accountType }
+            .toSet() + KNOWN_MIRRORS
     }
 
     /** Accounts that already hold contacts, plus the device account, device first. */
