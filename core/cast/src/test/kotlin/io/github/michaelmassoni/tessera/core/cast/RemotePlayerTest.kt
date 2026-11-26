@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import android.os.Looper
 import androidx.media3.common.MediaItem
@@ -25,6 +25,7 @@ class RemotePlayerTest {
             item: MediaItem,
             positionMs: Long,
             autoplay: Boolean,
+            speed: Float,
         ) {
             calls += "load ${item.mediaId} $positionMs $autoplay"
         }
@@ -39,6 +40,10 @@ class RemotePlayerTest {
 
         override fun seek(positionMs: Long) {
             calls += "seek $positionMs"
+        }
+
+        override fun setSpeed(speed: Float) {
+            calls += "speed $speed"
         }
 
         override fun stopMedia() {
@@ -201,5 +206,34 @@ class RemotePlayerTest {
         idle()
         assertEquals("volume 0.55", link.calls.last())
         assertEquals(20, player.deviceInfo.maxVolume)
+    }
+
+    @Test
+    fun `speed goes to the device, capped at what it can do, and kept as asked`() {
+        queue("a")
+        player.setPlaybackSpeed(3f)
+        idle()
+        assertEquals("speed 2.0", link.calls.last())
+        assertEquals(3f, player.playbackParameters.speed)
+        player.seekToNextMediaItem()
+    }
+
+    @Test
+    fun `an item ending on the device is an automatic transition`() {
+        queue("a", "b")
+        val reasons = mutableListOf<Int>()
+        player.addListener(
+            object : Player.Listener {
+                override fun onMediaItemTransition(
+                    mediaItem: MediaItem?,
+                    reason: Int,
+                ) {
+                    reasons += reason
+                }
+            },
+        )
+        link.finished()
+        idle()
+        assertEquals(listOf(Player.MEDIA_ITEM_TRANSITION_REASON_AUTO), reasons)
     }
 }

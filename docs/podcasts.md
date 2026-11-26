@@ -133,9 +133,31 @@ permission); restore.
 | `FOREGROUND_SERVICE_DATA_SYNC` | Finish a download with the app closed |
 | `WAKE_LOCK` | Keep streaming with the screen off |
 | `POST_NOTIFICATIONS` | Download progress (optional) |
+| `ACCESS_LOCAL_NETWORK` | Casting (0.3): finding the cast device and serving it the episode over the Wi-Fi. Asked for when Cast is first tapped; nothing else needs it. |
+| `ACCESS_WIFI_STATE` | Casting: a Wi-Fi lock while casting, so the phone keeps serving with the screen off. |
 
 - **Cleartext HTTP** is allowed: many podcast feeds and audio files are still served over plain
   HTTP, and refusing them would make those shows unplayable.
+
+## Casting (0.3)
+
+Asked for by the maintainer once casting worked in Music. It uses the same Cast client,
+now in `core:cast` (docs/music.md, Casting, for how it works; docs/decisions.md, 2026-11-26).
+
+- **The Cast button** sits with speed and the sleep timer under the controls; "Casting to
+  <device>" shows below them while casting.
+- **The episode is served from the phone**, download or stream alike: the phone follows the
+  publisher's http/https redirects, which the Default Media Receiver may not, and reads the
+  stream as it does to play it. The cover is served the same way.
+- **Up Next, speed and skips carry over.** Back 10 / forward 30 seek on the device. Speed is
+  sent to the device, which plays 0.5× to 2×: faster settings play at 2× while casting, and
+  the setting itself is kept.
+- **Episodes finish as on the phone:** one that plays to the end on the device is marked played
+  and leaves Up Next (the remote player reports it as an automatic transition), and positions
+  are saved as usual.
+- **The sleep timer** pauses the cast device.
+- Stopping casting, or losing the device, brings playback back to the phone, paused where it
+  was.
 
 ## Accessibility
 

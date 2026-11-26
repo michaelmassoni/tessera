@@ -10,12 +10,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Only to reach the music server the person adds (docs/music.md). -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Casting (docs/music.md, Casting): finding and talking to cast devices on the Wi-Fi and serving
-         them audio, and reaching a music server on the local network (Android 17 asks first), and
-         staying awake to cast with the screen off. -->
+    <!-- Reaching a music server on the local network (Android 17 asks first). Casting's permissions
+         come from core:cast. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:dataExtractionRules="@xml/data_extraction_rules"

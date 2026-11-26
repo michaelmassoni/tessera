@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import android.os.Looper
 import android.os.SystemClock
@@ -8,6 +8,7 @@ import androidx.media3.common.DeviceInfo
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer
 import androidx.media3.common.util.UnstableApi
@@ -23,6 +24,7 @@ interface RemoteLink {
         item: MediaItem,
         positionMs: Long,
         autoplay: Boolean,
+        speed: Float,
     )
 
     fun play()
@@ -30,6 +32,8 @@ interface RemoteLink {
     fun pause()
 
     fun seek(positionMs: Long)
+
+    fun setSpeed(speed: Float)
 
     fun stopMedia()
 
@@ -88,6 +92,12 @@ class RemotePlayer(
     private var anchoredAt = 0L
     private var advancing = false
 
+    // The speed asked for (kept, so the app's own setting isn't changed), and what the device can do of it.
+    private var speed = 1f
+    private val deviceSpeed get() = speed.coerceIn(CastProtocol.MIN_SPEED, CastProtocol.MAX_SPEED)
+    private var seekBackMs = C.DEFAULT_SEEK_BACK_INCREMENT_MS
+    private var seekForwardMs = C.DEFAULT_SEEK_FORWARD_INCREMENT_MS
+
     private var volume = 0.5f
     private var muted = false
 
@@ -97,6 +107,10 @@ class RemotePlayer(
     private var staleSession: Long? = null
 
     private var nextUid = 0L
+
+    // The device finished one item and the next began: reported as an automatic transition, once,
+    // so listeners tell it from a skip (Podcasts marks an episode played only then).
+    private var autoAdvanced = false
 
     init {
         link.events = this
@@ -115,6 +129,9 @@ class RemotePlayer(
         playlistMetadata = from.playlistMetadata
         playWhenReady = from.playWhenReady
         startVolume?.let { volume = it }
+        speed = from.playbackParameters.speed
+        seekBackMs = from.seekBackIncrement
+        seekForwardMs = from.seekForwardIncrement
         if (items.isNotEmpty()) {
             loadCurrent(from.currentPosition.coerceAtLeast(0), playWhenReady)
         } else {
@@ -133,6 +150,7 @@ class RemotePlayer(
         to.repeatMode = repeatMode
         to.shuffleModeEnabled = shuffle
         to.playlistMetadata = playlistMetadata
+        to.setPlaybackSpeed(speed)
         to.playWhenReady = false
         to.prepare()
     }
@@ -162,13 +180,20 @@ class RemotePlayer(
                 .setDeviceVolume(Math.round(volume * MAX_VOLUME))
                 .setIsDeviceMuted(muted)
                 .setContentPositionMs(PositionSupplier { currentPositionMs() })
+                .setPlaybackParameters(PlaybackParameters(speed))
+                .setSeekBackIncrementMs(seekBackMs)
+                .setSeekForwardIncrementMs(seekForwardMs)
         if (items.isNotEmpty()) builder.setCurrentMediaItemIndex(index)
+        if (autoAdvanced) {
+            builder.setPositionDiscontinuity(Player.DISCONTINUITY_REASON_AUTO_TRANSITION, 0)
+            autoAdvanced = false
+        }
         return builder.build()
     }
 
     private fun currentPositionMs(): Long {
         val moving = playbackState == Player.STATE_READY && playWhenReady && advancing
-        val now = if (moving) positionMs + (SystemClock.elapsedRealtime() - anchoredAt) else positionMs
+        val now = if (moving) positionMs + ((SystemClock.elapsedRealtime() - anchoredAt) * deviceSpeed).toLong() else positionMs
         val duration = items.getOrNull(index)?.let { durations[it.uid] }
         return if (duration != null) now.coerceAtMost(duration) else now
     }
@@ -190,7 +215,7 @@ class RemotePlayer(
         playbackState = Player.STATE_BUFFERING
         advancing = false
         anchor(position)
-        link.load(entry.item, position, autoplay)
+        link.load(entry.item, position, autoplay, deviceSpeed)
     }
 
     // The device's news.
@@ -242,6 +267,7 @@ class RemotePlayer(
                     playbackState = Player.STATE_ENDED
                 } else {
                     index = next
+                    autoAdvanced = true
                     loadCurrent(0, true)
                 }
             }
@@ -446,6 +472,13 @@ class RemotePlayer(
         return Futures.immediateVoidFuture()
     }
 
+    override fun handleSetPlaybackParameters(playbackParameters: PlaybackParameters): ListenableFuture<*> {
+        anchor(currentPositionMs())
+        speed = playbackParameters.speed
+        link.setSpeed(deviceSpeed)
+        return Futures.immediateVoidFuture()
+    }
+
     override fun handleSetRepeatMode(repeatMode: Int): ListenableFuture<*> {
         this.repeatMode = repeatMode
         return Futures.immediateVoidFuture()
@@ -510,6 +543,9 @@ class RemotePlayer(
                     Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
                     Player.COMMAND_SEEK_TO_NEXT,
                     Player.COMMAND_SEEK_TO_MEDIA_ITEM,
+                    Player.COMMAND_SEEK_BACK,
+                    Player.COMMAND_SEEK_FORWARD,
+                    Player.COMMAND_SET_SPEED_AND_PITCH,
                     Player.COMMAND_SET_REPEAT_MODE,
                     Player.COMMAND_SET_SHUFFLE_MODE,
                     Player.COMMAND_GET_CURRENT_MEDIA_ITEM,

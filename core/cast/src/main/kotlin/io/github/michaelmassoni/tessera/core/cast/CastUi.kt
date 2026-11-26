@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.ui
+package io.github.michaelmassoni.tessera.core.cast
 
 import android.content.Intent
 import android.net.Uri
@@ -43,10 +43,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.michaelmassoni.tessera.music.R
-import io.github.michaelmassoni.tessera.music.cast.Cast
-import io.github.michaelmassoni.tessera.music.cast.CastDevice
-import io.github.michaelmassoni.tessera.music.cast.CastState
 import kotlinx.coroutines.delay
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -125,7 +121,7 @@ fun CastButton(modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun CastIconButton(
+fun CastIconButton(
     state: CastState,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,

@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -130,6 +130,7 @@ object CastProtocol {
         media: CastMedia,
         positionMs: Long,
         autoplay: Boolean,
+        speed: Float = 1f,
     ) = obj("LOAD", requestId) {
         put(
             "media",
@@ -154,6 +155,7 @@ object CastProtocol {
         )
         put("autoplay", autoplay)
         put("currentTime", positionMs / 1000.0)
+        if (speed != 1f) put("playbackRate", speed.toDouble())
     }
 
     fun play(
@@ -170,6 +172,16 @@ object CastProtocol {
         requestId: Long,
         mediaSessionId: Long,
     ) = obj("STOP", requestId) { put("mediaSessionId", mediaSessionId) }
+
+    /** Playback speed (the receiver allows 0.5 to 2). */
+    fun setSpeed(
+        requestId: Long,
+        mediaSessionId: Long,
+        speed: Float,
+    ) = obj("SET_PLAYBACK_RATE", requestId) {
+        put("mediaSessionId", mediaSessionId)
+        put("playbackRate", speed.coerceIn(MIN_SPEED, MAX_SPEED).toDouble())
+    }
 
     fun seek(
         requestId: Long,
@@ -251,6 +263,8 @@ object CastProtocol {
     }
 
     private const val MUSIC_TRACK = 3
+    const val MIN_SPEED = 0.5f
+    const val MAX_SPEED = 2f
 
     private fun obj(
         type: String,

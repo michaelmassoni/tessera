@@ -2,6 +2,9 @@ package io.github.michaelmassoni.tessera.podcasts.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import io.github.michaelmassoni.tessera.core.cast.CastDevice
+import io.github.michaelmassoni.tessera.core.cast.CastIconButton
+import io.github.michaelmassoni.tessera.core.cast.CastState
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.podcasts.Progress
@@ -10,6 +13,7 @@ import io.github.michaelmassoni.tessera.podcasts.engine.Episode
 import io.github.michaelmassoni.tessera.podcasts.engine.Library
 import io.github.michaelmassoni.tessera.podcasts.engine.SearchResult
 import io.github.michaelmassoni.tessera.podcasts.engine.Show
+import java.net.InetAddress
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -241,5 +245,23 @@ private fun PlayerPreview() {
 private fun DownloadsPreview() {
     TesseraTheme(dynamicColor = false) {
         PodcastsApp(state, { progress }, NoActions, initialScreen = Screen(tab = 1, stack = listOf(Page.DownloadsPage)))
+    }
+}
+
+// The player while casting: Cast filled in beside speed and sleep, and "Casting to ..." under them.
+@TesseraPreviews
+@Composable
+private fun CastingPlayerPreview() {
+    val tv = CastDevice("1", "Living Room TV", "Chromecast", InetAddress.getLoopbackAddress(), 8009, video = true)
+    TesseraTheme(dynamicColor = false) {
+        FullPlayer(
+            state,
+            { progress },
+            NoActions,
+            onClose = {},
+            onOpenShow = {},
+            castButton = { CastIconButton(CastState.Connected(tv, 0.4f, false)) {} },
+            castingTo = tv.name,
+        )
     }
 }

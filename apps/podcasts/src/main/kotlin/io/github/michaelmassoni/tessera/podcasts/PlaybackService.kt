@@ -20,6 +20,10 @@ import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import io.github.michaelmassoni.tessera.core.cast.Cast
+import io.github.michaelmassoni.tessera.core.cast.CastContent
+import io.github.michaelmassoni.tessera.core.cast.CastMedia
+import io.github.michaelmassoni.tessera.core.cast.RemotePlayer
 import io.github.michaelmassoni.tessera.podcasts.data.Downloads
 import io.github.michaelmassoni.tessera.podcasts.data.Net
 import io.github.michaelmassoni.tessera.podcasts.data.Podcasts
@@ -100,7 +104,26 @@ class PlaybackService : MediaSessionService() {
                 ).build()
         player.addListener(Listener(player))
         scope.launch { restore(player) }
-        scope.launch { sleepTimer(player) }
+        scope.launch { sleepTimer() }
+        exo = player
+        // What the cast device gets for an episode: the download or the stream, and the cover,
+        // served from the phone (publishers' http/https redirects are followed here, not there).
+        val sources = DefaultDataSource.Factory(this, http)
+        Cast.content =
+            CastContent { item, phone ->
+                val uri = item.localConfiguration?.uri ?: return@CastContent null
+                val audio = phone.serve(uri, sources, "audio/mpeg") ?: return@CastContent null
+                val m = item.mediaMetadata
+                CastMedia(
+                    url = audio.url,
+                    contentType = audio.type,
+                    title = m.title?.toString().orEmpty(),
+                    artist = m.artist?.toString().orEmpty(),
+                    album = "",
+                    imageUrl = m.artworkUri?.let { phone.serve(it, sources, "image/jpeg") }?.url,
+                )
+            }
+        scope.launch { Cast.link.collect(::castTo) }
     }
 
     /** Puts Up Next back, paused, once the episodes have loaded (unless a controller already set a queue). */
@@ -116,15 +139,47 @@ class PlaybackService : MediaSessionService() {
         currentId = first
     }
 
-    private suspend fun sleepTimer(player: Player) {
+    private suspend fun sleepTimer() {
         SleepTimer.state.collect { sleep ->
             if (sleep is SleepTimer.Sleep.At) {
                 delay((sleep.endsAt - SystemClock.elapsedRealtime()).coerceAtLeast(0))
                 if (SleepTimer.state.value == sleep) {
-                    player.pause()
+                    session?.player?.pause() // the cast device's too, while casting
                     SleepTimer.set(SleepTimer.Sleep.Off)
                 }
             }
+        }
+    }
+
+    // The phone's player, and the cast device's while casting (the session plays through one or the other).
+    private lateinit var exo: ExoPlayer
+    private var remote: Pair<RemotePlayer, Listener>? = null
+
+    /**
+     * Casting started or ended (docs/podcasts.md, Casting): the session switches to the cast
+     * device's player, which takes Up Next, the position, speed and play state, or back to
+     * ExoPlayer, paused where the device was.
+     */
+    @OptIn(UnstableApi::class)
+    private fun castTo(link: Cast.Link?) {
+        val session = session ?: return
+        remote?.takeIf { it.first.link !== link }?.let { (r, listener) ->
+            savePosition(r)
+            r.handBack(exo)
+            r.removeListener(listener)
+            session.player = exo
+            r.release()
+            remote = null
+        }
+        if (link != null && remote == null) {
+            val r = RemotePlayer(link, mainLooper)
+            savePosition(exo)
+            r.start(exo, link.startVolume)
+            exo.pause()
+            val listener = Listener(r)
+            r.addListener(listener)
+            session.player = r
+            remote = r to listener
         }
     }
 
@@ -137,12 +192,17 @@ class PlaybackService : MediaSessionService() {
         if (player == null || !player.playWhenReady || player.mediaItemCount == 0) stopSelf()
     }
 
+    // RemotePlayer is a SimpleBasePlayer, unstable in Media3 1.x.
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         session?.run {
             savePosition(player)
-            player.release()
+            remote?.first?.release()
+            exo.release()
             release()
         }
+        // The phone serves what the cast device plays, so casting can't outlive the service.
+        Cast.disconnect()
         session = null
         scope.cancel()
         super.onDestroy()

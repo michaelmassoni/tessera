@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.datasource)
     implementation(libs.media3.database)
+    implementation(project(":core:cast"))
     implementation(libs.reorderable)
     implementation(libs.kotlinx.serialization.json)
     // Glance brings WorkManager 2.7 with Room 2.2, whose database R8 strips: release builds crashed

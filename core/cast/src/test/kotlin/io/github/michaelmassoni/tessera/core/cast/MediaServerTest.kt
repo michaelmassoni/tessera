@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import org.junit.After
 import org.junit.Assert.assertArrayEquals

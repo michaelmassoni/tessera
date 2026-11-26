@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -8,14 +8,12 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
-import io.github.michaelmassoni.tessera.music.PlaybackService
-import io.github.michaelmassoni.tessera.music.server.ArtProvider
-import io.github.michaelmassoni.tessera.music.server.ServerPlayback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,8 +43,8 @@ sealed interface CastState {
 
 /**
  * Casting for the whole app (one per process): discovery, the connection to one device, and
- * the media server it fetches from. [PlaybackService] watches [link] and switches its media
- * session to a [RemotePlayer] while one is there.
+ * the media server it fetches from. The app's playback service sets [content] and watches [link],
+ * switching its media session to a [RemotePlayer] while there is one (docs/music.md, Casting).
  */
 @OptIn(UnstableApi::class)
 object Cast {
@@ -58,6 +56,9 @@ object Cast {
 
     private val _link = MutableStateFlow<Link?>(null)
     val link: StateFlow<Link?> = _link.asStateFlow()
+
+    /** What this app sends the device for each item; set by its playback service. */
+    @Volatile var content: CastContent? = null
 
     private var discovery: CastDiscovery? = null
     private var session: CastSession? = null
@@ -149,7 +150,7 @@ object Cast {
         }
         hold(app)
         _state.value = CastState.Connected(s.device, volume ?: 0.5f, false)
-        _link.value = Link(app, s, server, volume)
+        _link.value = Link(s, server, volume)
     }
 
     private fun ended(device: CastDevice) {
@@ -165,9 +166,9 @@ object Cast {
     @SuppressLint("WakelockTimeout") // released when the session ends, however long the listening
     private fun hold(context: Context) {
         val power = context.getSystemService(PowerManager::class.java)
-        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tessera-music:cast").apply { acquire() }
+        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tessera:cast").apply { acquire() }
         val wifi = context.getSystemService(WifiManager::class.java)
-        wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "tessera-music:cast").apply { acquire() }
+        wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "tessera:cast").apply { acquire() }
     }
 
     private fun release() {
@@ -179,12 +180,11 @@ object Cast {
 
     /** The connection as [RemotePlayer] sees it. */
     class Link(
-        private val app: Context,
         private val session: CastSession,
         val server: MediaServer,
         val startVolume: Float?,
     ) : RemoteLink {
-        private val sources = ServerPlayback.dataSourceFactory(app)
+        private val phone = PhoneServer(server)
 
         override val deviceName: String get() = session.device.name
         override val mediaSessionId: Long? get() = session.mediaSessionId
@@ -196,13 +196,19 @@ object Cast {
             item: MediaItem,
             positionMs: Long,
             autoplay: Boolean,
+            speed: Float,
         ) {
             val mine = ++generation
             io.execute {
-                val media = media(item)
+                val media =
+                    try {
+                        content?.media(item, phone)
+                    } catch (_: IOException) {
+                        null
+                    }
                 main.post {
-                    if (mine != generation) return@post // another song was picked meanwhile
-                    if (media == null) events?.onLoadFailed() else session.load(media, positionMs, autoplay)
+                    if (mine != generation) return@post // another item was picked meanwhile
+                    if (media == null) events?.onLoadFailed() else session.load(media, positionMs, autoplay, speed)
                 }
             }
         }
@@ -219,6 +225,10 @@ object Cast {
             session.seek(positionMs)
         }
 
+        override fun setSpeed(speed: Float) {
+            session.setSpeed(speed)
+        }
+
         override fun stopMedia() {
             generation++
             session.stopMedia()
@@ -227,82 +237,101 @@ object Cast {
         override fun setVolume(level: Float) = Cast.setVolume(level)
 
         override fun setMuted(muted: Boolean) = session.setMuted(muted)
+    }
+}
 
-        /** The song and its cover, published on the media server. Off the main thread; null if the song can't be opened. */
-        private fun media(item: MediaItem): CastMedia? {
-            val uri = item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: return null
-            val song = DataSourceMedia(sources, uri)
-            val type = song.sniff() ?: return null
-            val m = item.mediaMetadata
-            val albumId = m.extras?.getLong(PlaybackService.EXTRA_ALBUM_ID) ?: 0
-            val artUri = m.artworkUri ?: albumId.takeIf { it > 0 }?.let(ArtProvider::localUri)
-            val art = artUri?.let { DataSourceMedia(sources, it) }
-            val artType = art?.sniff()
-            return CastMedia(
-                url = server.publish(type, song),
-                contentType = type,
-                title = m.title?.toString().orEmpty(),
-                artist = m.artist?.toString().orEmpty(),
-                album = m.albumTitle?.toString().orEmpty(),
-                imageUrl = if (art != null && artType != null) server.publish(artType, art) else null,
+/**
+ * What an app sends the cast device for each item of its queue: worked out off the main thread,
+ * with [PhoneServer] for anything that lives on the phone. Null when the item can't be cast.
+ */
+fun interface CastContent {
+    fun media(
+        item: MediaItem,
+        phone: PhoneServer,
+    ): CastMedia?
+}
+
+/** Something served to the cast device: its address and type. */
+data class Served(
+    val url: String,
+    val type: String,
+)
+
+/** Serves things on the phone (files, or anything a Media3 data source reads) to the cast device. */
+class PhoneServer internal constructor(
+    private val server: MediaServer,
+) {
+    /**
+     * [uri] read through [sources] (the app's own, so caches and server sign-in work as when
+     * playing on the phone), with its type from its first bytes or [fallbackType]; null if it
+     * can't be opened.
+     */
+    @OptIn(UnstableApi::class)
+    fun serve(
+        uri: Uri,
+        sources: DataSource.Factory,
+        fallbackType: String,
+    ): Served? {
+        val media = DataSourceMedia(sources, uri)
+        val type = media.sniff(fallbackType) ?: return null
+        return Served(server.publish(type, media), type)
+    }
+}
+
+/** A song or cover read the way the phone's player reads it. */
+@OptIn(UnstableApi::class)
+private class DataSourceMedia(
+    private val factory: DataSource.Factory,
+    private val uri: Uri,
+) : MediaSource {
+    override fun open(position: Long): Opened {
+        val source = factory.createDataSource()
+        val length =
+            source.open(
+                DataSpec
+                    .Builder()
+                    .setUri(uri)
+                    .setPosition(position)
+                    .build(),
             )
-        }
+        return Opened(DataSourceStream(source), length)
     }
 
-    /** A song or cover read the way the phone's player reads it: files, and server songs through the cache. */
-    private class DataSourceMedia(
-        private val factory: DataSource.Factory,
-        private val uri: Uri,
-    ) : MediaSource {
-        override fun open(position: Long): Opened {
-            val source = factory.createDataSource()
-            val length =
-                source.open(
-                    DataSpec
-                        .Builder()
-                        .setUri(uri)
-                        .setPosition(position)
-                        .build(),
-                )
-            return Opened(DataSourceStream(source), length)
-        }
-
-        /** The type from the first bytes; null if it can't be opened. Unknown audio is sent as MP3, which most servers transcode to. */
-        fun sniff(): String? =
-            try {
-                open(0).use { o ->
-                    val head = ByteArray(MediaType.HEAD)
-                    var n = 0
-                    while (n < head.size) {
-                        val r = o.input.read(head, n, head.size - n)
-                        if (r < 0) break
-                        n += r
-                    }
-                    MediaType.sniff(head.copyOf(n))
-                        ?: if (uri.scheme == "content" && uri.authority?.endsWith(".art") == true) "image/jpeg" else "audio/mpeg"
+    /** The type from the first bytes, else [fallback]; null if it can't be opened. */
+    fun sniff(fallback: String): String? =
+        try {
+            open(0).use { o ->
+                val head = ByteArray(MediaType.HEAD)
+                var n = 0
+                while (n < head.size) {
+                    val r = o.input.read(head, n, head.size - n)
+                    if (r < 0) break
+                    n += r
                 }
-            } catch (_: IOException) {
-                null
+                MediaType.sniff(head.copyOf(n)) ?: fallback
             }
-    }
-
-    private class DataSourceStream(
-        private val source: DataSource,
-    ) : InputStream() {
-        private val one = ByteArray(1)
-
-        override fun read(): Int = if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 0xff
-
-        override fun read(
-            b: ByteArray,
-            off: Int,
-            len: Int,
-        ): Int {
-            if (len == 0) return 0
-            val n = source.read(b, off, len)
-            return if (n == androidx.media3.common.C.RESULT_END_OF_INPUT) -1 else n
+        } catch (_: IOException) {
+            null
         }
+}
 
-        override fun close() = source.close()
+@OptIn(UnstableApi::class)
+private class DataSourceStream(
+    private val source: DataSource,
+) : InputStream() {
+    private val one = ByteArray(1)
+
+    override fun read(): Int = if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 0xff
+
+    override fun read(
+        b: ByteArray,
+        off: Int,
+        len: Int,
+    ): Int {
+        if (len == 0) return 0
+        val n = source.read(b, off, len)
+        return if (n == C.RESULT_END_OF_INPUT) -1 else n
     }
+
+    override fun close() = source.close()
 }

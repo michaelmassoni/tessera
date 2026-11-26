@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.double

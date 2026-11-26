@@ -34,6 +34,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
+import io.github.michaelmassoni.tessera.core.cast.CastButton
+import io.github.michaelmassoni.tessera.core.cast.castingTo
 import io.github.michaelmassoni.tessera.podcasts.Progress
 import io.github.michaelmassoni.tessera.podcasts.R
 import io.github.michaelmassoni.tessera.podcasts.engine.PageKeys
@@ -149,7 +151,16 @@ fun PodcastsApp(
         hasMedia = state.player.episodeId != null,
         modifier = modifier,
         player = { onClose, sheetModifier ->
-            FullPlayer(state, progress, actions, onClose = onClose, onOpenShow = openShow, modifier = sheetModifier)
+            FullPlayer(
+                state,
+                progress,
+                actions,
+                onClose = onClose,
+                onOpenShow = openShow,
+                modifier = sheetModifier,
+                castButton = { CastButton() },
+                castingTo = castingTo(),
+            )
         },
     ) { openPlayer, dragUp ->
         val adaptive = currentWindowAdaptiveInfoV2()

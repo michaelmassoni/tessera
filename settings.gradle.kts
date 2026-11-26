@@ -26,6 +26,7 @@ rootProject.name = "tessera"
 include(":core:design")
 include(":core:settings")
 include(":core:dav")
+include(":core:cast")
 
 include(":apps:calculator")
 include(":apps:clock")

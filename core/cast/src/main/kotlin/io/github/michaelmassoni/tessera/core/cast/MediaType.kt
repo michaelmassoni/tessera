@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 /**
  * The type of a song or cover from its first bytes, for the cast device (which picks its player

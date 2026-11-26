@@ -1,4 +1,4 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream

@@ -1,10 +1,11 @@
-package io.github.michaelmassoni.tessera.music.cast
+package io.github.michaelmassoni.tessera.core.cast
 
 import android.annotation.SuppressLint
 import java.io.DataInputStream
 import java.io.IOException
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -97,7 +98,10 @@ class CastSession(
         media: CastMedia,
         positionMs: Long,
         autoplay: Boolean,
-    ) = media(CastProtocol.load(requests.getAndIncrement(), media, positionMs, autoplay))
+        speed: Float = 1f,
+    ) = media(CastProtocol.load(requests.getAndIncrement(), media, positionMs, autoplay, speed))
+
+    fun setSpeed(speed: Float) = mediaSessionId?.let { media(CastProtocol.setSpeed(requests.getAndIncrement(), it, speed)) }
 
     fun play() = mediaSessionId?.let { media(CastProtocol.play(requests.getAndIncrement(), it)) }
 
@@ -266,17 +270,21 @@ class CastSession(
      * can't check them against anything without Google's device-authentication root. The link is
      * still encrypted, and the device only ever gets addresses on the phone (docs/music.md, Casting).
      */
-    @SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
+    @SuppressLint("CustomX509TrustManager")
     private object AnyCertificate : X509TrustManager {
+        // Only ever a client here.
         override fun checkClientTrusted(
             chain: Array<out X509Certificate>?,
             authType: String?,
-        ) = Unit
+        ): Unit = throw CertificateException("Not a server")
 
+        // Any certificate the device presents, as long as it presents one.
         override fun checkServerTrusted(
             chain: Array<out X509Certificate>?,
             authType: String?,
-        ) = Unit
+        ) {
+            if (chain.isNullOrEmpty()) throw CertificateException("No certificate")
+        }
 
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }

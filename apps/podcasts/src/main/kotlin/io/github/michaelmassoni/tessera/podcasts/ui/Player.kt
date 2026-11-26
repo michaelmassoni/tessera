@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.podcasts.Progress
 import io.github.michaelmassoni.tessera.podcasts.R
 import io.github.michaelmassoni.tessera.podcasts.SleepTimer
+import io.github.michaelmassoni.tessera.core.cast.R as CastR
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 /** The bar above the navigation: cover, title, show, play/pause, with a progress line. */
@@ -116,6 +117,9 @@ fun FullPlayer(
     onClose: () -> Unit,
     onOpenShow: (String) -> Unit,
     modifier: Modifier = Modifier,
+    // The Cast button (a slot, so previews show it without discovery) and the device being cast to.
+    castButton: @Composable () -> Unit = {},
+    castingTo: String? = null,
 ) {
     val id = state.player.episodeId
     val episode = id?.let(state::episode)
@@ -161,7 +165,17 @@ fun FullPlayer(
                         }
                         Seek(progress, actions, Modifier.padding(top = 16.dp))
                         Controls(state, actions)
-                        Extras(state, actions)
+                        Extras(state, actions, castButton)
+                        castingTo?.let {
+                            Text(
+                                stringResource(CastR.string.cast_casting_to, it),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
                 if (wide) {
@@ -256,16 +270,18 @@ private fun Controls(
     }
 }
 
-/** Speed and sleep timer. */
+/** Cast, speed and sleep timer. */
 @Composable
 private fun Extras(
     state: PodcastsState,
     actions: PodcastsActions,
+    castButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var speedMenu by remember { mutableStateOf(false) }
     var sleepMenu by remember { mutableStateOf(false) }
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        castButton()
         Box {
             TextButton(onClick = { speedMenu = true }) {
                 Icon(painterResource(DesignR.drawable.ic_speed), contentDescription = null)
