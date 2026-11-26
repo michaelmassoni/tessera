@@ -9,6 +9,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -20,6 +21,10 @@ import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import io.github.michaelmassoni.tessera.core.cast.Cast
+import io.github.michaelmassoni.tessera.core.cast.CastContent
+import io.github.michaelmassoni.tessera.core.cast.CastMedia
+import io.github.michaelmassoni.tessera.core.cast.RemotePlayer
 import io.github.michaelmassoni.tessera.podcasts.data.Downloads
 import io.github.michaelmassoni.tessera.podcasts.data.Net
 import io.github.michaelmassoni.tessera.podcasts.data.Podcasts
@@ -85,22 +90,50 @@ class PlaybackService : MediaSessionService() {
                 .setMediaButtonPreferences(
                     listOf(
                         CommandButton
-                            .Builder(CommandButton.ICON_SKIP_BACK_10)
-                            .setDisplayName(getString(R.string.back_10))
+                            .Builder(CommandButton.ICON_SKIP_BACK_15)
+                            .setDisplayName(getString(R.string.back_15))
                             .setPlayerCommand(Player.COMMAND_SEEK_BACK)
                             .setSlots(CommandButton.SLOT_BACK)
                             .build(),
                         CommandButton
-                            .Builder(CommandButton.ICON_SKIP_FORWARD_30)
-                            .setDisplayName(getString(R.string.forward_30))
+                            .Builder(CommandButton.ICON_SKIP_FORWARD_15)
+                            .setDisplayName(getString(R.string.forward_15))
                             .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
                             .setSlots(CommandButton.SLOT_FORWARD)
                             .build(),
                     ),
                 ).build()
         player.addListener(Listener(player))
+        // Chapters in the audio itself (ID3 CHAP), which only the phone's player reads.
+        player.addListener(
+            object : Player.Listener {
+                override fun onTracksChanged(tracks: Tracks) {
+                    val id = player.currentMediaItem?.mediaId ?: return
+                    EpisodeChapters.fromAudio(id, EpisodeChapters.id3(tracks))
+                }
+            },
+        )
         scope.launch { restore(player) }
-        scope.launch { sleepTimer(player) }
+        scope.launch { sleepTimer() }
+        exo = player
+        // What the cast device gets for an episode: the download or the stream, and the cover,
+        // served from the phone (publishers' http/https redirects are followed here, not there).
+        val sources = DefaultDataSource.Factory(this, http)
+        Cast.content =
+            CastContent { item, phone ->
+                val uri = item.localConfiguration?.uri ?: return@CastContent null
+                val audio = phone.serve(uri, sources, "audio/mpeg") ?: return@CastContent null
+                val m = item.mediaMetadata
+                CastMedia(
+                    url = audio.url,
+                    contentType = audio.type,
+                    title = m.title?.toString().orEmpty(),
+                    artist = m.artist?.toString().orEmpty(),
+                    album = "",
+                    imageUrl = m.artworkUri?.let { phone.serve(it, sources, "image/jpeg") }?.url,
+                )
+            }
+        scope.launch { Cast.link.collect(::castTo) }
     }
 
     /** Puts Up Next back, paused, once the episodes have loaded (unless a controller already set a queue). */
@@ -114,17 +147,50 @@ class PlaybackService : MediaSessionService() {
         player.setMediaItems(items, 0, lib.state(first).positionMs)
         player.prepare()
         currentId = first
+        loadChapters(first)
     }
 
-    private suspend fun sleepTimer(player: Player) {
+    private suspend fun sleepTimer() {
         SleepTimer.state.collect { sleep ->
             if (sleep is SleepTimer.Sleep.At) {
                 delay((sleep.endsAt - SystemClock.elapsedRealtime()).coerceAtLeast(0))
                 if (SleepTimer.state.value == sleep) {
-                    player.pause()
+                    session?.player?.pause() // the cast device's too, while casting
                     SleepTimer.set(SleepTimer.Sleep.Off)
                 }
             }
+        }
+    }
+
+    // The phone's player, and the cast device's while casting (the session plays through one or the other).
+    private lateinit var exo: ExoPlayer
+    private var remote: Pair<RemotePlayer, Listener>? = null
+
+    /**
+     * Casting started or ended (docs/podcasts.md, Casting): the session switches to the cast
+     * device's player, which takes Up Next, the position, speed and play state, or back to
+     * ExoPlayer, paused where the device was.
+     */
+    @OptIn(UnstableApi::class)
+    private fun castTo(link: Cast.Link?) {
+        val session = session ?: return
+        remote?.takeIf { it.first.link !== link }?.let { (r, listener) ->
+            savePosition(r)
+            r.handBack(exo)
+            r.removeListener(listener)
+            session.player = exo
+            r.release()
+            remote = null
+        }
+        if (link != null && remote == null) {
+            val r = RemotePlayer(link, mainLooper)
+            savePosition(exo)
+            r.start(exo, link.startVolume)
+            exo.pause()
+            val listener = Listener(r)
+            r.addListener(listener)
+            session.player = r
+            remote = r to listener
         }
     }
 
@@ -137,12 +203,17 @@ class PlaybackService : MediaSessionService() {
         if (player == null || !player.playWhenReady || player.mediaItemCount == 0) stopSelf()
     }
 
+    // RemotePlayer is a SimpleBasePlayer, unstable in Media3 1.x.
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         session?.run {
             savePosition(player)
-            player.release()
+            remote?.first?.release()
+            exo.release()
             release()
         }
+        // The phone serves what the cast device plays, so casting can't outlive the service.
+        Cast.disconnect()
         session = null
         scope.cancel()
         super.onDestroy()
@@ -169,6 +240,13 @@ class PlaybackService : MediaSessionService() {
                     .setIsBrowsable(false)
                     .build(),
             ).build()
+    }
+
+    /** Fetches the episode's chapters file, when its feed links one and it isn't loaded yet. */
+    private fun loadChapters(id: String) {
+        val url = store.episode(id)?.chaptersUrl ?: return
+        if (!EpisodeChapters.shouldFetch(id)) return
+        scope.launch(Dispatchers.IO) { EpisodeChapters.fetched(id, EpisodeChapters.fetch(url)) }
     }
 
     private fun savePosition(player: Player) {
@@ -228,6 +306,7 @@ class PlaybackService : MediaSessionService() {
             lastPositionMs = 0
             lastDurationMs = 0
             val id = currentId ?: return
+            loadChapters(id)
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                 val state = store.library.value.state(id)
                 if (!state.played && state.positionMs > 0) player.seekTo(state.positionMs)
@@ -314,8 +393,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     private companion object {
-        const val BACK_MS = 10_000L
-        const val FORWARD_MS = 30_000L
+        const val BACK_MS = 15_000L
+        const val FORWARD_MS = 15_000L
         const val SAVE_EVERY_S = 10
     }
 }

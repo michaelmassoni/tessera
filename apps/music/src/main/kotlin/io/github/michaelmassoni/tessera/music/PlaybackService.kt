@@ -25,8 +25,10 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
-import io.github.michaelmassoni.tessera.music.cast.Cast
-import io.github.michaelmassoni.tessera.music.cast.RemotePlayer
+import io.github.michaelmassoni.tessera.core.cast.Cast
+import io.github.michaelmassoni.tessera.core.cast.CastContent
+import io.github.michaelmassoni.tessera.core.cast.CastMedia
+import io.github.michaelmassoni.tessera.core.cast.RemotePlayer
 import io.github.michaelmassoni.tessera.music.data.LibraryLoader
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.data.PlayHistory
@@ -111,6 +113,25 @@ class PlaybackService : MediaLibraryService() {
         }
         player.addListener(listener)
         exo = player
+        // What the cast device gets for a song: the song and its cover, served from the phone through
+        // the same reading as playing here (files, and server songs through the cache).
+        val sources = ServerPlayback.dataSourceFactory(this)
+        Cast.content =
+            CastContent { item, phone ->
+                val uri = item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: return@CastContent null
+                val song = phone.serve(uri, sources, "audio/mpeg") ?: return@CastContent null
+                val m = item.mediaMetadata
+                val albumId = m.extras?.getLong(EXTRA_ALBUM_ID) ?: 0
+                val cover = m.artworkUri ?: albumId.takeIf { it > 0 }?.let(ArtProvider::localUri)
+                CastMedia(
+                    url = song.url,
+                    contentType = song.type,
+                    title = m.title?.toString().orEmpty(),
+                    artist = m.artist?.toString().orEmpty(),
+                    album = m.albumTitle?.toString().orEmpty(),
+                    imageUrl = cover?.let { phone.serve(it, sources, "image/jpeg") }?.url,
+                )
+            }
         scope.launch { Cast.link.collect(::castTo) }
     }
 

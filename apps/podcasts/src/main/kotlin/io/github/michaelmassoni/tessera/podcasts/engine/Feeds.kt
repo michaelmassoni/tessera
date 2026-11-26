@@ -54,6 +54,7 @@ object Feeds {
                     audioBytes = item.audioBytes,
                     artworkUrl = item.artworkUrl,
                     link = item.link,
+                    chaptersUrl = item.chaptersUrl,
                 )
             }
         val kept = old.filter { it.id in keep && it.id !in seen }
