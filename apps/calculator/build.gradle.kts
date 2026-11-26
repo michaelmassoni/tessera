@@ -7,7 +7,7 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.calculator"
-        versionCode = 6
-        versionName = "0.3.0"
+        versionCode = 7
+        versionName = "0.4.0"
     }
 }

@@ -18,6 +18,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -25,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -45,6 +48,7 @@ import io.github.michaelmassoni.tessera.calculator.engine.DisplayFormatter
 import io.github.michaelmassoni.tessera.calculator.engine.Input
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import kotlinx.coroutines.launch
 import java.text.DecimalFormatSymbols
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -68,6 +72,16 @@ interface CalculatorActions {
     fun onClearHistory()
 
     fun onOpenSettings()
+
+    /** A tap inside the expression: input goes at [index] (stored notation), or the end for null. */
+    fun onCursor(index: Int?) {}
+
+    /** Pastes [text] at the cursor; false when it isn't a number or expression. */
+    fun onPaste(
+        text: String,
+        decimalSeparator: Char,
+        groupingSeparator: Char,
+    ): Boolean = false
 }
 
 private val ExpandedWidth = 840.dp
@@ -103,6 +117,9 @@ fun CalculatorScreen(
         }
     }
     var showHistorySheet by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val cantPaste = stringResource(R.string.cant_paste)
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
@@ -112,6 +129,7 @@ fun CalculatorScreen(
                 .focusRequester(focusRequester)
                 .focusable()
                 .onKeyEvent { event -> HardwareKeys.handle(event, symbols.decimalSeparator, actions) },
+        snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val short = maxHeight < CompactHeight
@@ -122,6 +140,11 @@ fun CalculatorScreen(
                     state = state,
                     formatter = formatter,
                     decimalSeparator = symbols.decimalSeparator,
+                    onCursor = actions::onCursor,
+                    onPaste = { text ->
+                        val pasted = actions.onPaste(text, symbols.decimalSeparator, symbols.groupingSeparator)
+                        if (!pasted) scope.launch { snackbar.showSnackbar(cantPaste) }
+                    },
                     onShowHistory = if (wide) null else ({ showHistorySheet = true }),
                     onOpenSettings = actions::onOpenSettings,
                     modifier = displayModifier,
@@ -290,6 +313,18 @@ private fun CalculatorTypingPreview() {
                     preview = "1350",
                     history = previewHistory,
                 ),
+            actions = PreviewActions,
+        )
+    }
+}
+
+// Editing inside the expression: the cursor after "12" (shown "12|,345+6").
+@TesseraPreviews
+@Composable
+private fun CalculatorCursorPreview() {
+    TesseraTheme(dynamicColor = false) {
+        CalculatorScreen(
+            state = CalculatorUiState(expression = "12345+6", cursor = 2, preview = "12351"),
             actions = PreviewActions,
         )
     }

@@ -73,4 +73,12 @@ private class ViewModelActions(
     override fun onClearHistory() = vm.onClearHistory()
 
     override fun onOpenSettings() = openSettings()
+
+    override fun onCursor(index: Int?) = vm.onCursor(index)
+
+    override fun onPaste(
+        text: String,
+        decimalSeparator: Char,
+        groupingSeparator: Char,
+    ) = vm.onPaste(text, decimalSeparator, groupingSeparator)
 }

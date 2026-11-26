@@ -118,6 +118,34 @@ class DisplayFormatter(
         }
     }
 
+    /**
+     * Where each position of [expression] falls in [format]'s text: element `i` is the display
+     * index of raw index `i` (size `expression.length + 1`). Grouping separators are the only
+     * characters [format] adds, so a display character that doesn't match the next raw one is one.
+     */
+    fun offsets(expression: String): IntArray {
+        val shown = format(expression)
+        val map = IntArray(expression.length + 1)
+        var d = 0
+        for (r in expression.indices) {
+            val expected = if (expression[r] == '.') decimalSeparator else expression[r]
+            while (d < shown.length && shown[d] != expected && shown[d] == groupingSeparator) d++
+            map[r] = d
+            d++
+        }
+        map[expression.length] = shown.length
+        return map
+    }
+
+    /** The raw position nearest to display position [displayIndex] (the inverse of [offsets]). */
+    fun rawOffset(
+        expression: String,
+        displayIndex: Int,
+    ): Int {
+        val map = offsets(expression)
+        return map.indices.firstOrNull { map[it] >= displayIndex } ?: expression.length
+    }
+
     /** Converts user-visible text (e.g. typed on a hardware keyboard) back to internal notation. */
     fun parseDecimalSeparator(c: Char): Char? = if (c == decimalSeparator || c == '.') '.' else null
 }
