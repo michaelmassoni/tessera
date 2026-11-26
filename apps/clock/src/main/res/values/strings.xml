@@ -183,4 +183,8 @@
     <!-- Launcher shortcuts (long-press the icon). -->
     <string name="shortcut_timer">Timer</string>
     <string name="shortcut_stopwatch">Stopwatch</string>
+    <!-- Quick Settings tiles. -->
+    <string name="tile_stopwatch">Stopwatch</string>
+    <string name="tile_timer">Timer</string>
+    <string name="tile_running">Running</string>
 </resources>

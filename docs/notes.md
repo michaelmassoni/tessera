@@ -151,3 +151,7 @@ Only for reminders (0.5); a note without a reminder needs none of them.
 ## First run
 
 See [setup.md](setup.md) for what notes asks for the first time it opens.
+
+## Quick Settings tile (0.6)
+
+**New note** opens a new note, like the launcher shortcut.

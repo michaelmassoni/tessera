@@ -262,3 +262,9 @@ See [setup.md](setup.md) for what clock asks for the first time it opens.
 ## Launcher shortcuts (0.8)
 
 Long-press the app icon: **Timer** and **Stopwatch** open those tabs (`SHOW_TIMERS`, and the tab extra). Each icon is the Material Symbol on the app's launcher colour.
+
+## Quick Settings tiles (0.9)
+
+- **Stopwatch** starts and pauses the stopwatch without opening the app (on while running; the
+  paused time underneath). The app redraws it when the stopwatch changes there.
+- **Timer** opens the Timer tab.
