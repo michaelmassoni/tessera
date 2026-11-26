@@ -173,4 +173,51 @@ class CalculatorViewModelTest {
             vm.onInput(Input.Backspace)
             assertEquals("0.333333333333333", vm.state.value.expression)
         }
+
+    @Test fun `tapping into the expression edits there, and the preview follows`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.type("12+5")
+            vm.onCursor(2)
+            vm.type("3")
+            assertEquals("123+5", vm.state.value.expression)
+            assertEquals(3, vm.state.value.cursor)
+            assertEquals("128", vm.state.value.preview)
+            // Tapping past the end goes back to typing at the end.
+            vm.onCursor(null)
+            vm.type("0")
+            assertEquals("123+50", vm.state.value.expression)
+            assertNull(vm.state.value.cursor)
+        }
+
+    @Test fun `tapping into a result edits the result as shown`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.type("1+2")
+            vm.onEquals()
+            vm.onCursor(0)
+            vm.type("1")
+            assertEquals("13", vm.state.value.expression)
+            assertFalse(vm.state.value.justEvaluated)
+        }
+
+    @Test fun `the cursor survives process death`() =
+        runTest(dispatcher) {
+            val saved = SavedStateHandle()
+            viewModel(saved).apply {
+                type("123")
+                onCursor(1)
+            }
+            assertEquals(1, viewModel(saved).state.value.cursor)
+        }
+
+    @Test fun `paste inserts or refuses`() =
+        runTest(dispatcher) {
+            val vm = viewModel()
+            vm.type("2+")
+            assertTrue(vm.onPaste("1,000", '.', ','))
+            assertEquals("2+1000", vm.state.value.expression)
+            assertFalse(vm.onPaste("not a number", '.', ','))
+            assertEquals("2+1000", vm.state.value.expression)
+        }
 }

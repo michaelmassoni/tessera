@@ -62,8 +62,17 @@ landscape and on large screens.
 - **Errors** appear in the preview line, using `colorScheme.error`, only after `=`:
   "Can't divide by 0", "Domain error", "Number too large" and "Bad expression". While you're
   typing, an error just hides the preview.
-- **Copying:** long-press the display to copy the result, or the expression if there isn't
-  one. The copy uses the full precision, without grouping separators.
+- **Copy and paste (0.4):** long-press the display for Copy and Paste. Copy takes the result, or
+  the expression if there isn't one, at full precision and without grouping separators. Paste
+  takes a number or expression written the usual ways ("-1,234.5", "3*4/2", "1.234,5" in a
+  comma-decimal locale): grouping separators and spaces are dropped, `-` `*` `x` `/` become the
+  calculator's operators. Anything else says "Can't paste that". The clipboard is read only when
+  Paste is tapped (Android announces every read). TalkBack has Copy and Paste as actions.
+- **Editing inside the expression (0.4):** tap the expression to put a blinking cursor there;
+  keys, backspace and paste then work at the cursor (the rules see the part before it as the end
+  of the expression, so `( )`, decimals and operators behave as usual). One decimal point per
+  number counts the digits after the cursor too. Tap past the end, `=` or `AC` to go back to
+  typing at the end. Tapping a result edits it as displayed. The cursor survives process death.
 
 ### History
 
@@ -159,7 +168,6 @@ Everything uses theme tokens and dynamic color.
 
 ## Out of scope for v0.1 (possible later)
 
-- Moving the cursor to edit inside the expression (input only appends at the end).
 - Unit and currency conversion. Currency conversion needs the network.
 - Programmer mode (hex, binary) and fractions output.
 - A home-screen widget.

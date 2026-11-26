@@ -12,15 +12,23 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -33,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
@@ -45,6 +54,7 @@ import io.github.michaelmassoni.tessera.calculator.engine.CalcError
 import io.github.michaelmassoni.tessera.calculator.engine.DisplayFormatter
 import io.github.michaelmassoni.tessera.calculator.engine.ResultFormatter
 import io.github.michaelmassoni.tessera.calculator.engine.Symbols
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -59,6 +69,8 @@ internal fun CalculatorDisplay(
     onShowHistory: (() -> Unit)?,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onCursor: (Int?) -> Unit = {},
+    onPaste: (String) -> Unit = {},
 ) {
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -70,14 +82,36 @@ internal fun CalculatorDisplay(
         }
     }
     val copyLabel = stringResource(R.string.copy_result)
+    val pasteLabel = stringResource(R.string.paste)
+    val paste: () -> Unit = {
+        scope.launch {
+            // Read only when asked: Android shows "pasted from your clipboard" on every read.
+            val text =
+                clipboard
+                    .getClipEntry()
+                    ?.clipData
+                    ?.takeIf { it.itemCount > 0 }
+                    ?.getItemAt(0)
+                    ?.text
+                    ?.toString()
+            if (!text.isNullOrBlank()) onPaste(text)
+        }
+    }
+    var menu by remember { mutableStateOf(false) }
     val spoken = spokenExpression(state.expression)
 
     Column(
         modifier =
             modifier
                 .padding(horizontal = 24.dp, vertical = 8.dp)
-                .pointerInput(copyText) { detectTapGestures(onLongPress = { copy() }) }
-                .semantics { customActions = listOf(CustomAccessibilityAction(copyLabel) { copy().let { true } }) },
+                .pointerInput(Unit) { detectTapGestures(onLongPress = { menu = true }) }
+                .semantics {
+                    customActions =
+                        listOf(
+                            CustomAccessibilityAction(copyLabel) { copy().let { true } },
+                            CustomAccessibilityAction(pasteLabel) { paste().let { true } },
+                        )
+                },
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.End,
     ) {
@@ -128,11 +162,21 @@ internal fun CalculatorDisplay(
                 val heightCap = with(density) { (maxHeight * 0.8f).toSp() }
                 val maxSize = if (heightCap.value < displayLarge.fontSize.value) heightCap else displayLarge.fontSize
                 val minSize = if (maxSize.value < 20f) maxSize else 20.sp
+                val raw = if (state.justEvaluated) ResultFormatter.shorten(state.expression) else state.expression
+                var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+                val cursorColor = MaterialTheme.colorScheme.primary
+                // Blinks on a timer (not an animation, so "Remove animations" doesn't hide it), and shows
+                // again at once after each edit, as text cursors do.
+                var cursorOn by remember(state.cursor, state.expression) { mutableStateOf(true) }
+                LaunchedEffect(state.cursor, state.expression) {
+                    if (state.cursor == null) return@LaunchedEffect
+                    while (true) {
+                        delay(CURSOR_BLINK_MS.toLong())
+                        cursorOn = !cursorOn
+                    }
+                }
                 BasicText(
-                    text =
-                        formatter.format(
-                            if (state.justEvaluated) ResultFormatter.shorten(state.expression) else state.expression,
-                        ),
+                    text = formatter.format(raw),
                     style =
                         displayLarge.copy(
                             color = MaterialTheme.colorScheme.onSurface,
@@ -142,8 +186,55 @@ internal fun CalculatorDisplay(
                     maxLines = 1,
                     overflow = TextOverflow.StartEllipsis,
                     autoSize = TextAutoSize.StepBased(minFontSize = minSize, maxFontSize = maxSize, stepSize = 2.sp),
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = spoken },
+                    onTextLayout = { layout = it },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = spoken }
+                            // Tap inside the expression to edit there; past the end goes back to the end.
+                            .pointerInput(raw) {
+                                detectTapGestures(
+                                    onTap = { position ->
+                                        val l = layout ?: return@detectTapGestures
+                                        val index = formatter.rawOffset(raw, l.getOffsetForPosition(position))
+                                        onCursor(index.takeIf { it < raw.length && raw.isNotEmpty() })
+                                    },
+                                    onLongPress = { menu = true },
+                                )
+                            }.drawWithContent {
+                                drawContent()
+                                val cursor = state.cursor ?: return@drawWithContent
+                                val l = layout ?: return@drawWithContent
+                                val offsets = formatter.offsets(raw)
+                                if (cursor >= offsets.size) return@drawWithContent
+                                val rect = l.getCursorRect(offsets[cursor])
+                                if (cursorOn) {
+                                    drawLine(
+                                        cursorColor,
+                                        start = Offset(rect.left, rect.top),
+                                        end = Offset(rect.left, rect.bottom),
+                                        strokeWidth = CURSOR_WIDTH.toPx(),
+                                    )
+                                }
+                            },
                 )
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(copyLabel) },
+                        enabled = copyText.isNotEmpty(),
+                        onClick = {
+                            menu = false
+                            copy()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(pasteLabel) },
+                        onClick = {
+                            menu = false
+                            paste()
+                        },
+                    )
+                }
             }
             val error = state.error
             val previewText =
@@ -218,3 +309,6 @@ private fun spokenExpression(expression: String): String {
         }.trim().replace(Regex(" +"), " ")
     }
 }
+
+private const val CURSOR_BLINK_MS = 500
+private val CURSOR_WIDTH = 2.dp
