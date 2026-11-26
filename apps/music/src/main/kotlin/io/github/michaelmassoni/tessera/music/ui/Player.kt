@@ -305,6 +305,9 @@ fun FullPlayer(
     libraryActions: LibraryActions? = null,
     links: NowPlayingLinks = NowPlayingLinks(),
     explicit: Boolean = false,
+    // The Cast button (a slot, so previews show the bar without discovery) and the device being cast to.
+    castButton: @Composable () -> Unit = {},
+    castingTo: String? = null,
 ) {
     var queue by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
@@ -327,6 +330,7 @@ fun FullPlayer(
                         }
                     },
                     actions = {
+                        castButton()
                         IconButton(onClick = { queue = true }) {
                             Icon(painterResource(DesignR.drawable.ic_queue_music), contentDescription = stringResource(R.string.queue))
                         }
@@ -371,6 +375,7 @@ fun FullPlayer(
                     TitleRow(state, explicit, playlists, libraryActions, links, onSave = { saving = true })
                     SeekBar(progress, actions)
                     Controls(state, actions)
+                    castingTo?.let { CastingLine(it) }
                     LyricsCard(
                         lyrics,
                         progress,

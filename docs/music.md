@@ -287,6 +287,65 @@ library is involved. `PlaybackService` is a Media3 `MediaLibraryService`, so the
   browser alone missed the spinner. Not run in the Desktop Head Unit: Android Auto isn't on the
   AOSP emulator.
 
+## Casting (0.11)
+
+Asked for by the maintainer: cast to Chromecasts, Google TVs, Nest speakers and TVs with Cast
+built in. Google's Cast SDK (and Media3's cast module) needs Google Play Services, which Tessera
+doesn't use (docs/decisions.md, 2026-11-26), so Music speaks the Cast protocol itself, like
+other open-source senders do.
+
+- **The Cast button** is in the player's top bar. It opens "Cast to": the devices found on the
+  Wi-Fi (TV or speaker icon, by what the device says it can do), "Searching…" while looking, and
+  a hint about the same Wi-Fi when nothing turns up. Picking one moves playback there: the queue,
+  the song, the position and whether it was playing. While casting the sheet shows the device,
+  its volume and "Stop casting", the button shows as connected, and the player says "Casting to
+  <device>".
+- **What plays where:** the TV runs Google's Default Media Receiver (the stock player with art,
+  title and progress). Music on the phone keeps the queue, so shuffle, repeat, the queue sheet,
+  Next and Previous work as always, and the next song is sent when one ends.
+- **The audio comes from the phone.** Music runs a small web server on the Wi-Fi while casting
+  and the cast device fetches each song from it. That serves files on the phone and server songs
+  (through the same cache as playing on the phone), so the cast device needs no Subsonic
+  password and needn't reach the server itself (a Tailscale-only server still works). Each song
+  and cover gets a random, unguessable address, and only the cast device's address may connect.
+  The server stops with the cast session.
+- **Controls everywhere:** the notification, lock screen, Bluetooth and Android Auto control
+  what's casting (the session switches to a remote Media3 player). The phone's volume keys set
+  the cast device's volume.
+- **Stopping:** "Stop casting", or the cast device going away (switched off, another phone
+  taking over, Wi-Fi lost), brings playback back to the phone, paused where it was.
+- **Staying awake:** while a cast session is connected, Music holds a partial wake lock and a
+  Wi-Fi lock so the phone keeps serving audio and answering the device's heartbeat with the
+  screen off.
+- **Security:** cast devices use self-signed TLS certificates, so the connection is encrypted
+  but the device isn't authenticated (as with other open-source senders). It only ever receives
+  song addresses on the phone, never a password.
+- **Engine (unit tested):** `CastMessage` (the protobuf frame, hand-encoded: no protobuf
+  library), `CastProtocol` (the JSON messages and status parsing), `MediaServer` (HTTP with
+  byte ranges, tokens and the allowed address) and `RemoteQueue` (what plays next, with repeat).
+
+- **Checked:** unit tests cover the frame, the messages, the media server (ranges, HEAD, unknown
+  lengths, the allowed address) and `RemotePlayer` (advancing, repeat, queue edits, errors,
+  volume); `CastSession` runs against a fake receiver with a self-signed certificate (launch,
+  load, pause, heartbeat, another phone taking over, the device going away). On the API 37
+  emulator: the permission prompt, "Allow" from the sheet after a refusal, mDNS queries going out
+  while the sheet is open and stopping when it closes, and "No devices found". Not checked on a
+  real Chromecast or TV from here: the emulator can't see devices on the Wi-Fi.
+
+### Permissions (casting)
+
+| Permission | Why |
+|------------|-----|
+| `ACCESS_LOCAL_NETWORK` | Android 17 asks before an app finds or talks to devices on the Wi-Fi: finding cast devices, controlling them and serving them audio. Asked for when the Cast button is first tapped; Music works without it, only casting doesn't. |
+| `WAKE_LOCK` | Keeps the phone serving audio to the cast device with the screen off. Held only while casting. |
+| `ACCESS_WIFI_STATE` | The Wi-Fi lock (the same). |
+
+### Not yet
+
+- Cast devices in Android's own output switcher (needs a `MediaRoute2ProviderService`).
+- Speaker groups (they appear like any device, but untested).
+- DLNA / UPnP renderers.
+
 ## Out of scope for v0.1
 
 - Lyrics.

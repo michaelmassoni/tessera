@@ -25,6 +25,8 @@ import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import io.github.michaelmassoni.tessera.music.cast.Cast
+import io.github.michaelmassoni.tessera.music.cast.RemotePlayer
 import io.github.michaelmassoni.tessera.music.data.LibraryLoader
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.data.PlayHistory
@@ -70,6 +72,10 @@ class PlaybackService : MediaLibraryService() {
     private val queueFile by lazy { File(filesDir, "queue.json") }
     private val scrobbler by lazy { Scrobbler(applicationContext, scope) }
 
+    // The phone's player, and the cast device's while casting (the session plays through one or the other).
+    private lateinit var exo: ExoPlayer
+    private var remote: RemotePlayer? = null
+
     // The media source factory and bitmap loader are unstable in Media3 1.x, but the documented way to stream through a cache.
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -103,42 +109,71 @@ class PlaybackService : MediaLibraryService() {
             player.repeatMode = saved.repeatMode
             player.prepare()
         }
-        player.addListener(
-            object : Player.Listener {
-                override fun onEvents(
-                    player: Player,
-                    events: Player.Events,
+        player.addListener(listener)
+        exo = player
+        scope.launch { Cast.link.collect(::castTo) }
+    }
+
+    private val listener =
+        object : Player.Listener {
+            override fun onEvents(
+                player: Player,
+                events: Player.Events,
+            ) {
+                if (events.containsAny(
+                        Player.EVENT_TIMELINE_CHANGED,
+                        Player.EVENT_MEDIA_ITEM_TRANSITION,
+                        Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                        Player.EVENT_REPEAT_MODE_CHANGED,
+                        Player.EVENT_PLAYLIST_METADATA_CHANGED,
+                        Player.EVENT_IS_PLAYING_CHANGED,
+                        Player.EVENT_POSITION_DISCONTINUITY,
+                    )
                 ) {
-                    if (events.containsAny(
-                            Player.EVENT_TIMELINE_CHANGED,
-                            Player.EVENT_MEDIA_ITEM_TRANSITION,
-                            Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
-                            Player.EVENT_REPEAT_MODE_CHANGED,
-                            Player.EVENT_PLAYLIST_METADATA_CHANGED,
-                            Player.EVENT_IS_PLAYING_CHANGED,
-                            Player.EVENT_POSITION_DISCONTINUITY,
-                        )
-                    ) {
-                        saveQueue(player)
-                    }
-                    if (events.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) reorderForShuffle(player)
-                    if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) keepSavingPosition(player)
-                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) || events.contains(Player.EVENT_IS_PLAYING_CHANGED)) {
-                        recordPlay(player)
-                    }
-                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) scrobbler.started(player)
-                    if (events.containsAny(
-                            Player.EVENT_MEDIA_METADATA_CHANGED,
-                            Player.EVENT_IS_PLAYING_CHANGED,
-                            Player.EVENT_MEDIA_ITEM_TRANSITION,
-                            Player.EVENT_TIMELINE_CHANGED,
-                        )
-                    ) {
-                        NowPlaying.publish(this@PlaybackService, player)
-                    }
+                    saveQueue(player)
                 }
-            },
-        )
+                if (events.contains(Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) reorderForShuffle(player)
+                if (events.contains(Player.EVENT_IS_PLAYING_CHANGED)) keepSavingPosition(player)
+                if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) || events.contains(Player.EVENT_IS_PLAYING_CHANGED)) {
+                    recordPlay(player)
+                }
+                if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) scrobbler.started(player)
+                if (events.containsAny(
+                        Player.EVENT_MEDIA_METADATA_CHANGED,
+                        Player.EVENT_IS_PLAYING_CHANGED,
+                        Player.EVENT_MEDIA_ITEM_TRANSITION,
+                        Player.EVENT_TIMELINE_CHANGED,
+                    )
+                ) {
+                    NowPlaying.publish(this@PlaybackService, player)
+                }
+            }
+        }
+
+    /**
+     * Casting started or ended (docs/music.md, Casting): the session switches to the cast device's
+     * player, which takes the queue, song, position and play state, or back to ExoPlayer, paused
+     * where the device was.
+     */
+    @OptIn(UnstableApi::class)
+    private fun castTo(link: Cast.Link?) {
+        val session = session ?: return
+        remote?.takeIf { it.link !== link }?.let { r ->
+            r.handBack(exo)
+            r.removeListener(listener)
+            session.player = exo
+            r.release()
+            remote = null
+            saveQueue(exo)
+        }
+        if (link != null && remote == null) {
+            val r = RemotePlayer(link, mainLooper)
+            r.start(exo, link.startVolume)
+            exo.pause()
+            r.addListener(listener)
+            session.player = r
+            remote = r
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -150,12 +185,17 @@ class PlaybackService : MediaLibraryService() {
         if (player == null || !player.playWhenReady || player.mediaItemCount == 0) stopSelf()
     }
 
+    // RemotePlayer is a SimpleBasePlayer, unstable in Media3 1.x.
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         session?.run {
             saveQueue(player)
-            player.release()
+            remote?.release()
+            exo.release()
             release()
         }
+        // The phone serves what the cast device plays, so casting can't outlive the service.
+        Cast.disconnect()
         session = null
         scope.cancel()
         super.onDestroy()

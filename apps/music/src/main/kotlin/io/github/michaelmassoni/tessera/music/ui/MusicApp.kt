@@ -348,6 +348,8 @@ fun MusicApp(
                 playlists = library.playlists,
                 libraryActions = libraryActions,
                 explicit = library.byId[playback.songId]?.explicit == true,
+                castButton = { CastButton() },
+                castingTo = castingTo(),
                 links =
                     NowPlayingLinks(
                         onAlbum =
