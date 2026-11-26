@@ -180,4 +180,7 @@
     <string name="settings_sleep_cycle">Sleep cycle length</string>
     <string name="settings_fall_asleep">Time to fall asleep</string>
     <string name="settings_none">None</string>
+    <!-- Launcher shortcuts (long-press the icon). -->
+    <string name="shortcut_timer">Timer</string>
+    <string name="shortcut_stopwatch">Stopwatch</string>
 </resources>

@@ -101,4 +101,6 @@
     <string name="setup_access_text">To show and send your texts, with your contacts\' names. Nothing leaves this phone except the texts you send.</string>
     <string name="setup_notifications_title">Notifications</string>
     <string name="setup_notifications_text">For new messages, with reply and mark-as-read.</string>
+    <!-- Launcher shortcuts (long-press the icon). -->
+    <string name="shortcut_new_message">New message</string>
 </resources>

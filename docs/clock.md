@@ -258,3 +258,7 @@ Not requested: storage, location (cities are chosen by hand), network.
 ## First run
 
 See [setup.md](setup.md) for what clock asks for the first time it opens.
+
+## Launcher shortcuts (0.8)
+
+Long-press the app icon: **Timer** and **Stopwatch** open those tabs (`SHOW_TIMERS`, and the tab extra). Each icon is the Material Symbol on the app's launcher colour.
