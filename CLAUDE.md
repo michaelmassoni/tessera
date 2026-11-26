@@ -64,7 +64,8 @@ docs/decisions.md dated decision log
 
 - Wrap every screen in `TesseraTheme`. Use Material 3 / Expressive components and
   `MaterialTheme` tokens (colorScheme, typography, shapes, motionScheme).
-- Don't hard-code colors in UI code. The only exception is launcher icon backgrounds; the
+- Don't hard-code colors in UI code. The exceptions are launcher icon backgrounds and Notes'
+  note colours (tinted onto the theme; docs/decisions.md); the
   monochrome layer covers themed icons.
 - Don't build a custom widget that duplicates a Material component.
 - Required in every app: dynamic color, dark mode, edge-to-edge (`enableEdgeToEdge()` with

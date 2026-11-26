@@ -69,6 +69,26 @@ and no network.
   importing twice duplicates instead of overwriting.
 - No storage permission is needed.
 
+## Colours, links and reminders (0.5)
+
+- **Colours:** Colour in the editor's menu: Default or one of ten (red, orange, yellow, green,
+  teal, blue, purple, pink, brown, grey). The note's card and editor are tinted with it: the
+  colour's hue blended into the theme's surface (22% light, 30% dark), so it follows light, dark
+  and dynamic colour and the text keeps the theme's colours (docs/decisions.md). Each swatch is
+  named for TalkBack.
+- **Links:** web addresses, email addresses and phone numbers in a text note (`Links`, unit
+  tested). When the cursor is in one, a chip under the text offers Open, Email or Call (as in
+  Keep): the text field can't style or link text without the deprecated `VisualTransformation`.
+  Not in checklist items yet.
+- **Reminders:** Remind me in the menu: a date, then a time (default: the next whole hour). The
+  reminder shows as a chip under the note (tap to change, × to remove) and on its card; one that
+  has gone off is struck through. At the time, a notification with the note's title and text,
+  Open (tap) and Done (clears the reminder). `ReminderPlan` (unit tested) decides: one alarm for
+  the next reminder; a time already past when set doesn't remind; one missed while the phone was
+  off reminds afterwards, up to a day late. `NotesApplication` sets the next alarm whenever a
+  note's reminder changes (set, moved, trashed, deleted, imported); a restart, app update or time
+  change shows missed reminders and sets the next.
+
 ## Data
 
 - Each note is one JSON file in app-private storage (`files/notes/<id>.json`), written
@@ -106,7 +126,13 @@ and no network.
 
 ## Permissions
 
-None.
+Only for reminders (0.5); a note without a reminder needs none of them.
+
+- `POST_NOTIFICATIONS`: the reminder itself. Asked for the first time a reminder is set.
+- `SCHEDULE_EXACT_ALARM`: so a reminder goes off on time. Not granted by default on current
+  Android; until it's allowed, the reminder dialog says reminders may be a few minutes late and
+  links to the setting (the alarm is then inexact, `setAndAllowWhileIdle`).
+- `RECEIVE_BOOT_COMPLETED`: to set the next alarm again after a restart.
 
 ## Settings
 
@@ -118,10 +144,7 @@ None.
 ## Out of scope for v0.1
 
 - Rich text and Markdown rendering.
-- Tappable links inside notes.
 - Images, drawings and voice notes.
-- Reminders.
-- Note colours.
 - Sync.
 - Locking notes.
 

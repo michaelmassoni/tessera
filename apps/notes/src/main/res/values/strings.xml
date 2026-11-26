@@ -71,6 +71,7 @@
     <string name="action_show_checkboxes">Show checkboxes</string>
     <string name="action_hide_checkboxes">Hide checkboxes</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_next">Next</string>
     <string name="action_done">Done</string>
     <string name="action_add">Add</string>
 
@@ -103,4 +104,34 @@
     <string name="move_down">Move down</string>
     <string name="widget_description">Pinned and recent notes, and a quick new note</string>
     <string name="widget_empty">No notes yet</string>
+    <!-- Colours (docs/notes.md, Colours). -->
+    <string name="action_color">Colour</string>
+    <string name="color_default">Default</string>
+    <string name="color_red">Red</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_green">Green</string>
+    <string name="color_teal">Teal</string>
+    <string name="color_blue">Blue</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_pink">Pink</string>
+    <string name="color_brown">Brown</string>
+    <string name="color_grey">Grey</string>
+    <!-- Reminders (docs/notes.md, Reminders). -->
+    <string name="action_remind">Remind me</string>
+    <string name="action_change_reminder">Change reminder</string>
+    <string name="remove_reminder">Remove reminder</string>
+    <string name="reminder">Reminder</string>
+    <string name="reminder_done">Done</string>
+    <string name="reminder_set">Set</string>
+    <string name="reminder_pick_date">Remind on</string>
+    <string name="reminder_pick_time">Remind at</string>
+    <string name="reminder_inexact">Reminders may be a few minutes late until Notes is allowed to set alarms.</string>
+    <string name="reminder_allow">Allow</string>
+    <string name="channel_reminders">Reminders</string>
+    <string name="channel_reminders_description">Notes you asked to be reminded of</string>
+    <!-- The link the cursor is in, offered under the text. %1$s: the link. -->
+    <string name="link_open">Open %1$s</string>
+    <string name="link_email">Email %1$s</string>
+    <string name="link_call">Call %1$s</string>
 </resources>

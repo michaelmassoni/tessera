@@ -7,6 +7,7 @@ import io.github.michaelmassoni.tessera.notes.EditorState
 import io.github.michaelmassoni.tessera.notes.ListState
 import io.github.michaelmassoni.tessera.notes.engine.ChecklistItem
 import io.github.michaelmassoni.tessera.notes.engine.Note
+import io.github.michaelmassoni.tessera.notes.engine.NoteColor
 import io.github.michaelmassoni.tessera.notes.engine.NoteView
 import kotlinx.coroutines.flow.emptyFlow
 
@@ -18,6 +19,7 @@ private val sampleNotes =
             body = "Book the cabin for the long weekend. Ask about late check-out.",
             pinned = true,
             modified = 9,
+            color = NoteColor.Yellow,
         ),
         Note(
             "2",
@@ -31,6 +33,9 @@ private val sampleNotes =
                 ),
             labels = setOf("Home"),
             modified = 8,
+            color = NoteColor.Green,
+            // Fixed and far ahead, so the screenshot doesn't change (or turn "past") with the date.
+            reminderAt = 1_898_150_400_000L,
         ),
         Note("3", body = "The quiet hours before anyone else is awake are the best for writing.", modified = 7),
         Note(
@@ -39,6 +44,7 @@ private val sampleNotes =
             body = "A lighthouse keeper who collects lost letters.\nA city that moves once a year.",
             labels = setOf("Writing"),
             modified = 6,
+            color = NoteColor.Blue,
         ),
         Note("5", title = "Wi-Fi", body = "Guest network: Lantern", modified = 5),
     )
