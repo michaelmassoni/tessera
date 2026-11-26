@@ -460,7 +460,7 @@ private fun ArticleList(
                             onToggleStar = {
                                 // Starring marks it read too (the states are exclusive): keep it in view in Unread.
                                 onKeep(setOf(a.id))
-                                actions.setState(setOf(a.id), if (a.starred) ArticleState.Read else ArticleState.Starred)
+                                if (a.starred) actions.unstar(setOf(a.id)) else actions.setState(setOf(a.id), ArticleState.Starred)
                             },
                             modifier = Modifier.animateItem(),
                         )

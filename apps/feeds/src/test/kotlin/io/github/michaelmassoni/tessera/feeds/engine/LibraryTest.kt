@@ -48,9 +48,19 @@ class LibraryTest {
         val local = Library.setState(data, setOf("1"), ArticleState.Starred, queue = false)
         assertTrue(local.pending.isEmpty())
         assertEquals(ArticleState.Starred, local.article("1")!!.state)
-        // Unstarring makes it read.
-        val unstarred = Library.setState(data, setOf("3"), ArticleState.Read, queue = false)
-        assertEquals(ArticleState.Starred, unstarred.article("3")!!.state)
+        // Marking read leaves a starred one starred.
+        val stillStarred = Library.setState(data, setOf("3"), ArticleState.Read, queue = false)
+        assertEquals(ArticleState.Starred, stillStarred.article("3")!!.state)
+    }
+
+    @Test
+    fun unstarringMakesItReadAndQueuesIt() {
+        val unstarred = Library.unstar(data, setOf("1", "3"), queue = true)
+        assertEquals(ArticleState.Read, unstarred.article("3")!!.state)
+        // Only starred ones change.
+        assertEquals(data.article("1"), unstarred.article("1"))
+        assertEquals(mapOf("3" to ArticleState.Read), unstarred.pending)
+        assertEquals(data, Library.unstar(data, setOf("1"), queue = true))
     }
 
     @Test

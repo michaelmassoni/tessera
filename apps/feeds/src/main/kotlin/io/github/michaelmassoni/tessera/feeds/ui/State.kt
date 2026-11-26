@@ -42,6 +42,9 @@ interface FeedsActions {
         state: ArticleState,
     )
 
+    /** Unstars [ids], which makes them read. */
+    fun unstar(ids: Set<String>)
+
     fun refresh()
 
     fun openSettings()

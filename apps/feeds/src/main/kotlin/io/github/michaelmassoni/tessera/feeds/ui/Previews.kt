@@ -96,6 +96,8 @@ private object NoActions : FeedsActions {
         state: ArticleState,
     ) = Unit
 
+    override fun unstar(ids: Set<String>) = Unit
+
     override fun refresh() = Unit
 
     override fun openSettings() = Unit
