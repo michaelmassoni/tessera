@@ -14,6 +14,7 @@ import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
 import io.github.michaelmassoni.tessera.notes.engine.ChecklistItem
 import io.github.michaelmassoni.tessera.notes.engine.Note
+import io.github.michaelmassoni.tessera.notes.engine.NoteColor
 import io.github.michaelmassoni.tessera.notes.engine.NoteView
 import io.github.michaelmassoni.tessera.notes.ui.EditorActions
 import io.github.michaelmassoni.tessera.notes.ui.ListActions
@@ -164,6 +165,10 @@ class MainActivity : ComponentActivity() {
         override fun redo() {
             viewModel.redo()
         }
+
+        override fun setColor(color: NoteColor?) = viewModel.setColor(color)
+
+        override fun setReminder(at: Long?) = viewModel.setReminder(at)
     }
 
     companion object {

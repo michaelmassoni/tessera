@@ -4,6 +4,16 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-27: Note colours are fixed hues tinted onto the theme (Accepted)
+
+**Decision:** Notes has ten named colours (red to grey). Each is a fixed hue in code, blended into
+the theme's `surface` (22% in light themes, 30% in dark) for the note's card and editor.
+
+**Reason:** People pick a note colour by name and expect it to stay that colour, which dynamic-
+colour roles can't give (they change with the wallpaper and there are only a few of them). Blending
+into the surface keeps the theme's text colours readable in light and dark. It's the second
+exception to "no hard-coded colours", after launcher icon backgrounds.
+
 ## 2026-11-26: compileSdk 37.1 and Compose 1.13 (Accepted)
 
 **Decision:** Compile against Android 37.1 (`platforms;android-37.1`, a stable SDK platform) and
