@@ -36,7 +36,9 @@ many. P3 is nice to have.
 |------|-------|-------|
 | Real-phone pass | Music and Podcasts in Android Auto: ✅ 2026-11-26. Feeds against yarr: ✅ 2026-11-26. Music Cast: ✅. Still to do: Phone call waiting, Bluetooth and proximity; Messages MMS. | Blocks Phone's "experimental" label. |
 | Accessibility audit | Not done | TalkBack, 200% font, touch targets, app by app. Scriptable on the emulator. |
-| material3 `1.5.0-rc01` | Pre-release | Move to 1.5.0 stable when it ships, or accept the RC for 1.0 in `decisions.md`. |
+| material3 | ✅ 1.5.0 stable (2026-11-26) | Was `1.5.0-rc01`. |
+| Compose 1.13 (BOM 2026.11.01) | Not done | Needs compileSdk 37.1 (toolchain and F-Droid pin) and the state-based text field migration in core:dav, Messages, Notes and Music (the deprecations are errors here). |
+| `androidx.pdf` `1.0.0-beta01` (Files) | Pre-release | Stable when it ships, or accept the beta for Files 1.0 in `decisions.md`. |
 | Final icons | Commissioned | `scripts/launcher-icons.sh` turns each glyph into the Colour, Light, Dark and monochrome icons. |
 | Baseline profiles | None | Biggest remaining performance win (about 20–30% faster cold start). A `:baselineprofile` module with Macrobenchmark; the profile is a checked-in text file, so it suits F-Droid. |
 | F-Droid submission | Not started | See above. |
@@ -168,12 +170,12 @@ RCS is out of scope (no open API); the README should say so plainly.
 
 ## Order
 
-1. **Quick wins** (2026-11-26): stale dependency PRs, this roadmap, Calculator paste and cursor
+1. **Quick wins** (2026-11-26): ~~stale dependency PRs~~, ~~material3 stable~~, this roadmap, Calculator paste and cursor
    editing, Clock gradual volume, Calendar search.
 2. **Real-phone pass:** Phone and Messages MMS. Then drop Phone's "experimental".
 3. **P2 batches:** Notes (links, colours, reminders); Contacts (photo, merge, addresses); Files
    (background copies, zip, bookmarks); Podcasts notifications; Gallery search; Messages search
    and photos; Phone dual SIM, decline replies and recents; Music genres and folders.
 4. **Suite polish:** accessibility audit, baseline profiles, shortcuts and tiles, StrictMode.
-5. **1.0 gate:** material3 stable (or the exception), final icons, F-Droid submission. Ship in
+5. **1.0 gate:** `androidx.pdf` stable (or the exception), final icons, F-Droid submission. Ship in
    waves: Calculator, Clock, Weather, Sports, Recorder and Tasks first.
