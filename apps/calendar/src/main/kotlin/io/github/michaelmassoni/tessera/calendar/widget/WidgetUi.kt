@@ -2,6 +2,11 @@ package io.github.michaelmassoni.tessera.calendar.widget
 
 import android.content.Context
 import android.content.Intent
+import android.text.TextPaint
+import android.util.TypedValue
+import android.view.ContextThemeWrapper
+import android.view.View
+import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -385,7 +390,8 @@ class MonthWidget(
         // Glance has no weighted spans, so bars get exact widths from the cell width.
         val cellWidth = (size.width - padding * 2) / 7
         val rowHeight = (size.height - padding * 2 - HeaderHeight - WeekdayHeight) / weeks.size
-        val room = ((rowHeight - NumberHeight - 4.dp) / LaneHeight).toInt().coerceAtLeast(0)
+        val lane = laneHeight(context)
+        val room = ((rowHeight - NumberHeight - 4.dp) / lane).toInt().coerceAtLeast(0)
         // As many lanes as there's room for, and as Glance's 500-view limit allows (a busy month
         // with many lanes goes over it). The rest of the widget takes about 40 views plus 16 per week.
         val (lanes, plans) = WidgetLanes.fit(weeks, byDay, room, budget = VIEW_LIMIT - 40 - weeks.size * 16)
@@ -432,7 +438,17 @@ class MonthWidget(
                     Message(context.getString(R.string.widget_needs_access))
                 } else {
                     weeks.forEachIndexed { i, week ->
-                        WeekRow(context, week, month, today, plans[i], cellWidth, lanes, GlanceModifier.fillMaxWidth().defaultWeight())
+                        WeekRow(
+                            context,
+                            week,
+                            month,
+                            today,
+                            plans[i],
+                            cellWidth,
+                            lanes,
+                            lane,
+                            GlanceModifier.fillMaxWidth().defaultWeight(),
+                        )
                     }
                 }
             }
@@ -477,6 +493,7 @@ class MonthWidget(
         plan: WeekPlan,
         cellWidth: Dp,
         lanes: Int,
+        laneHeight: Dp,
         modifier: GlanceModifier = GlanceModifier,
     ) {
         Box(modifier) {
@@ -488,7 +505,7 @@ class MonthWidget(
             if (lanes > 0) {
                 Column(GlanceModifier.fillMaxWidth().padding(top = NumberHeight + 2.dp)) {
                     repeat(lanes) { lane ->
-                        Row(GlanceModifier.fillMaxWidth().height(LaneHeight)) {
+                        Row(GlanceModifier.fillMaxWidth().height(laneHeight)) {
                             WidgetLanes.segments(plan, lane, last = lane == lanes - 1).forEach { segment ->
                                 when (segment) {
                                     is WidgetLanes.Segment.Gap -> {
@@ -504,12 +521,12 @@ class MonthWidget(
                                             GlanceModifier
                                                 .width(cellWidth * segment.bar.span)
                                                 .fillMaxHeight()
-                                                .padding(horizontal = PillMargin),
+                                                .padding(horizontal = PillMargin, vertical = PillMargin),
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
                                             Text(
                                                 event.title,
-                                                style = style(pillTextColor(event), 11.sp),
+                                                style = style(pillTextColor(event), PILL_TEXT_SP.sp),
                                                 maxLines = 1,
                                                 modifier =
                                                     GlanceModifier
@@ -599,8 +616,35 @@ class MonthWidget(
         val HeaderHeight = 48.dp
         val WeekdayHeight = 18.dp
         val NumberHeight = 20.dp
-        val LaneHeight = 18.dp
         val PillMargin = 1.5.dp
+        const val PILL_TEXT_SP = 11f
+
+        /** Lanes are never shorter than this, as they were before they followed the font. */
+        val MinLaneHeight = 18.dp
+
+        /**
+         * One lane: a pill's line of text, its 1 dp padding above and below, and a gap of
+         * [PillMargin] each side, so stacked pills stay apart. The text is measured in the phone's
+         * own font and font size: stock Pixel's Google Sans is taller than Roboto, and a fixed
+         * 18 dp lane left no gap there. Measured as a launcher would draw it (the device default
+         * text style), or with the default typeface if that fails; the taller of the two wins.
+         */
+        fun laneHeight(context: Context): Dp {
+            val metrics = context.resources.displayMetrics
+            val paint =
+                TextPaint().apply { textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, PILL_TEXT_SP, metrics) }
+            val plain = paint.fontMetricsInt.let { it.bottom - it.top }
+            val themed =
+                runCatching {
+                    TextView(ContextThemeWrapper(context, android.R.style.Theme_DeviceDefault))
+                        // Empty, it still measures one line.
+                        .apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, PILL_TEXT_SP) }
+                        .also { it.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED) }
+                        .measuredHeight
+                }.getOrDefault(0)
+            val text = (maxOf(plain, themed) / metrics.density).dp
+            return maxOf(MinLaneHeight, text + 2.dp + PillMargin * 2)
+        }
 
         /** Glance's limit on views in one widget, with a little room for its own. */
         const val VIEW_LIMIT = 480
