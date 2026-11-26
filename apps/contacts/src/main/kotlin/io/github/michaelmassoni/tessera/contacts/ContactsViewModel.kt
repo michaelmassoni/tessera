@@ -8,6 +8,7 @@ import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.ContactIndex
 import io.github.michaelmassoni.tessera.contacts.engine.ContactSummary
+import io.github.michaelmassoni.tessera.contacts.engine.Duplicates
 import io.github.michaelmassoni.tessera.contacts.engine.Section
 import io.github.michaelmassoni.tessera.contacts.engine.VCardContact
 import kotlinx.coroutines.CoroutineDispatcher
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -46,8 +48,31 @@ data class EditorState(
     val account: AccountRef,
     val accounts: List<AccountRef>,
     val saving: Boolean = false,
+    /** The contact's photo now, shown in the editor. */
+    val photoUri: String? = null,
+    val photo: PhotoEdit = PhotoEdit.Keep,
 ) {
-    val changed: Boolean get() = form != original
+    val changed: Boolean get() = form != original || photo != PhotoEdit.Keep
+
+    /** What the editor shows: the new photo, none, or the current one. */
+    val shownPhoto: String?
+        get() =
+            when (photo) {
+                is PhotoEdit.Set -> photo.file
+                PhotoEdit.Remove -> null
+                PhotoEdit.Keep -> photoUri
+            }
+}
+
+/** A change of photo in the editor. [Set.file] is the prepared JPEG (a file:// URI). */
+sealed interface PhotoEdit {
+    data object Keep : PhotoEdit
+
+    data object Remove : PhotoEdit
+
+    data class Set(
+        val file: String,
+    ) : PhotoEdit
 }
 
 sealed interface ContactsEvent {
@@ -59,6 +84,10 @@ sealed interface ContactsEvent {
 
     data class Deleted(
         val name: String,
+    ) : ContactsEvent
+
+    data class Merged(
+        val count: Int,
     ) : ContactsEvent
 
     data class Imported(
@@ -80,6 +109,32 @@ class ContactsViewModel(
     private val locale: () -> Locale = Locale::getDefault,
 ) : ViewModel() {
     private val all = MutableStateFlow<List<ContactSummary>?>(null)
+
+    private val showDuplicates = MutableStateFlow(false)
+
+    /** Groups of likely duplicates ([Duplicates]) while that screen is open; found again as contacts change. */
+    val duplicates: StateFlow<List<List<ContactSummary>>?> =
+        combine(all, showDuplicates) { list, show -> if (show) Duplicates.find(list.orEmpty()) else null }
+            .flowOn(io)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun openDuplicates() {
+        showDuplicates.value = true
+    }
+
+    fun closeDuplicates() {
+        showDuplicates.value = false
+    }
+
+    /** Merges one group; the list reloads, and the group drops out of [duplicates]. */
+    fun merge(group: List<ContactSummary>) {
+        viewModelScope.launch {
+            val merged = withContext(io) { runCatching { repository.merge(group.map { it.id }) }.isSuccess }
+            eventChannel.trySend(if (merged) ContactsEvent.Merged(group.size) else ContactsEvent.SaveFailed)
+            refresh()
+        }
+    }
+
     private val accounts = MutableStateFlow<List<AccountRef>>(emptyList())
     private val search = MutableStateFlow("")
     private val filter = MutableStateFlow<AccountRef?>(null)
@@ -182,6 +237,7 @@ class ContactsViewModel(
                 form = d.form,
                 account = d.accounts.firstOrNull() ?: AccountRef.Device,
                 accounts = emptyList(),
+                photoUri = d.photoUri,
             )
     }
 
@@ -196,6 +252,16 @@ class ContactsViewModel(
 
     fun setAccount(account: AccountRef) = _editor.update { it?.copy(account = account) }
 
+    /** A picture picked for the photo: cropped and scaled off the main thread, then shown. */
+    fun pickPhoto(prepare: suspend () -> String?) {
+        viewModelScope.launch {
+            val file = withContext(io) { prepare() } ?: return@launch
+            _editor.update { it?.copy(photo = PhotoEdit.Set(file)) }
+        }
+    }
+
+    fun removePhoto() = _editor.update { it?.copy(photo = if (it.photoUri == null) PhotoEdit.Keep else PhotoEdit.Remove) }
+
     fun cancelEdit() {
         _editor.value = null
     }
@@ -203,7 +269,7 @@ class ContactsViewModel(
     fun save() {
         val e = _editor.value ?: return
         if (e.saving) return
-        if (!e.changed || e.form.isEmpty) {
+        if (!e.changed || (e.form.isEmpty && e.photo == PhotoEdit.Keep)) {
             _editor.value = null
             return
         }
@@ -212,12 +278,21 @@ class ContactsViewModel(
             val id =
                 withContext(io) {
                     runCatching {
-                        if (e.contactId != null && e.rawContactId != null) {
-                            repository.update(e.rawContactId, e.original, e.form)
-                            e.contactId
-                        } else {
-                            repository.create(e.account, e.form).also { rememberAccount(e.account) }
+                        val (contactId, rawId) =
+                            if (e.contactId != null && e.rawContactId != null) {
+                                repository.update(e.rawContactId, e.original, e.form)
+                                e.contactId to e.rawContactId
+                            } else {
+                                repository.create(e.account, e.form).also { rememberAccount(e.account) }
+                            }
+                        if (rawId != null) {
+                            when (val p = e.photo) {
+                                is PhotoEdit.Set -> repository.setPhoto(rawId, p.file)
+                                PhotoEdit.Remove -> repository.removePhoto(rawId)
+                                PhotoEdit.Keep -> Unit
+                            }
                         }
+                        contactId
                     }
                 }
             _editor.value = null

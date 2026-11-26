@@ -43,7 +43,7 @@ data class ContactForm(
     val nameId: Long? = null,
     val phones: List<Labeled> = emptyList(),
     val emails: List<Labeled> = emptyList(),
-    val address: Labeled? = null,
+    val addresses: List<Labeled> = emptyList(),
     val company: String = "",
     val companyId: Long? = null,
     /** ISO date ("1990-04-23") or "--04-23" without a year, as stored by ContactsContract. */

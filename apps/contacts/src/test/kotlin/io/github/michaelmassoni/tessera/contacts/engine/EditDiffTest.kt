@@ -54,4 +54,15 @@ class EditDiffTest {
         assertEquals(listOf(RowKind.Name, RowKind.Phone), ops.map { it.kind })
         assertTrue(ops.all { it is RowOp.Insert })
     }
+
+    @Test fun `several addresses, each its own row`() {
+        val home = Labeled("1 Main St", 1, id = 50)
+        val before = original.copy(addresses = listOf(home))
+        val ops = EditDiff.diff(before, before.copy(addresses = listOf(home, Labeled("2 Work Rd", 2))))
+        assertEquals(1, ops.size)
+        assertTrue(ops.single() is RowOp.Insert)
+        // Removing the first keeps the second.
+        val two = before.copy(addresses = listOf(home, Labeled("2 Work Rd", 2, id = 51)))
+        assertEquals(listOf(RowOp.Delete(RowKind.Address, 50)), EditDiff.diff(two, two.copy(addresses = listOf(two.addresses[1]))))
+    }
 }
