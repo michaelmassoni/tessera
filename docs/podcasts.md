@@ -9,7 +9,7 @@ shows, see their new episodes, play them with an Up Next queue, and download the
 listening. Not a power-user app (no filters, playlists, statistics or per-show rules in v0.1).
 
 Out of scope for v0.1: sync with a server (gPodder, Nextcloud), chapters, transcripts, video
-episodes (they play as audio), new-episode notifications, a widget, Android Auto, per-show
+episodes (they play as audio), new-episode notifications, a widget, per-show
 settings, charts or a "Browse" page.
 
 ## Finding shows
@@ -161,6 +161,27 @@ now in `core:cast` (docs/music.md, Casting, for how it works; docs/decisions.md,
 - **The sleep timer** pauses the cast device.
 - Stopping casting, or losing the device, brings playback back to the phone, paused where it
   was.
+
+## Android Auto (0.4)
+
+PlaybackService is a `MediaLibraryService`, declared to Auto with `automotive_app_desc.xml` (no
+Google library). The car browses `BrowseTree`:
+
+- **Up Next**, **New episodes** (as on Home), **Shows** (followed shows as a grid of covers, latest
+  episode first, down to their episodes, newest first) and **Downloaded**.
+- Episodes show their show and how much was heard (Auto's not played / partly / played marks).
+- Picking an episode plays it now: it moves to the front of Up Next and the rest stays queued, as
+  in the app.
+- Voice (in the car, or "play … on Podcasts" from the Assistant through `PlayFromSearchActivity`):
+  "play Podcasts" resumes Up Next; a show's name plays its newest unheard episode; else the newest
+  episode whose title matches. Every show in the library is searched, followed ones first (a kept
+  show's episode can be in Up Next). Search lists matching shows, then episodes.
+- The root is answered at once (never after waiting on the main thread): Auto connects as a
+  legacy browser and Media3 blocks the main thread until the root arrives (Music 0.10.2).
+- Covers: Auto won't fetch a publisher's URL, so browse items point at `ArtProvider`
+  (`content://…podcasts.art/show|episode/<id>`), which looks the cover up by id in the library,
+  downscales it to 512 px and caches it. Exported read-only for Auto; it can only hand out covers
+  of shows in the library, never fetch an address it's given.
 
 ## Chapters (0.3)
 
