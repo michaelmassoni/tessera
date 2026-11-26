@@ -88,13 +88,14 @@
     <string name="label_new_hint">New label</string>
     <string name="select_note">Select a note, or create one</string>
 
-    <string name="settings_backup">Backup</string>
     <string name="settings_export">Export notes</string>
     <string name="settings_export_summary">Save all notes to a file</string>
     <string name="settings_import">Import notes</string>
     <string name="settings_import_summary">Add notes from an exported file</string>
     <string name="settings_editing">Editing</string>
     <string name="settings_checked_last">Move checked items to the bottom</string>
+    <string name="settings_checked_last_on">Checked items move to the bottom</string>
+    <string name="settings_checked_last_off">Checked items stay in place</string>
     <string name="shortcut_new_note">New note</string>
     <string name="shortcut_new_checklist">New checklist</string>
     <string name="reorder_item">Drag to reorder</string>

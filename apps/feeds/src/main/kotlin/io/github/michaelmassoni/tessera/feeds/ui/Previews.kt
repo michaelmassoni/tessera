@@ -12,7 +12,9 @@ import io.github.michaelmassoni.tessera.feeds.engine.FeedData
 import io.github.michaelmassoni.tessera.feeds.engine.Folder
 import io.github.michaelmassoni.tessera.feeds.engine.Selection
 
-// Ages relative to now, so "2 hours ago" reads the same whenever the screenshots are taken.
+// Ages relative to now, so "2 hours ago" reads the same whenever the screenshots are taken. Keep
+// them under a day: from a day on, DateUtils counts calendar days ("Yesterday", "2 days ago"),
+// which depends on the time of day the screenshots run.
 private val now = System.currentTimeMillis()
 private const val HOUR = 60 * 60 * 1000L
 
@@ -50,14 +52,14 @@ private val sample =
                     "abc",
                     "Heatwave conditions expected across the south-east this weekend",
                     snippet = "Temperatures are forecast to reach the low 40s in parts of New South Wales and Victoria.",
-                    date = now - 26 * HOUR,
+                    date = now - 9 * HOUR,
                 ),
                 Article(
                     "4",
                     "xkcd",
                     "Orbital Mechanics",
                     snippet = "Strip about a rocket and a very long ladder.",
-                    date = now - 50 * HOUR,
+                    date = now - 20 * HOUR,
                     state = ArticleState.Read,
                 ),
             ),

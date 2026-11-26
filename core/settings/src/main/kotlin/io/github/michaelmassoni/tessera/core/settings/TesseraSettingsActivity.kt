@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -24,14 +25,19 @@ import kotlinx.coroutines.launch
 
 /**
  * The settings activity of a Tessera app. An app subclasses it, says what its launcher icon looks
- * like, and adds its own settings above the shared ones:
+ * like, and lists its own categories of settings, which come before the shared ones (Appearance,
+ * Backup, About):
  *
  * ```
  * class SettingsActivity : TesseraSettingsActivity() {
  *     override val launcherIcon = LauncherIcon.of(R.drawable.ic_launcher_foreground, ...)
- *     @Composable override fun ColumnScope.AppSettings() { ... }
+ *     @Composable override fun categories() = listOf(
+ *         SettingsCategory("sync", stringResource(R.string.sync), DesignR.drawable.ic_sync, summary) { ... },
+ *     )
  * }
  * ```
+ *
+ * Start it with [SettingsCategory.intent] to open one category directly; back then leaves.
  *
  * Declare it in the manifest with an `android.intent.action.APPLICATION_PREFERENCES` filter so
  * system Settings > Apps links to it.
@@ -112,9 +118,15 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
         }
     }
 
-    /** The app's own settings, shown first. */
+    /** The app's own categories, listed before Appearance, Backup and About. */
     @Composable
-    protected open fun ColumnScope.AppSettings() = Unit
+    protected open fun categories(): List<SettingsCategory> = emptyList()
+
+    /**
+     * Import and export in the app's own formats (OPML, JSON…), shown on the Backup page under
+     * "Import & export". Null when the app has none.
+     */
+    protected open val importExport: (@Composable ColumnScope.() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,6 +137,7 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
         val appBackground = getColor(defaultBg)
         val resolveIcon = { i: IconSettings -> i.withAppColors(appForeground, appBackground) }
         val about = AboutInfo(versionName = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty())
+        val start = intent.getStringExtra(SettingsCategory.EXTRA)
         setTesseraContent {
             val shared by settings.shared.collectAsStateWithLifecycle()
             val storedIcon by settings.icon.collectAsStateWithLifecycle()
@@ -134,6 +147,7 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
                 pinned = icons.hasPinnedCustom()
                 onPauseOrDispose { }
             }
+            var category by rememberSaveable { mutableStateOf(start) }
             val snackbar = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
             LaunchedEffect(Unit) { messages.collect { snackbar.showSnackbar(it) } }
@@ -155,9 +169,14 @@ abstract class TesseraSettingsActivity : ComponentActivity() {
                 customPinned = pinned,
                 about = about,
                 actions = actions,
+                category = category,
+                onOpen = { category = it },
+                // Opened on one category from elsewhere: back returns there.
+                onClose = { if (start != null) finish() else category = null },
                 onBack = ::finish,
                 snackbar = snackbar,
-                appSettings = { AppSettings() },
+                categories = categories(),
+                importExport = importExport,
             )
         }
     }

@@ -31,7 +31,7 @@ list can also stay on the phone only.
   Sort: my order (drag), due date, starred first, title. With only one list (and stars off) there's
   nothing to switch between: no tabs or list heading; the list's name, sort and menu (with "New
   list") sit in the top bar.
-- **Settings > Starred tasks** (on by default): off hides the stars on rows, in the editor and the
+- **Settings > Tasks > Starred tasks** (on by default): off hides the stars on rows, in the editor and the
   add sheet, the Starred view and "starred first". Stars already set stay on the tasks (and sync).
 - **Task rows:** a round checkbox, title, details' first line, due date/time chip (red when
   overdue), repeat icon, star. Subtasks indented under their parent. Swipe to complete; long-press

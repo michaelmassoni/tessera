@@ -13,18 +13,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.github.michaelmassoni.tessera.core.dav.CollectionsDialog
+import io.github.michaelmassoni.tessera.core.dav.DavAccount
 import io.github.michaelmassoni.tessera.core.dav.RemoteCollection
 import io.github.michaelmassoni.tessera.core.dav.SignInDialog
+import io.github.michaelmassoni.tessera.core.dav.SyncInterval
 import io.github.michaelmassoni.tessera.core.dav.SyncPrefs
 import io.github.michaelmassoni.tessera.core.dav.SyncSettings
 import io.github.michaelmassoni.tessera.core.settings.InfoSetting
 import io.github.michaelmassoni.tessera.core.settings.LauncherIcon
-import io.github.michaelmassoni.tessera.core.settings.SettingsHeader
+import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.tasks.data.AccountStore
@@ -32,6 +35,7 @@ import io.github.michaelmassoni.tessera.tasks.data.Accounts
 import io.github.michaelmassoni.tessera.tasks.data.TasksPrefs
 import io.github.michaelmassoni.tessera.tasks.sync.SyncWorker
 import kotlinx.coroutines.launch
+import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
 class SettingsActivity : TesseraSettingsActivity() {
     override val launcherIcon =
@@ -45,12 +49,58 @@ class SettingsActivity : TesseraSettingsActivity() {
         )
 
     @Composable
-    override fun ColumnScope.AppSettings() {
+    override fun categories(): List<SettingsCategory> {
         val context = LocalContext.current
-        val scope = rememberCoroutineScope()
+        var stars by remember { mutableStateOf(TasksPrefs.stars(context)) }
         val store = remember { AccountStore(context) }
         var account by remember { mutableStateOf(store.account) }
         var prefs by remember { mutableStateOf(SyncPrefs.load(context)) }
+        val a = account
+        return listOf(
+            SettingsCategory(
+                key = TASKS,
+                title = stringResource(R.string.settings_tasks),
+                icon = DesignR.drawable.ic_checklist,
+                summary = stringResource(if (stars) R.string.settings_stars_on else R.string.settings_stars_off),
+            ) {
+                SwitchSetting(
+                    title = stringResource(R.string.settings_stars),
+                    summary = stringResource(R.string.settings_stars_summary),
+                    checked = stars,
+                    onCheckedChange = {
+                        stars = it
+                        TasksPrefs.setStars(context, it)
+                    },
+                )
+            },
+            SettingsCategory(
+                key = SYNC,
+                title = stringResource(R.string.settings_sync),
+                icon = DesignR.drawable.ic_sync,
+                summary = if (a == null) stringResource(R.string.settings_sync_summary_off) else syncSummary(a.username, prefs.interval),
+            ) {
+                SyncPage(
+                    store = store,
+                    account = account,
+                    onAccount = { account = it },
+                    prefs = prefs,
+                    onPrefs = { prefs = it },
+                )
+            },
+        )
+    }
+
+    /** Sync with a CalDAV server (docs/sync.md), with its dialogs. */
+    @Composable
+    private fun ColumnScope.SyncPage(
+        store: AccountStore,
+        account: DavAccount?,
+        onAccount: (DavAccount?) -> Unit,
+        prefs: SyncPrefs,
+        onPrefs: (SyncPrefs) -> Unit,
+    ) {
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         var signingIn by rememberSaveable { mutableStateOf(false) }
         var picking by remember { mutableStateOf<List<RemoteCollection>?>(null) }
         var signingOut by remember { mutableStateOf(false) }
@@ -58,33 +108,22 @@ class SettingsActivity : TesseraSettingsActivity() {
             .collectAsStateWithLifecycle(emptyList())
         val syncing = work.any { it.state == WorkInfo.State.RUNNING }
 
-        var stars by remember { mutableStateOf(TasksPrefs.stars(context)) }
-        SettingsHeader(stringResource(R.string.settings_tasks))
-        SwitchSetting(
-            title = stringResource(R.string.settings_stars),
-            summary = stringResource(R.string.settings_stars_summary),
-            checked = stars,
-            onCheckedChange = {
-                stars = it
-                TasksPrefs.setStars(context, it)
-            },
-        )
-
-        SettingsHeader(stringResource(R.string.settings_sync))
-        val a = account
-        if (a == null) {
+        if (account == null) {
             InfoSetting(stringResource(R.string.sync_server), stringResource(R.string.settings_sync_off), onClick = {
                 signingIn = true
             }, external = false)
         } else {
-            InfoSetting(stringResource(R.string.settings_server), stringResource(R.string.settings_server_summary, a.username, a.address))
+            InfoSetting(
+                stringResource(R.string.settings_server),
+                stringResource(R.string.settings_server_summary, account.username, account.address),
+            )
             InfoSetting(stringResource(R.string.settings_lists), stringResource(R.string.settings_lists_summary), onClick = {
                 scope.launch { picking = runCatching { Accounts.remoteLists(context) }.getOrDefault(emptyList()) }
             }, external = false)
             SyncSettings(
                 prefs = prefs,
                 onChange = {
-                    prefs = it
+                    onPrefs(it)
                     SyncPrefs.save(context, it)
                     SyncWorker.schedule.apply(context)
                 },
@@ -109,7 +148,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                 onDismiss = { signingIn = false },
             ) { lists ->
                 signingIn = false
-                account = store.account
+                onAccount(store.account)
                 picking = lists
             }
         }
@@ -147,12 +186,33 @@ class SettingsActivity : TesseraSettingsActivity() {
                 confirmButton = {
                     TextButton(onClick = {
                         Accounts.signOut(context)
-                        account = null
+                        onAccount(null)
                         signingOut = false
                     }) { Text(stringResource(R.string.sign_out)) }
                 },
                 dismissButton = { TextButton(onClick = { signingOut = false }) { Text(stringResource(R.string.cancel)) } },
             )
         }
+    }
+
+    /** "michael · every hour": who syncs and how often, under Sync on the settings list. */
+    @Composable
+    private fun syncSummary(
+        user: String,
+        interval: SyncInterval,
+    ): String {
+        val minutes = interval.minutes.toInt()
+        return when {
+            interval == SyncInterval.Manual -> stringResource(R.string.settings_sync_summary_manual, user)
+            interval == SyncInterval.Day -> stringResource(R.string.settings_sync_summary_day, user)
+            minutes < 60 -> pluralStringResource(R.plurals.settings_sync_summary_minutes, minutes, user, minutes)
+            else -> pluralStringResource(R.plurals.settings_sync_summary_hours, minutes / 60, user, minutes / 60)
+        }
+    }
+
+    companion object {
+        /** Category keys, to open settings straight on one. */
+        const val TASKS = "tasks"
+        const val SYNC = "sync"
     }
 }

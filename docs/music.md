@@ -106,7 +106,7 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
 
 - **Choosing:** first-run setup asks where the music is: "On this phone" (as before, asks for
   audio access) or "On a server" (asks for the server's address, username and password, then
-  checks them). Settings > Music source changes it later. One source at a time: the library,
+  checks them). Settings > Source changes it later. One source at a time: the library,
   search and playlists show that source's music.
 - **Library:** every song is fetched with `search3` (an empty query pages through the whole
   library, 500 songs a request), falling back to `getAlbumList2` + `getAlbum` for servers that
@@ -123,7 +123,7 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
   the server transcodes).
 - **Cache:** played songs are kept in an on-phone cache (Media3 `SimpleCache`, least recently
   played removed first) so replays and an unreliable connection don't need the network.
-  Settings > Offline cache: 500 MB, 1 GB (default), 2 GB or 5 GB (a new size applies the next
+  Settings > Source > Offline cache: 500 MB, 1 GB (default), 2 GB or 5 GB (a new size applies the next
   time Music starts), and Clear. Media3 also buffers the next song in the queue, so it's cached
   too. Pinned downloads for offline listening are a later step.
 - **Offline and not cached:** the mini player says "Can't play: no connection to the server" in

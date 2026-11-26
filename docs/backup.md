@@ -6,7 +6,8 @@ Storage Access Framework), such as Downloads, a USB stick or a sync folder.
 
 ## Where
 
-Settings → Backup, in every app (the shared settings screen in `core:settings`):
+Settings → Backup (titled "Backup & import" in apps that also import and
+export their own formats, such as OPML), in every app (the shared settings screen in `core:settings`):
 
 - **Back up**: this app's data to "Tessera Notes 2026-11-22.zip".
 - **Restore**: from such a file, after a confirmation that names the app and the backup's date.

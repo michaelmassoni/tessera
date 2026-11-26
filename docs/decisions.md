@@ -4,6 +4,26 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-26: Settings as a list of categories (Accepted)
+
+- **Context:** each app's settings page had grown into one long scroll: the app's own sections,
+  then about 15 shared rows (Appearance, App icon, Backup, About). Even apps with no settings of
+  their own opened on a full page, and Clock and Weather showed long columns of radio buttons.
+- **Decision (maintainer, after a sweep of all apps):** settings open on a list of categories,
+  each with an icon, title and a summary of its current values, and each opening its own page
+  (at most two levels). The app's categories come first, then the shared ones:
+  - **Appearance:** theme plus the app icon picker (no separate App icon category).
+  - **Backup** (titled **Backup & import** when the app has its own formats): back up and restore
+    this app or all Tessera apps, plus the app's import and export (OPML in Feeds and Podcasts,
+    JSON in Notes) under "Import & export".
+  - **About.**
+  Apps with only one or two settings still nest them in a category, so every app works the same
+  way. Choices with more than three options are a row that opens a dialog (`ChoiceSetting`).
+  `SettingsCategory.intent()` opens a category directly (Calendar and Contacts open Sync from
+  their system account screen).
+- **Consequences:** `TesseraSettingsActivity.AppSettings()` is replaced by `categories()` and
+  `importExport`. Every app changed, so every app gets a release.
+
 ## 2026-11-26: Feeds, an RSS reader that syncs with yarr (Accepted)
 
 The maintainer reads feeds in yarr on their NAS and asked for a Tessera app that works with it or
