@@ -141,6 +141,11 @@ class MainActivity : ComponentActivity() {
             app.store.update { Library.setState(it, ids, state, queue) }
         }
 
+        override fun unstar(ids: Set<String>) {
+            val queue = accounts.yarr != null
+            app.store.update { Library.unstar(it, ids, queue) }
+        }
+
         override fun refresh() {
             notice = null
             SyncWorker.schedule.soon(this@MainActivity, delaySeconds = 0)
