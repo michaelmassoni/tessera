@@ -1,6 +1,10 @@
 # Versions checked against Maven Central / Google Maven / Gradle Plugin Portal on 2026-11-19.
 # Latest stable only; any exception needs a comment here and an entry in docs/decisions.md.
 [versions]
+# Baseline profiles (docs/decisions.md, 2026-11-27): generated with Macrobenchmark, checked in as text.
+benchmark = "1.5.0"
+profileinstaller = "1.4.1"
+uiautomator = "2.4.1"
 libphonenumber = "9.0.44"
 phonenumber-geocoder = "3.44"
 # Android SDK levels, read by the convention plugins in build-logic/.
@@ -50,6 +54,9 @@ ktlint = "1.8.0"
 compose-lint-checks = "1.6.1"
 
 [libraries]
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
 libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
 libphonenumber-geocoder = { module = "com.googlecode.libphonenumber:geocoder", version.ref = "phonenumber-geocoder" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -108,6 +115,8 @@ ktlint-gradle-plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", versio
 roborazzi-gradle-plugin = { module = "io.github.takahirom.roborazzi:roborazzi-gradle-plugin", version.ref = "roborazzi" }
 
 [plugins]
+android-test = { id = "com.android.test", version.ref = "agp" }
+androidx-baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 # AGP 9 compiles Kotlin itself (built-in Kotlin); this pins the Kotlin Gradle plugin version it uses.

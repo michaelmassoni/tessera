@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.tessera.android.application)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 android {
@@ -10,4 +11,9 @@ android {
         versionCode = 7
         versionName = "0.4.0"
     }
+}
+
+dependencies {
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":profiles:calculator"))
 }
