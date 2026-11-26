@@ -1,15 +1,15 @@
 package io.github.michaelmassoni.tessera.files
 
-import io.github.michaelmassoni.tessera.files.engine.Archives
-import io.github.michaelmassoni.tessera.files.data.Transfers
-import io.github.michaelmassoni.tessera.files.data.TransferOutcome
-import io.github.michaelmassoni.tessera.files.data.RunningOperation
-import io.github.michaelmassoni.tessera.files.data.OperationKind
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.michaelmassoni.tessera.files.data.FilesSettings
+import io.github.michaelmassoni.tessera.files.data.OperationKind
+import io.github.michaelmassoni.tessera.files.data.RunningOperation
+import io.github.michaelmassoni.tessera.files.data.TransferOutcome
+import io.github.michaelmassoni.tessera.files.data.Transfers
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
+import io.github.michaelmassoni.tessera.files.engine.Archives
 import io.github.michaelmassoni.tessera.files.engine.FileEntry
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
@@ -129,11 +129,21 @@ class FilesViewModel(
         if (startTransfer != null) {
             // A transfer runs in the service: its progress shows here, and how it ended.
             viewModelScope.launch {
-                Transfers.running.collect { r -> _state.update { it.copy(operation = r ?: it.operation?.takeIf { op -> op.kind == null }) } }
+                Transfers.running.collect { r ->
+                    _state.update { it.copy(operation = r ?: it.operation?.takeIf { op -> op.kind == null }) }
+                }
             }
             viewModelScope.launch {
                 Transfers.outcomes.collect { o ->
-                    eventChannel.trySend(if (o.failure == null) FilesEvent.Done(o.kind, o.count) else FilesEvent.Failed(reasonOf(o.failure)))
+                    eventChannel.trySend(
+                        if (o.failure ==
+                            null
+                        ) {
+                            FilesEvent.Done(o.kind, o.count)
+                        } else {
+                            FilesEvent.Failed(reasonOf(o.failure))
+                        },
+                    )
                     reload()
                 }
             }
@@ -269,7 +279,7 @@ class FilesViewModel(
 
     /** Extracts a zip into a new folder beside it. */
     fun extract(zip: File) {
-        transfer(OperationKind.Extract, listOf(zip), null)
+        if (transfer(OperationKind.Extract, listOf(zip), null)) _state.update { it.copy(selection = emptySet()) }
     }
 
     private fun transfer(
@@ -299,7 +309,15 @@ class FilesViewModel(
                     }
                 }
             _state.update { it.copy(operation = null) }
-            eventChannel.trySend(if (error == null) FilesEvent.Done(kind, files.size) else FilesEvent.Failed(reasonOf(Transfers.failureOf(error))))
+            eventChannel.trySend(
+                if (error ==
+                    null
+                ) {
+                    FilesEvent.Done(kind, files.size)
+                } else {
+                    FilesEvent.Failed(reasonOf(Transfers.failureOf(error)))
+                },
+            )
             reload()
         }
         return true

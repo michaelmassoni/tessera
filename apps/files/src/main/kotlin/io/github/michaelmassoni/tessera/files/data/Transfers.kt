@@ -121,11 +121,31 @@ object Transfers {
 
     fun failureOf(e: IOException): TransferOutcome.Failure =
         when (e) {
-            is OperationException.IntoItself -> TransferOutcome.Failure.IntoItself
-            is OperationException.NotEnoughSpace -> TransferOutcome.Failure.NoSpace
-            is OperationException.Cancelled -> TransferOutcome.Failure.Cancelled
-            is Archives.Unsafe -> TransferOutcome.Failure.BadArchive
-            else -> if (e.message?.startsWith("Not a readable zip") == true) TransferOutcome.Failure.BadArchive else TransferOutcome.Failure.Io
+            is OperationException.IntoItself -> {
+                TransferOutcome.Failure.IntoItself
+            }
+
+            is OperationException.NotEnoughSpace -> {
+                TransferOutcome.Failure.NoSpace
+            }
+
+            is OperationException.Cancelled -> {
+                TransferOutcome.Failure.Cancelled
+            }
+
+            is Archives.Unsafe -> {
+                TransferOutcome.Failure.BadArchive
+            }
+
+            else -> {
+                if (e.message?.startsWith("Not a readable zip") ==
+                    true
+                ) {
+                    TransferOutcome.Failure.BadArchive
+                } else {
+                    TransferOutcome.Failure.Io
+                }
+            }
         }
 
     /** Whether the browser is watching (so it reports the outcome itself, not a notification). */
@@ -148,7 +168,11 @@ class TransferService : Service() {
             return START_NOT_STICKY
         }
         ensureChannel()
-        startForeground(ID, progressNotification(Transfers.running.value?.kind ?: OperationKind.Copy, null), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        startForeground(
+            ID,
+            progressNotification(Transfers.running.value?.kind ?: OperationKind.Copy, null),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
         scope.launch {
             var lastUpdate = 0L
             val outcome =
@@ -218,7 +242,10 @@ class TransferService : Service() {
             .setContentTitle(title(kind))
             .setContentText(
                 p?.let {
-                    "${it.current} · ${Formatter.formatShortFileSize(this, it.bytesDone)} / ${Formatter.formatShortFileSize(this, it.bytesTotal)}"
+                    "${it.current} · ${Formatter.formatShortFileSize(
+                        this,
+                        it.bytesDone,
+                    )} / ${Formatter.formatShortFileSize(this, it.bytesTotal)}"
                 },
             ).setProgress(100, percent, p == null || p.bytesTotal == 0L)
             .setOngoing(true)
@@ -229,6 +256,7 @@ class TransferService : Service() {
     }
 
     private fun notify(notification: Notification) {
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
         try {
             NotificationManagerCompat.from(this).notify(ID, notification)
         } catch (_: SecurityException) {
@@ -237,6 +265,7 @@ class TransferService : Service() {
     }
 
     private fun notifyDone(outcome: TransferOutcome) {
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
         val text =
             if (outcome.failure == null) {
                 getString(R.string.transfer_done, title(outcome.kind))

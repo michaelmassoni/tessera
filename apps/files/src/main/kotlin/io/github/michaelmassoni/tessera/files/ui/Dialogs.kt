@@ -29,9 +29,9 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.files.R
+import io.github.michaelmassoni.tessera.files.data.FileIntents
 import io.github.michaelmassoni.tessera.files.data.OperationKind
 import io.github.michaelmassoni.tessera.files.data.RunningOperation
-import io.github.michaelmassoni.tessera.files.data.FileIntents
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
 import io.github.michaelmassoni.tessera.files.engine.Naming

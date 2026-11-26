@@ -158,13 +158,28 @@ docs/decisions.md (2026-11-25) for the library.
 |------------|-----|
 | `MANAGE_EXTERNAL_STORAGE` | Browse and manage all shared storage (see above) |
 | `REQUEST_INSTALL_PACKAGES` | Let the user install an APK they tap; the system installer still asks for confirmation |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` | Copies, moves and zips carry on after the app is left (Transfers) |
+| `POST_NOTIFICATIONS` | A transfer's progress and Cancel; asked once, at the first transfer |
 
 No network or media permissions are requested; all-files access already covers media files.
 
+## Transfers, zip and bookmarks (0.7)
+
+- **Transfers:** copies, moves and zips run in `TransferService`, a foreground service (type
+  dataSync), so they finish after the app is left or closed. The browser shows the same progress
+  dialog (it watches `Transfers`); the notification shows progress with Cancel, and says how it
+  ended if the app isn't open. One at a time. Notifications are asked for the first time a
+  transfer starts (Android 13+); without them the transfer still runs.
+- **Zip:** Compress (selection menu) makes a .zip of the selection in the current folder, named
+  after the item (or the folder for several). Extract here (a selected .zip) unpacks into a new
+  folder beside it. Never overwrites (unique names), refuses entries that point outside the folder
+  (zip slip), and removes anything half-made on failure or Cancel (`Archives`, unit tested).
+- **Bookmarks:** Add to bookmarks on a selected folder; bookmarked folders are listed on the home
+  screen above Folders (name and location), and removed from the same menu.
+
 ## Out of scope for v0.1
 
-- Background (foreground-service) transfers that continue after leaving the app.
-- Archives (zip and others).
+- Archives other than zip (7z, rar, tar).
 - Network and cloud storage.
 - Root access.
 - Media categories view.
