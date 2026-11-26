@@ -4,6 +4,27 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-26: Asking for the local network only when the server is on it (Accepted)
+
+- **Context:** on Android 17, apps targeting SDK 37 need the runtime permission
+  `ACCESS_LOCAL_NETWORK` (the Nearby devices group) for any connection to the local network.
+  Without it, connections time out silently. Music's Subsonic sign-in to a server on the local
+  network failed with "Can't reach the server", and so would yarr in Feeds and CalDAV or CardDAV
+  in Tasks, Calendar and Contacts.
+- **Decision (maintainer asked for the fix; asking in context was proposed by Claude):** apps that
+  talk to a server the person chooses declare the permission. They ask for it in context, not during first-run setup in general: when signing in,
+  if the address is on the local network (by its name, or by what it resolves to), and once on
+  launch for an account made before. Servers on the internet never trigger the question. A refusal
+  is explained in place (the sign-in form, Sync now in Settings, Feeds' sync notice and Music's
+  library notice), with a way to the app's system settings. The helpers are in `core:settings`
+  (`LocalNetwork`, `rememberLocalNetworkAccess`, `AskForLocalNetwork`, `LocalNetworkDenied`).
+- **Consequences:** people using a server on the internet never see the question. Tailscale and
+  carrier-NAT addresses (100.64.0.0/10) count as local, so they may be asked when Android
+  wouldn't need it; that's harmless. A public name that resolves to one (a reverse proxy reached over
+  Tailscale, or split DNS at home) counts too, because the address is resolved before deciding,
+  both at sign-in and when explaining a failed sync. Podcasts and Weather reach only the internet and don't
+  declare it.
+
 ## 2026-11-26: Music casts with its own Cast client, not Google's SDK (Accepted)
 
 - **Context:** the maintainer asked for casting to Chromecasts and TVs. Google's Cast sender SDK

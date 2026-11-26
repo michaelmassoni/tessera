@@ -2,10 +2,8 @@ package io.github.michaelmassoni.tessera.music.cast
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -14,6 +12,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
+import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.music.PlaybackService
 import io.github.michaelmassoni.tessera.music.server.ArtProvider
 import io.github.michaelmassoni.tessera.music.server.ServerPlayback
@@ -68,12 +67,9 @@ object Cast {
     fun discovery(context: Context): CastDiscovery = discovery ?: CastDiscovery(context.applicationContext).also { discovery = it }
 
     /** Android 17 asks before an app reaches devices on the Wi-Fi; earlier versions allow it with INTERNET. */
-    fun needsPermission(context: Context): Boolean =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN &&
-            context.checkSelfPermission(PERMISSION) != PackageManager.PERMISSION_GRANTED
+    fun needsPermission(context: Context): Boolean = !LocalNetwork.granted(context)
 
-    // Manifest.permission.ACCESS_LOCAL_NETWORK, spelled out: the constant is API 37 and is only used from there.
-    const val PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
+    const val PERMISSION = LocalNetwork.PERMISSION
 
     /** Starts casting to [device], ending any session with another one first. */
     fun connect(

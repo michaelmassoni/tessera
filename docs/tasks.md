@@ -113,6 +113,7 @@ Welcome; Notifications (for reminders); Alarms & reminders (exact alarms); "Sync
 | Permission | Why |
 |------------|-----|
 | `INTERNET` | CalDAV sync with the server the person adds; nothing else is contacted |
+| `ACCESS_LOCAL_NETWORK` | Android 17 asks before an app reaches the local network. Asked for only when the server is on it: at sign-in, and once on launch for an account made earlier. Without it a server on the local network can't be reached; Settings says so and links to the permission. |
 | `POST_NOTIFICATIONS` | Reminders |
 | `SCHEDULE_EXACT_ALARM` | Reminders at the exact time (medications) |
 | `RECEIVE_BOOT_COMPLETED` | Re-arm reminders after a restart |

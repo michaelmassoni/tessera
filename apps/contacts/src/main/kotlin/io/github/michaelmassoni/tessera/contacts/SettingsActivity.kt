@@ -188,6 +188,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                 lastProblem = remember(work) { store.lastProblem },
                 syncing = syncing,
                 onSyncNow = { ContactsSyncWorker.schedule.soon(context, delaySeconds = 0) },
+                server = remember(work) { store.account?.address },
             )
             InfoSetting(
                 stringResource(R.string.sign_out),

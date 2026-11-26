@@ -30,6 +30,7 @@ import io.github.michaelmassoni.tessera.core.settings.RadioSetting
 import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
+import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
 import io.github.michaelmassoni.tessera.music.data.LyricsRepository
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.ServerAccount
@@ -227,13 +228,19 @@ private fun SignInDialog(
     var fields by rememberSaveable(stateSaver = SignInSaver) { mutableStateOf(initial) }
     var problem by remember { mutableStateOf<ServerProblem?>(null) }
     var working by remember { mutableStateOf(false) }
+    val network = rememberLocalNetworkAccess()
 
     fun connect() {
         if (working) return
         working = true
         problem = null
         scope.launch {
-            problem = signIn(context, fields.address, fields.username, fields.password)
+            problem =
+                if (network.allow(fields.address)) {
+                    signIn(context, fields.address, fields.username, fields.password)
+                } else {
+                    ServerProblem.LocalNetwork
+                }
             working = false
             if (problem == null) onDone()
         }

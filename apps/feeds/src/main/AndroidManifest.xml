@@ -3,6 +3,9 @@
 
     <!-- Fetching feeds, or syncing with the yarr server the person adds (docs/feeds.md). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 17 asks before an app reaches the local network: only asked for when that server is
+         on it (docs/decisions.md, 2026-11-26). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <!-- New-article notifications, for the feeds the person turns them on for. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

@@ -20,6 +20,9 @@ data class ServerAccount(
 
 /** Why a server request failed, in terms the person can act on. */
 enum class ServerProblem {
+    /** The server is on the local network and the person refused Nearby devices (Android 17). */
+    LocalNetwork,
+
     /** No answer: offline, wrong address, server down. */
     Unreachable,
 

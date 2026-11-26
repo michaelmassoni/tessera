@@ -15,6 +15,7 @@ and needs no network, Google account or Play Services.
 | `READ_CONTACTS` | List, search and show contacts |
 | `WRITE_CONTACTS` | Create, edit, star and delete contacts; import vCards |
 | `INTERNET` | Only to sync with the CardDAV server the person adds (docs/sync.md); nothing else is contacted |
+| `ACCESS_LOCAL_NETWORK` | Android 17 asks before an app reaches the local network. Asked for only when the server is on it: at sign-in, and once on launch for an account made earlier. Without it a server on the local network can't be reached; Settings says so and links to the permission. |
 | `READ_SYNC_SETTINGS`, `WRITE_SYNC_SETTINGS` | The sync accounts: whether they sync on local changes |
 
 Both are asked for on first launch, behind an explanation screen. If they're denied, the screen

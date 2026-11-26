@@ -123,6 +123,7 @@ app's text size. Images have their alt text as a description. Touch targets are 
 | Permission | Why |
 |------------|-----|
 | `INTERNET` | Fetching feeds (on this phone) or syncing with the yarr server the person adds; nothing else is contacted except the sites the feeds' articles link images from |
+| `ACCESS_LOCAL_NETWORK` | Android 17 asks before an app reaches the local network. Asked for only when the server is on it: at sign-in, and once on launch for an account made earlier. Without it a server on the local network can't be reached; Settings says so and links to the permission. |
 | `POST_NOTIFICATIONS` | New-article notifications, for feeds the person turns them on for |
 
 ## Engine (pure Kotlin, unit tested)

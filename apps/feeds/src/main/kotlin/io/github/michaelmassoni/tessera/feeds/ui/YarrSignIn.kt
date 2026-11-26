@@ -36,6 +36,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.dav.SignInError
 import io.github.michaelmassoni.tessera.core.dav.SignInProblem
+import io.github.michaelmassoni.tessera.core.settings.LocalNetworkAccess
+import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
+import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
 import io.github.michaelmassoni.tessera.feeds.R
 import kotlinx.coroutines.launch
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
@@ -100,7 +103,9 @@ fun YarrSignInForm(
             },
             modifier = Modifier.fillMaxWidth(),
         )
-        if (problem != null) {
+        if (problem == SignInProblem.LocalNetwork) {
+            LocalNetworkDenied()
+        } else if (problem != null) {
             Text(
                 stringResource(
                     when (problem) {
@@ -124,7 +129,9 @@ fun YarrSignInForm(
                             R.string.problem_not_yarr
                         }
 
-                        SignInProblem.Other -> {
+                        SignInProblem.LocalNetwork,
+                        SignInProblem.Other,
+                        -> {
                             R.string.problem_other
                         }
                     },
@@ -139,6 +146,7 @@ fun YarrSignInForm(
 
 /** Runs [signIn] for the form, tracking progress and the problem. */
 class YarrSignInState(
+    private val network: LocalNetworkAccess,
     private val signIn: suspend (YarrFields) -> Result<Unit>,
 ) {
     var working by mutableStateOf(false)
@@ -151,6 +159,11 @@ class YarrSignInState(
         if (working || fields.address.isBlank()) return
         working = true
         problem = null
+        if (!network.allow(fields.address)) {
+            problem = SignInProblem.LocalNetwork
+            working = false
+            return
+        }
         signIn(fields)
             .onSuccess { onDone() }
             .onFailure { problem = (it as? SignInError)?.problem ?: SignInProblem.Other }
@@ -167,7 +180,8 @@ fun YarrSignInDialog(
 ) {
     val scope = rememberCoroutineScope()
     var fields by rememberSaveable(stateSaver = YarrFieldsSaver) { mutableStateOf(YarrFields()) }
-    val sign = remember { YarrSignInState(signIn) }
+    val network = rememberLocalNetworkAccess()
+    val sign = remember { YarrSignInState(network, signIn) }
     val connect = { scope.launch { sign.connect(fields, onSignedIn) } }
     AlertDialog(
         onDismissRequest = { if (!sign.working) onDismiss() },
