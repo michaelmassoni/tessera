@@ -316,30 +316,4 @@ private fun DeviceIcon(device: CastDevice) {
     )
 }
 
-/** A line under the controls while casting. */
-@Composable
-fun CastingLine(
-    device: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            painterResource(R.drawable.ic_cast_connected),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            stringResource(R.string.cast_casting_to, device),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 8.dp),
-        )
-    }
-}
-
 private const val SEARCH_MS = 10_000L
