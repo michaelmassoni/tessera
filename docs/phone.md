@@ -133,6 +133,19 @@ covers the incoming-call screen.
   flags it as non-free) and hasn't been updated since 2021, and there's no downloadable
   Australian list (2026-11-22). The labels work the same for whatever list is added later.
 
+## Recents search, quick replies, dual SIM (0.9)
+
+- **Recents search:** a search field and a "Missed" chip at the top of Recents. A name matches
+  ignoring case and accents, a number by its digits (two or more); Missed keeps missed and
+  declined calls. Days left empty disappear. `RecentsFilter` (unit tested).
+- **Reply with message:** under Answer and Decline on an incoming call (not a waiting second
+  call, nor a hidden number). Four ready replies or "Write your own…"; the call is declined and
+  Telecom has the default SMS app send the text (`Call.reject(true, text)`).
+- **Dual SIM:** a phone with two SIMs set to "Ask every time" holds an outgoing call until the
+  dialer picks one. The call screen then shows "Call with" and a button per SIM, named by its
+  carrier label (or SIM 1, SIM 2); the end button cancels. With a default SIM set, Telecom picks
+  and nothing is shown. Not tested on a dual-SIM device yet.
+
 ## Engine (pure Kotlin, unit tested)
 
 - `Dialpad`: key-to-letter map and appending or deleting digits; the long-press 0 gives +.
@@ -151,7 +164,6 @@ covers the incoming-call screen.
 - Blocked numbers UI (the system's is linked from settings).
 - RTT.
 - Video calls.
-- Dual-SIM picking (the system's default SIM is used).
 
 ## First run
 

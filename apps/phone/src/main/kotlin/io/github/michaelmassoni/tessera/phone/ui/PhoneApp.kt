@@ -37,6 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,6 +87,7 @@ import io.github.michaelmassoni.tessera.phone.engine.ContactSections
 import io.github.michaelmassoni.tessera.phone.engine.Dialpad
 import io.github.michaelmassoni.tessera.phone.engine.DurationUnit
 import io.github.michaelmassoni.tessera.phone.engine.NumberMatch
+import io.github.michaelmassoni.tessera.phone.engine.RecentsFilter
 import io.github.michaelmassoni.tessera.phone.engine.SpamNumbers
 import io.github.michaelmassoni.tessera.phone.engine.T9
 import io.github.michaelmassoni.tessera.phone.engine.callDuration
@@ -327,6 +329,9 @@ private fun Recents(
     }
     val context = LocalContext.current
     val country = LocalConfiguration.current.locales[0].country
+    val query = rememberTextFieldState()
+    var missedOnly by rememberSaveable { mutableStateOf(false) }
+    val shown = remember(state.recents, query.text, missedOnly) { RecentsFilter.filter(state.recents, query.text.toString(), missedOnly) }
     var options by remember { mutableStateOf<CallGroup?>(null) }
     var confirmBlock by rememberSaveable { mutableStateOf<String?>(null) }
     confirmBlock?.let { number -> BlockDialog(number, onBlock = { actions.block(number) }, onDismiss = { confirmBlock = null }) }
@@ -359,7 +364,39 @@ private fun Recents(
         }
     }
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
-        state.recents.forEach { (day, groups) ->
+        item(key = "filter") {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                TesseraSearchBar(
+                    text = query,
+                    placeholder = stringResource(R.string.search_recents),
+                    leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FilterChip(
+                    selected = missedOnly,
+                    onClick = { missedOnly = !missedOnly },
+                    label = { Text(stringResource(R.string.filter_missed)) },
+                    leadingIcon =
+                        if (missedOnly) {
+                            { Icon(painterResource(DesignR.drawable.ic_check), contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else {
+                            null
+                        },
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
+        if (shown.isEmpty()) {
+            item(key = "none") {
+                Text(
+                    stringResource(R.string.no_matching_calls),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp),
+                )
+            }
+        }
+        shown.forEach { (day, groups) ->
             item(key = "d$day") {
                 Text(
                     DateUtils
