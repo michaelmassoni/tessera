@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
@@ -34,15 +35,20 @@ class AlarmPlayer(
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
 
-    /** @param sound null = default alarm sound, "" = silent. */
+    /**
+     * @param sound null = default alarm sound, "" = silent.
+     * @param crescendoMs how long the sound takes to rise to full volume ([Crescendo]); 0 = at once.
+     *   The generated beep (the last resort) plays at full volume.
+     */
     fun start(
         sound: String?,
         vibrate: Boolean,
+        crescendoMs: Long = 0,
     ) {
         stop()
         if (sound != "") {
             val candidates = listOfNotNull(sound?.let(Uri::parse), Settings.System.DEFAULT_ALARM_ALERT_URI)
-            if (candidates.none(::tryPlay)) startBeeping()
+            if (candidates.none { tryPlay(it, crescendoMs) }) startBeeping() else rampUp(crescendoMs)
         }
         if (vibrate) startVibrating()
     }
@@ -59,7 +65,10 @@ class AlarmPlayer(
         vibrator.cancel()
     }
 
-    private fun tryPlay(uri: Uri): Boolean =
+    private fun tryPlay(
+        uri: Uri,
+        crescendoMs: Long,
+    ): Boolean =
         try {
             player =
                 MediaPlayer().apply {
@@ -67,6 +76,7 @@ class AlarmPlayer(
                     setDataSource(context, uri)
                     isLooping = true
                     prepare()
+                    Crescendo.volume(0, crescendoMs).let { setVolume(it, it) }
                     start()
                 }
             true
@@ -77,6 +87,22 @@ class AlarmPlayer(
             player = null
             false
         }
+
+    /** Raises the player's volume step by step to full over [durationMs] (stopped by [stop]). */
+    private fun rampUp(durationMs: Long) {
+        if (durationMs <= 0) return
+        val started = SystemClock.elapsedRealtime()
+        val step =
+            object : Runnable {
+                override fun run() {
+                    val p = player ?: return
+                    val volume = Crescendo.volume(SystemClock.elapsedRealtime() - started, durationMs)
+                    runCatching { p.setVolume(volume, volume) }
+                    if (volume < 1f) handler.postDelayed(this, Crescendo.STEP_MS)
+                }
+            }
+        handler.postDelayed(step, Crescendo.STEP_MS)
+    }
 
     private fun startBeeping() {
         val generator =

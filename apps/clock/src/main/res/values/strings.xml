@@ -112,6 +112,9 @@
     <string name="settings_snooze">Snooze length</string>
     <string name="settings_silence_after">Silence after</string>
     <string name="settings_never">Never</string>
+    <!-- Alarms start quiet and rise to full volume over the chosen time. -->
+    <string name="settings_crescendo">Gradually increase volume</string>
+    <string name="settings_off">Off</string>
     <string name="settings_alarms">Alarms</string>
     <string name="settings_alarms_summary">Snooze %1$s · silence after %2$s</string>
     <string name="settings_alarms_summary_never">Snooze %1$s · rings until stopped</string>
