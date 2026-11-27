@@ -64,7 +64,7 @@ class ArchivesTest {
     fun `cancelling leaves no half-made zip`() {
         val dir = tree()
         try {
-            Archives.compress(listOf(dir), tmp.root, AtomicBoolean(true))
+            Archives.compress(listOf(dir), tmp.root, cancelled = AtomicBoolean(true))
             error("should have been cancelled")
         } catch (_: OperationException.Cancelled) {
         }
@@ -80,5 +80,75 @@ class ArchivesTest {
         } catch (_: java.io.IOException) {
         }
         assertFalse(File(tmp.root, "broken").exists())
+    }
+
+    @Test
+    fun `a chosen name and tar gz round trip`() {
+        val dir = tree()
+        val tgz = Archives.compress(listOf(dir), tmp.root, CompressOptions("Holiday", ArchiveFormat.TarGz))
+        assertEquals("Holiday.tar.gz", tgz.name)
+        // Same name again: numbered before the whole extension.
+        assertEquals("Holiday (1).tar.gz", Archives.compress(listOf(dir), tmp.root, CompressOptions("Holiday", ArchiveFormat.TarGz)).name)
+        val out = Archives.extract(tgz)
+        assertEquals("Holiday", out.name)
+        assertEquals("hello", File(out, "Trip/notes.txt").readText())
+        assertTrue(File(out, "Trip/photos/a.jpg").readBytes().contentEquals(File(dir, "photos/a.jpg").readBytes()))
+    }
+
+    @Test
+    fun `summaries count files and size for zip and tar gz`() {
+        val dir = tree()
+        for (format in listOf(ArchiveFormat.Zip, ArchiveFormat.TarGz)) {
+            val a = Archives.compress(listOf(dir), tmp.root, CompressOptions("s", format))
+            val s = Archives.summary(a)
+            assertEquals(format.name, 2, s.files)
+            assertEquals(format.name, 2, s.folders)
+            assertEquals(format.name, 300_005L, s.bytes)
+            assertEquals(format.name, "Trip/", s.sample.first())
+        }
+    }
+
+    @Test
+    fun `a tar entry pointing outside the folder is refused`() {
+        val tar = File(tmp.root, "evil.tar")
+        org.apache.commons.compress.archivers.tar.TarArchiveOutputStream(tar.outputStream()).use { out ->
+            val bytes = "x".toByteArray()
+            out.putArchiveEntry(
+                org.apache.commons.compress.archivers.tar.TarArchiveEntry("../escaped.txt").apply {
+                    size =
+                        bytes.size.toLong()
+                },
+            )
+            out.write(bytes)
+            out.closeArchiveEntry()
+        }
+        try {
+            Archives.extract(tar)
+            error("should have refused")
+        } catch (_: Archives.Unsafe) {
+        }
+        assertFalse(File(tmp.root, "escaped.txt").exists())
+        assertFalse(File(tmp.root, "evil").exists())
+    }
+
+    @Test
+    fun `formats and base names come from the file name`() {
+        assertEquals(ArchiveFormat.TarGz, ArchiveFormat.of(File("a.TGZ")))
+        assertEquals(ArchiveFormat.Tar, ArchiveFormat.of(File("a.tar")))
+        assertEquals(null, ArchiveFormat.of(File("a.gz")))
+        assertEquals("photos", ArchiveFormat.baseName(File("photos.tar.gz")))
+        assertEquals("x.y", ArchiveFormat.baseName(File("x.y.zip")))
+    }
+
+    @Test
+    fun `a damaged archive is reported as unreadable`() {
+        val bad = File(tmp.root, "bad.tar.gz").apply { writeText("not gzip") }
+        try {
+            Archives.extract(bad)
+            error("should have failed")
+        } catch (e: java.io.IOException) {
+            assertTrue(e.message.orEmpty(), e !is Archives.Unsafe)
+        }
+        assertFalse(File(tmp.root, "bad").exists())
     }
 }
