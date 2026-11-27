@@ -42,6 +42,8 @@ internal fun PlayerSheet(
     hasMedia: Boolean,
     player: @Composable (onClose: () -> Unit, modifier: Modifier) -> Unit,
     modifier: Modifier = Modifier,
+    // Goes up each time the player should open (tapping the media notification or controls).
+    openRequests: Int = 0,
     content: @Composable (openPlayer: () -> Unit, dragUp: Modifier) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
@@ -63,6 +65,7 @@ internal fun PlayerSheet(
                 animate(fraction, target, velocity, motion) { v, _ -> fraction = v }
             }
     }
+    LaunchedEffect(openRequests, hasMedia) { if (openRequests > 0 && hasMedia) slideTo(1f) }
     LaunchedEffect(hasMedia) {
         if (!hasMedia) {
             open = false

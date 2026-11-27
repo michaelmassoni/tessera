@@ -120,6 +120,8 @@ internal fun PlaylistScreen(
     onAlbum: ((Long) -> Unit)? = null,
     onArtist: ((Long) -> Unit)? = null,
     playingId: Long = 0,
+    // The current song is playing (not paused): its indicator moves.
+    playing: Boolean = false,
 ) {
     var menu by remember { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -168,6 +170,7 @@ internal fun PlaylistScreen(
                 ),
                 showShuffle = false,
                 playingId = playingId,
+                playing = playing,
                 onLongClick = {
                     i,
                     s,

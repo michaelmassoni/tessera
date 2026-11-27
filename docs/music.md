@@ -419,3 +419,11 @@ album), "Search your albums" albums (title or artist), "Search your artists" art
 your playlists" playlists, shown as that tab shows them (list or grid). Every word must match,
 ignoring case and accents. While typing, the settings button becomes a clear button; Back clears
 the search. Each tab keeps its own search.
+
+## Small touches (0.13.5)
+
+- Tapping the player in Quick Settings, the notification or the lock screen opens Music on the
+  full player (the session activity, `OPEN_PLAYER`).
+- The current song's mark is three bars that move while it plays and rest when paused.
+- The player's title is one line; a long title scrolls sideways to show the rest.
+- The explicit "E" sits before the artist (player and song lists), not after the title, as Spotify shows it.

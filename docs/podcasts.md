@@ -223,3 +223,9 @@ text wraps at 200% font scale.
   again.
 - Episodes removed from a feed stay if downloaded or in Up Next, otherwise they go.
 - Very large feeds (thousands of episodes) are parsed streaming (SAX), not into a DOM.
+
+## Small touches (0.5.3)
+
+- Tapping the player in Quick Settings, the notification or the lock screen opens Podcasts on the
+  full player (the session activity, `OPEN_PLAYER`).
+- The player's episode title is one line; a long title scrolls sideways to show the rest.

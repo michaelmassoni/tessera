@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.music
 
+import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.OptIn
@@ -107,6 +108,8 @@ class PlaybackService : MediaLibraryService() {
         session =
             MediaLibrarySession
                 .Builder(this, player, Callback())
+                // Tapping the player (Quick Settings, notification, lock screen) opens the app on the player.
+                .setSessionActivity(openPlayerIntent())
                 .build()
         loadQueue()?.let { saved ->
             player.setMediaItems(saved.items.map(::mediaItem), saved.index, saved.positionMs)
@@ -722,6 +725,16 @@ class PlaybackService : MediaLibraryService() {
             return Futures.immediateFuture(MediaItemsWithStartPosition(saved.items.map(::mediaItem), saved.index, saved.positionMs))
         }
     }
+
+    private fun openPlayerIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java)
+                .setAction(MainActivity.ACTION_OPEN_PLAYER)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     companion object {
         const val EXTRA_ALBUM_ID = "album_id"
