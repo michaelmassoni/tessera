@@ -148,6 +148,9 @@ enum class ServerNotice {
 
 /** Library-level actions. */
 interface LibraryActions {
+    /** Whether [song] is liked (its server star or a like made here), for the heart in song lists. */
+    fun isLiked(song: Song): Boolean = false
+
     /** Turns downloading for offline listening on or off for an album, playlist or Liked songs. */
     fun setDownload(
         kind: OfflineKind,
@@ -870,11 +873,13 @@ internal fun SongList(
             val explicit = if (song.explicit) ", " + stringResource(R.string.explicit) else ""
             val current = playingId != 0L && song.id == playingId
             val nowPlaying = if (current) ", " + stringResource(R.string.now_playing) else ""
+            val liked = actions.isLiked(song)
+            val likedText = if (liked) ", " + stringResource(R.string.liked) else ""
             val downloaded = Offline.isDownloaded(song, downloads.onPhone)
             // Offline, a server song that isn't downloaded can't play (unless cached): shown faded.
             val unavailable = !online && Offline.serverId(song) != null && !downloaded
             val saved = if (downloaded) ", " + stringResource(R.string.downloaded) else ""
-            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$saved$nowPlaying"
+            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$saved$likedText$nowPlaying"
             ListItem(
                 selected = current,
                 onClick = { actions.play(songs, i, from) },
@@ -899,7 +904,15 @@ internal fun SongList(
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (current) NowPlayingBars(playing, Modifier.size(16.dp))
+                        // Liked songs show a heart, as Spotify shows its check.
+                        if (liked) {
+                            Icon(
+                                painterResource(DesignR.drawable.ic_favorite_filled),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
                         Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium)
                     }
                 },
@@ -909,12 +922,16 @@ internal fun SongList(
                         .alpha(if (unavailable) UNAVAILABLE_ALPHA else 1f)
                         .semantics(mergeDescendants = true) { contentDescription = description },
             ) {
-                Text(
-                    song.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (current) MaterialTheme.colorScheme.primary else Color.Unspecified,
-                )
+                // The playing song: its moving bars before the title.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (current) NowPlayingBars(playing, Modifier.size(16.dp))
+                    Text(
+                        song.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (current) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                    )
+                }
             }
         }
     }

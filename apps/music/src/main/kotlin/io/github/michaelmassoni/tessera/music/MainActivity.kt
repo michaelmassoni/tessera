@@ -36,6 +36,7 @@ import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.data.PlayHistory
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Likes
 import io.github.michaelmassoni.tessera.music.engine.Offline
 import io.github.michaelmassoni.tessera.music.engine.OfflineKind
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
@@ -397,6 +398,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private inner class LibraryActionsImpl : LibraryActions {
+        override fun isLiked(song: Song) = Likes.isLiked(song, library.likes)
+
         override fun play(
             songs: List<Song>,
             index: Int,

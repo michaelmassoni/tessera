@@ -453,3 +453,8 @@ server can be downloaded. Songs on the phone (local library) need nothing.
   320, 192 or 128 kbps; default 320), Remove all downloads (with the space they use; confirmed
   first), and Clear cache (the 1 GB play cache).
 - Engine: `Offline` (what the pins need, what to fetch and delete; unit tested).
+
+## Song rows (0.14.1)
+
+In song lists the playing song's moving bars sit before its title (as Spotify shows them), and a liked
+song has a small filled heart on the right, beside its length (read as "Liked" by TalkBack).
