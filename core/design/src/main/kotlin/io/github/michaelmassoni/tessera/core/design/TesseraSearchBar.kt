@@ -32,6 +32,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -67,7 +68,8 @@ fun TesseraSearchBar(
             searchBarState = searchState,
             modifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
             onSearch = onSearch,
-            placeholder = { Text(placeholder) },
+            // One line: a long hint ends in "…" rather than wrapping the bar to two lines.
+            placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             colors = colors.inputFieldColors,
