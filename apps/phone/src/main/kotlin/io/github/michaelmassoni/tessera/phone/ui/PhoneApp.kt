@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.phone.ui
 
+import android.content.ClipData
 import android.content.res.Resources
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
@@ -33,6 +34,8 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
@@ -64,6 +67,8 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
@@ -718,12 +723,57 @@ private fun Keypad(
             }, supportingContent = { Text(s.number) }, modifier = Modifier.widthIn(max = 480.dp)) { Text(s.name) }
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Text(
-                PhoneNumberUtils.formatNumber(number, country) ?: number,
-                style = MaterialTheme.typography.displaySmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-            )
+            // Long-press the number to copy it or paste one in.
+            var menu by remember { mutableStateOf(false) }
+            val clipboard = LocalClipboard.current
+            val context = LocalContext.current
+            val scope = rememberCoroutineScope()
+            Box {
+                Text(
+                    (PhoneNumberUtils.formatNumber(number, country) ?: number).ifEmpty { " " },
+                    style = MaterialTheme.typography.displaySmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    modifier =
+                        Modifier
+                            .widthIn(min = 200.dp)
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = { menu = true },
+                                onLongClickLabel = stringResource(R.string.copy_or_paste),
+                            ),
+                )
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (number.isNotEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy)) },
+                            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_content_copy), contentDescription = null) },
+                            onClick = {
+                                menu = false
+                                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(number, number))) }
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.paste)) },
+                        leadingIcon = { Icon(painterResource(DesignR.drawable.ic_content_paste), contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            scope.launch {
+                                val text =
+                                    clipboard
+                                        .getClipEntry()
+                                        ?.clipData
+                                        ?.takeIf { it.itemCount > 0 }
+                                        ?.getItemAt(
+                                            0,
+                                        )?.coerceToText(context)
+                                if (text != null) number = Dialpad.paste(number, text.toString())
+                            }
+                        },
+                    )
+                }
+            }
         }
         KeypadGrid(onKey = { number += it }, onLongKey = { number += it })
         Row(
