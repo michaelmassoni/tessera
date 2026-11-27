@@ -29,7 +29,7 @@ class SubsonicTest {
         assertEquals(ServerProblem.Insecure, problem { Subsonic.normalizeAddress("http://music.example.com") })
         assertEquals(ServerProblem.Insecure, problem { Subsonic.normalizeAddress("http://8.8.8.8:4533") })
         listOf(
-            "10.0.0.16",
+            "10.0.0.20",
             "172.20.1.1",
             "192.168.0.2",
             "100.101.102.103",

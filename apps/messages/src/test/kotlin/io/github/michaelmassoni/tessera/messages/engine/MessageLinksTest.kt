@@ -23,7 +23,7 @@ class MessageLinksTest {
 
     @Test
     fun `emails are mailto and not also web links`() {
-        assertEquals(listOf("mailto:dom@greenpet.com.au"), targets("email dom@greenpet.com.au please"))
+        assertEquals(listOf("mailto:sam@example.com.au"), targets("email sam@example.com.au please"))
     }
 
     @Test

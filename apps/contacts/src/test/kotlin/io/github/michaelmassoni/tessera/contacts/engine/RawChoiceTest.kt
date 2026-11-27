@@ -19,10 +19,10 @@ class RawChoiceTest {
     @Test
     fun `each number and email once, the own copy's row kept`() {
         val raw = mapOf(10L to 1L, 11L to 1L, 20L to 2L, 21L to 2L, 22L to 2L)
-        val phones = listOf(Labeled("0408 853 468", 2, id = 10), Labeled("+61 408 853 468", 2, id = 20), Labeled("0408853468", 2, id = 21))
+        val phones = listOf(Labeled("0400 555 123", 2, id = 10), Labeled("+61 400 555 123", 2, id = 20), Labeled("0400555123", 2, id = 21))
         assertEquals(listOf(20L), RawChoice.distinct(phones, { raw[it.id] }, preferredRaw = 2L, key = RawChoice::phoneKey).map { it.id })
         val emails =
-            listOf(Labeled("Dom@Greenpet.com.au", 2, id = 11), Labeled("dom@greenpet.com.au", 2, id = 22), Labeled("x@y.org", 1, id = 23))
+            listOf(Labeled("Sam@Example.com.au", 2, id = 11), Labeled("sam@example.com.au", 2, id = 22), Labeled("x@y.org", 1, id = 23))
         assertEquals(
             listOf(22L, 23L),
             RawChoice.distinct(emails, { raw[it.id] }, preferredRaw = 2L, key = RawChoice::emailKey).map { it.id },
