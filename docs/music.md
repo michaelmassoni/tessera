@@ -123,9 +123,9 @@ Jellyfin has its own API, not Subsonic's, and isn't covered.
   the server transcodes).
 - **Cache:** played songs are kept in an on-phone cache (Media3 `SimpleCache`, least recently
   played removed first) so replays and an unreliable connection don't need the network.
-  Settings > Source > Offline cache: 500 MB, 1 GB (default), 2 GB or 5 GB (a new size applies the next
-  time Music starts), and Clear. Media3 also buffers the next song in the queue, so it's cached
-  too. Pinned downloads for offline listening are a later step.
+  A fixed 1 GB (since 0.14; downloads, which are never evicted, live elsewhere); Settings >
+  Downloads > Clear cache empties it. Media3 also buffers the next song in the queue, so it's cached
+  too.
 - **Offline and not cached:** the mini player says "Can't play: no connection to the server" in
   the error colour; pressing play tries again.
 - **Art:** `getCoverArt` at the size shown, kept in the image cache and on disk
@@ -427,3 +427,29 @@ the search. Each tab keeps its own search.
 - The current song's mark is three bars that move while it plays and rest when paused.
 - The player's title is one line; a long title scrolls sideways to show the rest.
 - The explicit "E" sits before the artist (player and song lists), not after the title, as Spotify shows it.
+
+## Downloads (0.14)
+
+For listening without a connection (a road trip): albums, playlists and Liked songs from a
+server can be downloaded. Songs on the phone (local library) need nothing.
+
+- **Download** sits beside Play and Shuffle on an album, a playlist and Liked songs (now the first
+  entry in Playlists). On: every song downloads; filled once all are on the phone, with "3 of 12
+  downloaded" underneath until then. Off: the songs are deleted, except those another download
+  still needs.
+- **Kept in step:** after each library refresh, a downloaded playlist's new songs download and its
+  removed ones are deleted; liking or unliking a song does the same for Liked songs.
+- **On the phone:** `files/downloads/<account>/`, one file per song named by its server id, never
+  evicted. Playback uses the file before the network, so it plays with no connection. Files are
+  written as `.part` and renamed when complete.
+- **In the background:** WorkManager foreground work (dataSync) with a progress notification and
+  Cancel; one pass at a time, a new pass replacing a running one. Wi-Fi only by default. A song that
+  fails is tried again on the next pass. Notifications are asked for the first time a download is
+  turned on (Android 13+).
+- **Seeing it:** a small mark before the artist on downloaded songs, and a **Downloaded** chip on
+  Songs, Albums and Playlists (once anything is downloaded). Offline, a card says so and songs that
+  aren't downloaded are faded (they still play if they happen to be cached).
+- **Settings > Downloads** (server only): Download over Wi-Fi only, Download quality (Original,
+  320, 192 or 128 kbps; default 320), Remove all downloads (with the space they use; confirmed
+  first), and Clear cache (the 1 GB play cache).
+- Engine: `Offline` (what the pins need, what to fetch and delete; unit tested).

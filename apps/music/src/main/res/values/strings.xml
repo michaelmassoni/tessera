@@ -108,7 +108,6 @@
     <string name="quality_original">Original</string>
     <string name="quality_original_summary">Original quality</string>
     <string name="quality_kbps">Up to %1$d kbps</string>
-    <string name="settings_cache">Offline cache</string>
     <string name="settings_clear_cache">Clear offline cache</string>
     <string name="settings_cache_used">%1$s used. Songs you\'ve played are kept here.</string>
     <string name="cant_play">Can\'t play: no connection to the server</string>
@@ -158,4 +157,29 @@
     <string name="show_as_grid">Show as grid</string>
     <string name="album_artists">Album artists</string>
     <string name="now_playing">playing now</string>
+    <!-- Downloads for offline listening (docs/music.md, Downloads). -->
+    <string name="settings_downloads">Downloads</string>
+    <string name="settings_downloads_summary">Wi-Fi, quality and storage</string>
+    <string name="settings_wifi_only">Download over Wi-Fi only</string>
+    <string name="settings_wifi_only_summary">Downloads wait for Wi-Fi instead of using mobile data</string>
+    <string name="settings_download_quality">Download quality</string>
+    <string name="settings_remove_downloads">Remove all downloads</string>
+    <string name="settings_downloads_used">Downloads use %1$s</string>
+    <string name="remove_downloads_text">Every downloaded song is removed from this phone and nothing stays set to download. Your library and playlists aren\'t changed.</string>
+    <string name="remove">Remove</string>
+    <string name="channel_downloads">Downloads</string>
+    <string name="downloading_title">Downloading music</string>
+    <string name="downloading">Getting ready…</string>
+    <plurals name="downloading_count">
+        <item quantity="one">%1$d of %2$d song</item>
+        <item quantity="other">%1$d of %2$d songs</item>
+    </plurals>
+    <string name="download">Download</string>
+    <string name="downloaded">Downloaded</string>
+    <plurals name="downloaded_count">
+        <item quantity="one">%1$d of %2$d downloaded</item>
+        <item quantity="other">%1$d of %2$d downloaded</item>
+    </plurals>
+    <string name="download_waiting_wifi">Waiting for Wi-Fi</string>
+    <string name="offline_notice">You\'re offline. Downloaded music still plays.</string>
 </resources>

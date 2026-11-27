@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.music.R
+import io.github.michaelmassoni.tessera.music.engine.OfflineKind
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
@@ -205,7 +206,9 @@ internal fun PlaylistScreen(
                                     Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
                                     Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 8.dp))
                                 }
+                                DownloadToggle(OfflineKind.Playlist, playlist.id, songs, actions)
                             }
+                            DownloadStatus(OfflineKind.Playlist, playlist.id, songs)
                             if (songs.isEmpty()) {
                                 Text(stringResource(R.string.empty_playlist), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }

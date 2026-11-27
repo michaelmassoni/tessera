@@ -31,11 +31,12 @@ import io.github.michaelmassoni.tessera.core.settings.SettingsCategory
 import io.github.michaelmassoni.tessera.core.settings.SwitchSetting
 import io.github.michaelmassoni.tessera.core.settings.TesseraSettingsActivity
 import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
+import io.github.michaelmassoni.tessera.music.data.DownloadStore
+import io.github.michaelmassoni.tessera.music.data.Downloads
 import io.github.michaelmassoni.tessera.music.data.LyricsRepository
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.ServerAccount
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
-import io.github.michaelmassoni.tessera.music.server.CacheSize
 import io.github.michaelmassoni.tessera.music.server.MusicSource
 import io.github.michaelmassoni.tessera.music.server.ServerPlayback
 import io.github.michaelmassoni.tessera.music.server.ServerStore
@@ -79,7 +80,7 @@ class SettingsActivity : TesseraSettingsActivity() {
                     listOfNotNull(account?.address, q).joinToString(" · ")
                 }
             }
-        return listOf(
+        return listOfNotNull(
             SettingsCategory(
                 key = "source",
                 title = stringResource(R.string.settings_source),
@@ -95,6 +96,17 @@ class SettingsActivity : TesseraSettingsActivity() {
                     onAccount = { account = it },
                     onQuality = { quality = it },
                 )
+            },
+            // Downloads for offline listening: only songs from a server can be downloaded.
+            if (source == MusicSource.Server) {
+                SettingsCategory(
+                    key = "downloads",
+                    title = stringResource(R.string.settings_downloads),
+                    icon = DesignR.drawable.ic_download,
+                    summary = stringResource(R.string.settings_downloads_summary),
+                ) { DownloadsPage() }
+            } else {
+                null
             },
             SettingsCategory(
                 key = "lyrics",
@@ -169,39 +181,6 @@ private fun SourcePage(
                 onQuality(it)
             },
         )
-
-        var size by remember { mutableStateOf(store.cacheSize) }
-        var used by remember { mutableLongStateOf(-1L) }
-        LaunchedEffect(Unit) { used = withContext(Dispatchers.IO) { ServerPlayback.cacheBytes(context) } }
-        ChoiceSetting(
-            title = stringResource(R.string.settings_cache),
-            options = CacheSize.entries,
-            selected = size,
-            label = { Formatter.formatShortFileSize(context, it.bytes) },
-            onSelect = {
-                store.cacheSize = it
-                size = it
-            },
-        )
-        InfoSetting(
-            title = stringResource(R.string.settings_clear_cache),
-            summary =
-                if (used < 0) {
-                    ""
-                } else {
-                    stringResource(R.string.settings_cache_used, Formatter.formatShortFileSize(context, used))
-                },
-            onClick = {
-                scope.launch {
-                    used =
-                        withContext(Dispatchers.IO) {
-                            ServerPlayback.clearCache(context)
-                            ServerPlayback.cacheBytes(context)
-                        }
-                }
-            },
-            external = false,
-        )
     }
 
     if (signingIn) {
@@ -260,4 +239,85 @@ private fun SignInDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss, enabled = !working) { Text(stringResource(android.R.string.cancel)) } },
     )
+}
+
+/** Settings > Downloads: how and when songs download, the space they take, and the play cache. */
+@Composable
+private fun DownloadsPage() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val store = remember { DownloadStore(context) }
+    var wifiOnly by remember { mutableStateOf(store.wifiOnly) }
+    var quality by remember { mutableStateOf(store.quality) }
+    var downloads by remember { mutableLongStateOf(-1L) }
+    var cache by remember { mutableLongStateOf(-1L) }
+    var confirmRemove by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            downloads = Downloads.bytes(context)
+            cache = ServerPlayback.cacheBytes(context)
+        }
+    }
+    SwitchSetting(
+        title = stringResource(R.string.settings_wifi_only),
+        checked = wifiOnly,
+        onCheckedChange = {
+            store.wifiOnly = it
+            wifiOnly = it
+            Downloads.refresh(context)
+            Downloads.sync(context)
+        },
+        summary = stringResource(R.string.settings_wifi_only_summary),
+    )
+    ChoiceSetting(
+        title = stringResource(R.string.settings_download_quality),
+        options = StreamQuality.entries,
+        selected = quality,
+        label = { it.label() },
+        onSelect = {
+            store.quality = it
+            quality = it
+        },
+    )
+    InfoSetting(
+        title = stringResource(R.string.settings_remove_downloads),
+        summary =
+            if (downloads < 0) "" else stringResource(R.string.settings_downloads_used, Formatter.formatShortFileSize(context, downloads)),
+        onClick = { confirmRemove = true },
+        external = false,
+    )
+    InfoSetting(
+        title = stringResource(R.string.settings_clear_cache),
+        summary = if (cache < 0) "" else stringResource(R.string.settings_cache_used, Formatter.formatShortFileSize(context, cache)),
+        onClick = {
+            scope.launch {
+                cache =
+                    withContext(Dispatchers.IO) {
+                        ServerPlayback.clearCache(context)
+                        ServerPlayback.cacheBytes(context)
+                    }
+            }
+        },
+        external = false,
+    )
+    if (confirmRemove) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text(stringResource(R.string.settings_remove_downloads)) },
+            text = { Text(stringResource(R.string.remove_downloads_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRemove = false
+                    scope.launch {
+                        downloads =
+                            withContext(Dispatchers.IO) {
+                                Downloads.removeAll(context)
+                                0L
+                            }
+                    }
+                }) { Text(stringResource(R.string.remove)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
 }
