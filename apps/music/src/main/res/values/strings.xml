@@ -182,4 +182,6 @@
     </plurals>
     <string name="download_waiting_wifi">Waiting for Wi-Fi</string>
     <string name="offline_notice">You\'re offline. Downloaded music still plays.</string>
+    <!-- Read out on a liked song in a list. -->
+    <string name="liked">Liked</string>
 </resources>
