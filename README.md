@@ -17,22 +17,17 @@ first-party on current Android, with no ads, no tracking and no Google Play Serv
 
 </div>
 
-> [!NOTE]
-> Tessera is young. The apps are in everyday use but still on 0.x versions, and Phone is
-> experimental. Each app is installed and updated on its own, so try the ones you want.
-
 ## Why Tessera?
 
 A *tessera* is one tile in a mosaic. Each app is its own tile, and together they share one look.
 
 - **Feels built in.** Material 3 Expressive, colours from your wallpaper, dark mode, edge-to-edge,
   predictive back, and layouts for phones, foldables and tablets.
-- **Private by design.** No ads, trackers, analytics or crash reporters, and no internet access
-  unless an app needs it. Weather (Bureau of Meteorology in Australia, Open-Meteo elsewhere) and
-  Sports (scores from ESPN) fetch public data with no account or key. Music, Tasks, Calendar and
-  Contacts talk only to a server you add yourself (Subsonic, CalDAV or CardDAV), Feeds fetches only
-  the feeds you subscribe to (or syncs with your own yarr server), and Music looks up
-  lyrics only if you turn that on. Nothing about you is sent anywhere else.
+- **Private by design.** No ads, trackers, analytics or crash reporters. Apps only go online when
+  they need to, and nothing about you is sent anywhere:
+  - Weather and Sports fetch public forecasts and scores, with no account.
+  - Music, Calendar, Contacts, Tasks and Feeds talk only to servers you choose.
+  - Podcasts fetches the shows you follow; Music looks up lyrics only if you turn that on.
 - **Works on de-Googled phones.** Nothing depends on Google Play Services, so the apps work the same
   on GrapheneOS, LineageOS or a stock phone.
 - **One theme for all of them.** Choose light, dark or system, wallpaper colours and pure black once,
@@ -50,7 +45,7 @@ A *tessera* is one tile in a mosaic. Each app is its own tile, and together they
 | <img src="docs/icons/gallery.svg" width="48" alt=""/> | **Gallery**<br/>Timeline and albums, zoom, video, a photo editor, move and copy, favourites, trash. | [![gallery][v gallery]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Gallery to Obtainium">][obtainium gallery] |
 | <img src="docs/icons/calendar.svg" width="48" alt=""/> | **Calendar**<br/>Month, week, day and schedule views, repeating events, reminders, widgets, ICS import, sync with your own CalDAV server. | [![calendar][v calendar]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Calendar to Obtainium">][obtainium calendar] |
 | <img src="docs/icons/music.svg" width="48" alt=""/> | **Music**<br/>Music on your phone or a Subsonic server (Navidrome and others), lyrics, playlists, Android Auto. | [![music][v music]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Music to Obtainium">][obtainium music] |
-| <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone** (experimental)<br/>Favourites, call history, keypad with T9 search, blocking, caller location and spam labels, and the call screen (with call waiting) when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
+| <img src="docs/icons/phone.svg" width="48" alt=""/> | **Phone**<br/>Favourites, call history, keypad with T9 search, blocking, caller location and spam labels, and the call screen (with call waiting) when it's your default. | [![phone][v phone]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Phone to Obtainium">][obtainium phone] |
 | <img src="docs/icons/messages.svg" width="48" alt=""/> | **Messages**<br/>SMS and MMS with pictures and groups, scheduled send, block, archive, Android Auto. | [![messages][v messages]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Messages to Obtainium">][obtainium messages] |
 | <img src="docs/icons/weather.svg" width="48" alt=""/> | **Weather**<br/>Forecasts from the Bureau of Meteorology in Australia (Open-Meteo elsewhere), for your location and saved places, with warnings, air quality, and forecast and date widgets you can set up. | [![weather][v weather]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Weather to Obtainium">][obtainium weather] |
 | <img src="docs/icons/sports.svg" width="48" alt=""/> | **Sports**<br/>Your teams' scores, fixtures and standings, team pages, a spoiler-free mode, a widget, and a live score on the lock screen while they play. | [![sports][v sports]][releases] | [<img src="docs/badges/badge_obtainium.png" height="32" alt="Add Tessera Sports to Obtainium">][obtainium sports] |
@@ -115,7 +110,7 @@ Releases are signed with this certificate (SHA-256), if you want to check:
 
 - **Android 12 or newer** is needed.
 - **Phone and Messages** become fully useful once you make them your default phone and SMS apps
-  (each app asks). Phone is experimental: it's safe to try, and you can switch back any time.
+  (each app asks). You can switch back any time.
 - **Files** asks for "All files access", so it can browse and manage everything on your phone and
   SD card, like the built-in file manager. Nothing leaves your device.
 - **Tasks** asks to set exact alarms, so reminders (medications, say) arrive on the minute. It

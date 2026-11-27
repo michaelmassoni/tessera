@@ -1,7 +1,7 @@
 # Phone: spec
 
-Package `io.github.michaelmassoni.tessera.phone`. Status: v0.7.
-**Experimental until tested on a real device with a SIM.**
+Package `io.github.michaelmassoni.tessera.phone`. Status: v0.10, in daily use on the maintainer's phone with no call problems (2026-11-27);
+no longer experimental.
 
 ## Goals
 
