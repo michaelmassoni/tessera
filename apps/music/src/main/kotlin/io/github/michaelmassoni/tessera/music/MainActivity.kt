@@ -542,6 +542,10 @@ class MainActivity : ComponentActivity() {
             player.previous()
         }
 
+        override fun previousSong() {
+            player.previousSong()
+        }
+
         override fun seekTo(positionMs: Long) {
             player.seekTo(positionMs)
         }
