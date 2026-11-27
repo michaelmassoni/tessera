@@ -1,0 +1,9 @@
+Read your news feeds in one place.
+
+* RSS and Atom feeds, fetched on the phone or synced with your own yarr server
+* Unread, starred and per-feed views, with search
+* Notifications per feed
+* OPML import and export, and a home-screen widget
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

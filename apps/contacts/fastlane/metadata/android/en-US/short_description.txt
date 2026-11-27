@@ -1,0 +1,1 @@
+Your contacts, with CardDAV sync to your own server and vCard import

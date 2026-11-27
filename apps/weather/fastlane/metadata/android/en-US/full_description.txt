@@ -1,0 +1,11 @@
+The weather for where you are and the places you save.
+
+* Hourly and daily forecasts, with rain, wind, UV and more
+* Weather warnings and air quality
+* Forecast and date-and-weather widgets you can set up
+* Your location (approximate) or any city you search for
+
+Forecasts come from Open-Meteo, and in Australia from the Bureau of Meteorology. Only the place's coordinates are sent.
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

@@ -1,0 +1,1 @@
+Swipe the album art to change song; settings choices open a cleaner dialog.

@@ -1,0 +1,9 @@
+A voice recorder that keeps going when you leave the app.
+
+* A live waveform while you record
+* Records in the background, with a Quick Settings tile to start and stop
+* Search, rename and share your recordings
+* Play back at any speed
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

@@ -1,0 +1,10 @@
+Contacts on your phone, kept in sync with your own server.
+
+* Search, favourites and a full editor with photos
+* Finds and merges duplicate contacts
+* Import and export vCard files
+* Sync with your own CardDAV server (Nextcloud, Radicale and others), no Google account needed
+* Shows each number and email once, even when a contact is saved in several places
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

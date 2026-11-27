@@ -13,6 +13,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      app: ${{ steps.tag.outputs.app }}
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -66,3 +69,44 @@ jobs:
           sha256sum "$apk" > "$apk.sha256"
           gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" \
             --title "Tessera ${app^} $version" --generate-notes
+
+  # What F-Droid does (docs/fdroid.md): build the tag again on a fresh machine, unsigned, and check
+  # it matches the published APK byte for byte apart from the signature. F-Droid only publishes our
+  # signed APK when it does, so a mismatch here means the F-Droid build of this release will fail.
+  reproducible:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: rebuild
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Android SDK packages
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "platforms;android-37.1" "build-tools;37.0.0" > /dev/null
+
+      - name: Build unsigned, without caches
+        working-directory: rebuild
+        run: ./gradlew :apps:${{ needs.release.outputs.app }}:assembleRelease --no-build-cache --no-configuration-cache --console=plain
+
+      - name: Compare with the published APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          app="${{ needs.release.outputs.app }}"
+          version="${{ needs.release.outputs.version }}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern "tessera-$app-$version.apk"
+          pip install --quiet apksigcopier==1.1.1
+          export PATH="$ANDROID_HOME/build-tools/37.0.0:$PATH"
+          if apksigcopier compare "tessera-$app-$version.apk" \
+            --unsigned "rebuild/apps/$app/build/outputs/apk/release/$app-release-unsigned.apk"; then
+            echo "Reproducible: the rebuild matches the published APK."
+          else
+            echo "::error::Not reproducible: the rebuild differs from tessera-$app-$version.apk, so F-Droid won't publish it."
+            exit 1
+          fi

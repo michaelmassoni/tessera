@@ -1,0 +1,1 @@
+First release on F-Droid: the same app, and the same signed APK, as on GitHub, built reproducibly from source.

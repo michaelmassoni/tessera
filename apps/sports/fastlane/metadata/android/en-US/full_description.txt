@@ -1,0 +1,11 @@
+Follow your teams across leagues.
+
+* Scores, fixtures and standings, and a page for each team
+* A live score on the lock screen while your team plays
+* A spoiler-free mode that hides scores until you want them
+* A home-screen widget
+
+Scores come from ESPN's public data service.
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.
