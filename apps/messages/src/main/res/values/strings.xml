@@ -113,4 +113,13 @@
     <string name="send_email">Send email</string>
     <string name="open_item">Open %1$s</string>
     <string name="copy_item">Copy %1$s</string>
+    <!-- Retrying, delivery reports, selecting text (docs/messages.md). -->
+    <string name="not_sent_retry">Not sent · Tap to try again</string>
+    <string name="delivered_at">Delivered · %1$s</string>
+    <string name="select_text">Select text</string>
+    <string name="done">Done</string>
+    <string name="select_text_hint">Press and hold a word, then drag the handles to pick what to copy.</string>
+    <string name="settings_sending">Sending</string>
+    <string name="settings_delivery_reports">Delivery reports</string>
+    <string name="settings_delivery_reports_summary">Show when a text reaches the other phone (texts only)</string>
 </resources>

@@ -460,6 +460,11 @@ class MainActivity : ComponentActivity() {
 
         override fun deleteMessages(ids: Set<String>) = write { store.deleteMessages(ids) }
 
+        override fun retry(messageId: String) {
+            val id = messageId.removePrefix("s").toLongOrNull() ?: return
+            write { repository.retrySms(id) }
+        }
+
         override fun download(messageId: String) {
             val id = messageId.removePrefix("m").toLongOrNull() ?: return
             toast(R.string.downloading)

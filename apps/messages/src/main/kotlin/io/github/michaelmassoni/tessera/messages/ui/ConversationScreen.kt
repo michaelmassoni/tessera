@@ -24,7 +24,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
@@ -161,6 +164,15 @@ internal fun ConversationScreen(
                                 onForward(chosenText)
                             }) { Icon(painterResource(DesignR.drawable.ic_forward), contentDescription = stringResource(R.string.forward)) }
                         }
+                        // One message with text: pick out part of it to copy.
+                        if (chosen.singleOrNull()?.body?.isNotBlank() == true) {
+                            IconButton(onClick = { dialog = DIALOG_SELECT_TEXT }) {
+                                Icon(
+                                    painterResource(DesignR.drawable.ic_select_all),
+                                    contentDescription = stringResource(R.string.select_text),
+                                )
+                            }
+                        }
                         if (chosen.size == 1) {
                             IconButton(onClick = {
                                 dialog = DIALOG_DETAILS
@@ -259,7 +271,14 @@ internal fun ConversationScreen(
                                         time = DateUtils.formatDateTime(context, row.message.date, DateUtils.FORMAT_SHOW_TIME),
                                         sender = if (group && !row.message.outgoing) row.message.sender?.let { names[it] ?: it } else null,
                                         selected = isSelected,
-                                        onClick = { if (selected.isNotEmpty()) toggle() },
+                                        onClick = {
+                                            when {
+                                                selected.isNotEmpty() -> toggle()
+
+                                                // A failed text: tapping it sends it again.
+                                                row.message.failed && row.message.id.startsWith("s") -> actions.retry(row.message.id)
+                                            }
+                                        },
                                         selecting = selected.isNotEmpty(),
                                         onLongClick = toggle,
                                         actions = actions,
@@ -294,12 +313,17 @@ internal fun ConversationScreen(
         DIALOG_DETAILS -> {
             chosen.singleOrNull()?.let { m -> Details(m, thread, names) { dialog = null } } ?: run { dialog = null }
         }
+
+        DIALOG_SELECT_TEXT -> {
+            chosen.singleOrNull()?.let { m -> SelectTextDialog(m.body) { dialog = null } } ?: run { dialog = null }
+        }
     }
 }
 
 private const val DIALOG_NEEDS_DEFAULT = "needs_default"
 private const val DIALOG_DELETE = "delete"
 private const val DIALOG_DETAILS = "details"
+private const val DIALOG_SELECT_TEXT = "select_text"
 
 @Composable
 private fun Details(
@@ -471,8 +495,10 @@ private fun Bubble(
         if (row.lastInGroup || m.failed || m.pending) {
             Text(
                 when {
+                    m.failed && m.id.startsWith("s") -> stringResource(R.string.not_sent_retry)
                     m.failed -> stringResource(R.string.not_sent)
                     m.pending -> stringResource(R.string.sending)
+                    m.delivered -> stringResource(R.string.delivered_at, time)
                     else -> time
                 },
                 style = MaterialTheme.typography.labelSmall,
@@ -687,3 +713,29 @@ private fun copyValue(
     link: MessageLink,
     shown: String,
 ): String = if (link.target.startsWith("tel:") || link.target.startsWith("mailto:")) shown else link.target
+
+/** A message's text, to pick out part of it and copy (Select text in the selection bar). */
+@Composable
+private fun SelectTextDialog(
+    text: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_text)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.select_text_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                SelectionContainer(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+                    Text(text, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
+    )
+}
