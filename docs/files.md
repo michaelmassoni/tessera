@@ -177,9 +177,21 @@ No network or media permissions are requested; all-files access already covers m
 - **Bookmarks:** Add to bookmarks on a selected folder; bookmarked folders are listed on the home
   screen above Folders (name and location), and removed from the same menu.
 
+## Archives (0.8)
+
+- **Compress** asks for a name (the suggestion selected, ready to type over) and a format: **Zip**
+  (opens anywhere) or **TAR.GZ** (usually smaller). A taken name gets a number before the whole
+  extension ("Holiday (1).tar.gz").
+- **Tapping an archive** (.zip, .tar, .tar.gz, .tgz) opens it in Files instead of looking for
+  another app: how many files, their size and the first entries, with **Extract here** and
+  **Open with…** (another app, as before).
+- Extract here (selection menu or that dialog) handles the same formats. Tar links are skipped;
+  entries pointing outside the folder are refused, as for zip. Apache Commons Compress reads and
+  writes tar (docs/decisions.md, 2026-11-27).
+
 ## Out of scope for v0.1
 
-- Archives other than zip (7z, rar, tar).
+- 7z and rar archives (tar and tar.gz are supported since 0.8).
 - Network and cloud storage.
 - Root access.
 - Media categories view.

@@ -10,6 +10,7 @@ import io.github.michaelmassoni.tessera.files.data.Transfers
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
 import io.github.michaelmassoni.tessera.files.engine.Archives
+import io.github.michaelmassoni.tessera.files.engine.CompressOptions
 import io.github.michaelmassoni.tessera.files.engine.FileEntry
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
@@ -112,7 +113,7 @@ class FilesViewModel(
     private val ops: FileOperations,
     private val trash: Trash,
     // Starts a transfer in the foreground service ([Transfers]); null runs it here (tests).
-    private val startTransfer: ((OperationKind, List<File>, File?) -> Boolean)? = null,
+    private val startTransfer: ((OperationKind, List<File>, File?, CompressOptions?) -> Boolean)? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(FilesUiState(options = settings.options, bookmarks = bookmarked(settings)))
     val state: StateFlow<FilesUiState> = _state.asStateFlow()
@@ -270,25 +271,26 @@ class FilesViewModel(
         if (transfer(kind, clip.files, target)) _state.update { it.copy(clipboard = null) }
     }
 
-    /** Zips the selection into a new .zip in this folder. */
-    fun compressSelection() {
+    /** Compresses the selection into a new archive in this folder, named and formatted by [options]. */
+    fun compressSelection(options: CompressOptions) {
         val s = _state.value
         val target = s.location ?: return
-        if (transfer(OperationKind.Compress, s.selection.toList(), target)) _state.update { it.copy(selection = emptySet()) }
+        if (transfer(OperationKind.Compress, s.selection.toList(), target, options)) _state.update { it.copy(selection = emptySet()) }
     }
 
-    /** Extracts a zip into a new folder beside it. */
-    fun extract(zip: File) {
-        if (transfer(OperationKind.Extract, listOf(zip), null)) _state.update { it.copy(selection = emptySet()) }
+    /** Extracts an archive into a new folder beside it. */
+    fun extract(archive: File) {
+        if (transfer(OperationKind.Extract, listOf(archive), null)) _state.update { it.copy(selection = emptySet()) }
     }
 
     private fun transfer(
         kind: OperationKind,
         files: List<File>,
         target: File?,
+        options: CompressOptions? = null,
     ): Boolean {
         if (files.isEmpty()) return false
-        startTransfer?.let { return it(kind, files, target) }
+        startTransfer?.let { return it(kind, files, target, options) }
         cancelOperation = AtomicBoolean(false)
         val cancel = cancelOperation
         _state.update { it.copy(operation = RunningOperation(kind, null)) }
@@ -300,7 +302,7 @@ class FilesViewModel(
                         when (kind) {
                             OperationKind.Copy -> ops.copy(files, target!!, cancel, report)
                             OperationKind.Move -> ops.move(files, target!!, cancel, report)
-                            OperationKind.Compress -> Archives.compress(files, target!!, cancel, report)
+                            OperationKind.Compress -> Archives.compress(files, target!!, options, cancel, report)
                             OperationKind.Extract -> files.forEach { Archives.extract(it, cancel, report) }
                         }
                         null

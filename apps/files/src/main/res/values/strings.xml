@@ -206,4 +206,20 @@
     <string name="bookmarks">Bookmarks</string>
     <string name="action_bookmark">Add to bookmarks</string>
     <string name="action_unbookmark">Remove from bookmarks</string>
+    <!-- Archives (docs/files.md, Archives). -->
+    <string name="archive_name">Name</string>
+    <string name="format_zip">Zip</string>
+    <string name="format_tar_gz">TAR.GZ</string>
+    <string name="format_zip_hint">Opens anywhere, including Windows and phones.</string>
+    <string name="format_tar_gz_hint">Usually smaller. Opens on Linux and macOS, and in most archive apps.</string>
+    <string name="action_open_with">Open with…</string>
+    <string name="archive_unreadable">This archive can\'t be read. It may be damaged or in a format Files doesn\'t open.</string>
+    <plurals name="archive_files">
+        <item quantity="one">%d file</item>
+        <item quantity="other">%d files</item>
+    </plurals>
+    <plurals name="archive_more">
+        <item quantity="one">and %d more</item>
+        <item quantity="other">and %d more</item>
+    </plurals>
 </resources>

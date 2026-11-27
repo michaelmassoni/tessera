@@ -16,6 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import io.github.michaelmassoni.tessera.files.MainActivity
 import io.github.michaelmassoni.tessera.files.R
 import io.github.michaelmassoni.tessera.files.engine.Archives
+import io.github.michaelmassoni.tessera.files.engine.CompressOptions
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.OperationException
 import io.github.michaelmassoni.tessera.files.engine.Progress
@@ -63,6 +64,7 @@ object Transfers {
         val kind: OperationKind,
         val sources: List<File>,
         val target: File?,
+        val options: CompressOptions?,
     )
 
     private val _running = MutableStateFlow<RunningOperation?>(null)
@@ -80,9 +82,10 @@ object Transfers {
         kind: OperationKind,
         sources: List<File>,
         target: File?,
+        options: CompressOptions? = null,
     ): Boolean {
         if (_running.value != null || sources.isEmpty()) return false
-        pending = Request(kind, sources, target)
+        pending = Request(kind, sources, target, options)
         cancel.set(false)
         _running.value = RunningOperation(kind, null)
         context.startForegroundService(Intent(context, TransferService::class.java))
@@ -107,7 +110,7 @@ object Transfers {
                 when (request.kind) {
                     OperationKind.Copy -> ops.copy(request.sources, request.target!!, cancel, report)
                     OperationKind.Move -> ops.move(request.sources, request.target!!, cancel, report)
-                    OperationKind.Compress -> Archives.compress(request.sources, request.target!!, cancel, report)
+                    OperationKind.Compress -> Archives.compress(request.sources, request.target!!, request.options, cancel, report)
                     OperationKind.Extract -> request.sources.forEach { Archives.extract(it, cancel, report) }
                 }
                 TransferOutcome(request.kind, request.sources.size)
@@ -138,7 +141,7 @@ object Transfers {
             }
 
             else -> {
-                if (e.message?.startsWith("Not a readable zip") ==
+                if (e.message?.startsWith("Not a readable archive") ==
                     true
                 ) {
                     TransferOutcome.Failure.BadArchive
