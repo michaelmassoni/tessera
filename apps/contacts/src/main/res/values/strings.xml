@@ -31,6 +31,11 @@
     <string name="action_email">Email</string>
     <string name="action_edit">Edit</string>
     <string name="action_share">Share</string>
+    <string name="action_share_qr">Share as QR code</string>
+    <string name="action_done">Done</string>
+    <string name="qr_hint">Scan with another phone\'s camera to add this contact.</string>
+    <string name="qr_code_of">QR code for %1$s</string>
+    <string name="qr_too_long">This contact has too much to fit in a QR code. Use Share instead.</string>
     <string name="action_delete">Delete</string>
     <string name="action_favourite">Add to favourites</string>
     <string name="action_unfavourite">Remove from favourites</string>

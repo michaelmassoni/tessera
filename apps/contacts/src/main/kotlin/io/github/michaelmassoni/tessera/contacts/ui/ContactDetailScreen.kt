@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.contacts.R
 import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
+import io.github.michaelmassoni.tessera.contacts.engine.ContactQr
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
 import io.github.michaelmassoni.tessera.core.design.Avatar
 import java.time.LocalDate
@@ -89,6 +91,8 @@ fun ContactDetailScreen(
     showBack: Boolean = true,
 ) {
     var menu by remember { mutableStateOf(false) }
+    var showQr by rememberSaveable { mutableStateOf(false) }
+    if (showQr) QrCodeDialog(detail.name, remember(detail) { ContactQr.vcard(detail) }) { showQr = false }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -125,6 +129,14 @@ fun ContactDetailScreen(
                                 onClick = {
                                     menu = false
                                     actions.share(detail)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_share_qr)) },
+                                leadingIcon = { Icon(painterResource(R.drawable.ic_qr_code), contentDescription = null) },
+                                onClick = {
+                                    menu = false
+                                    showQr = true
                                 },
                             )
                             DropdownMenuItem(

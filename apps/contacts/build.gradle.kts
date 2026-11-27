@@ -7,12 +7,13 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.contacts"
-        versionCode = 19
-        versionName = "0.6.3"
+        versionCode = 20
+        versionName = "0.7.0"
     }
 }
 
 dependencies {
     implementation(project(":core:dav"))
     implementation(libs.work.runtime)
+    implementation(libs.zxing.core)
 }

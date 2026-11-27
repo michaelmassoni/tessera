@@ -1,0 +1,1 @@
+Share a contact as a QR code for another phone to scan.
