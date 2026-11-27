@@ -71,4 +71,20 @@ class LibraryTest {
         assertEquals(null, Library.albumOf(null, 99, albums))
         assertEquals(null, Library.artistOf(null, "", artists))
     }
+
+    @Test
+    fun `albums artists and playlists search by their own names`() {
+        val albums =
+            listOf(
+                Album(1, "808s & Heartbreak", "Ye", 2008, emptyList()),
+                Album(2, "Positions", "Ariana Grande", 2020, emptyList()),
+            )
+        assertEquals(listOf(1L), Library.searchAlbums(albums, "heart").map { it.id })
+        assertEquals(listOf(2L), Library.searchAlbums(albums, "ariana pos").map { it.id })
+        val artists = listOf(Artist(1, "Beyoncé", emptyList(), emptyList()), Artist(2, "Yeat", emptyList(), emptyList()))
+        assertEquals(listOf(1L), Library.searchArtists(artists, "beyonce").map { it.id })
+        val playlists = listOf(Playlist(1, "Gym"), Playlist(2, "Road trip"))
+        assertEquals(listOf(2L), Library.searchPlaylists(playlists, "TRIP").map { it.id })
+        assertEquals(emptyList<Long>(), Library.searchPlaylists(playlists, "  ").map { it.id })
+    }
 }
