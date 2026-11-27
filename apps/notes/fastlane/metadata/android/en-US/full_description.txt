@@ -1,0 +1,11 @@
+Quick notes and checklists, organised your way.
+
+* Text notes and checklists, with links you can tap
+* Labels, colours, pins, archive and trash
+* Reminders at a time you choose
+* Search across all your notes
+* Home-screen widget, a launcher shortcut and a Quick Settings tile for a new note
+* Back up and restore your notes
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

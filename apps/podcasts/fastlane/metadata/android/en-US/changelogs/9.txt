@@ -1,0 +1,1 @@
+Tap the media player to open the app; long titles scroll.

@@ -1,0 +1,9 @@
+Simple lists for the things you need to do, every day or just once.
+
+* Lists, due dates and repeating tasks (daily medication, weekly chores)
+* Reminders that arrive on time
+* A home-screen widget to tick tasks off and add new ones
+* Sync with your own CalDAV server (Nextcloud, Radicale and others)
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

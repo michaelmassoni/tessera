@@ -4,6 +4,15 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-27: F-Droid with reproducible builds; GitHub releases stay (Accepted)
+
+The maintainer asked for F-Droid releases while keeping Obtainium working. F-Droid will publish our
+own signed APKs (reproducible builds with `Binaries` and `AllowedAPKSigningKeys`) rather than
+signing its own, so F-Droid and GitHub installs are interchangeable. Every release must therefore
+rebuild byte for byte; the release workflow checks that, and `build-logic/reproducible-rules.pro`
+pins an R8 nondeterminism found in Music. Store listings live in each app's `fastlane/` folder.
+Podcasts, Sports and Weather carry the NonFreeNet anti-feature. Details: docs/fdroid.md.
+
 ## 2026-11-27: Files uses Apache Commons Compress for tar archives (Accepted)
 
 The maintainer asked for compression formats other than zip and for archives to open when

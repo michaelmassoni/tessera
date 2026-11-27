@@ -1,0 +1,12 @@
+A phone app for calls, recents and contacts.
+
+* Favourites, recents (with search and a Missed filter), contacts and a keypad
+* The in-call screen: hold, mute, speaker, Bluetooth, keypad and call waiting
+* Decline with a quick text reply
+* Caller location for unknown numbers and spam reports, worked out on your phone
+* Copy and paste numbers on the keypad; dual-SIM choice when you call
+
+Phone needs to be your default phone app to handle calls.
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

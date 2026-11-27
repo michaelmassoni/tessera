@@ -1,0 +1,12 @@
+Follow your shows and listen your way.
+
+* Search for shows, or add one by its feed address
+* New episodes on Home, with notifications, and an Up Next queue
+* Downloads for listening offline
+* Playback speed, a sleep timer and casting
+* Android Auto
+
+Show search uses the Apple Podcasts and fyyd directories; only your search words are sent.
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

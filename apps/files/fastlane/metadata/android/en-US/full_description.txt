@@ -1,0 +1,12 @@
+A file manager for your phone's storage and SD cards.
+
+* Browse, search, sort and select; copy, move, rename and share
+* Copies and moves keep going in the background, with progress and Cancel
+* Compress to Zip or TAR.GZ and open archives to see what's inside before extracting
+* Bookmarks for the folders you use most, and a trash you can restore from
+* A built-in PDF viewer
+
+Files asks for all-files access, as a file manager needs it to show and manage everything on your storage.
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

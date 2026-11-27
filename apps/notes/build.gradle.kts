@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.notes"
-        versionCode = 17
-        versionName = "0.6.2"
+        versionCode = 18
+        versionName = "0.6.3"
     }
 }
 

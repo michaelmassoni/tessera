@@ -1,0 +1,1 @@
+An RSS and Atom reader, syncing with yarr or fetching on the phone

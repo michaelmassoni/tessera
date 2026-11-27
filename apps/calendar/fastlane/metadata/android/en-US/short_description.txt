@@ -1,0 +1,1 @@
+Month, week, day and schedule views, with CalDAV sync and widgets

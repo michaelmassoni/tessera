@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.clock"
-        versionCode = 15
-        versionName = "0.9.2"
+        versionCode = 16
+        versionName = "0.9.3"
     }
 }
 

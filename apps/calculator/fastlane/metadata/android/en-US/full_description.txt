@@ -1,0 +1,10 @@
+A calculator that gets the answer right: 0.1 + 0.2 is 0.3, not 0.30000000000000004.
+
+* Basic and scientific modes, with degrees and radians
+* Exact decimal arithmetic and results that update as you type
+* History of past calculations, to reuse or copy
+* Move the cursor and paste numbers into the expression
+* Works fully offline; no permissions
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.
