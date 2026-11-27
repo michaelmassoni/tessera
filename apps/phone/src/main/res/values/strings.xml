@@ -99,4 +99,8 @@
     <string name="copy">Copy</string>
     <string name="paste">Paste</string>
     <string name="copy_or_paste">Copy or paste</string>
+    <!-- Swipe to answer (docs/phone.md). -->
+    <string name="swipe_up_to_answer">Swipe up to answer</string>
+    <string name="swipe_down_to_decline">Swipe down to decline</string>
+    <string name="swipe_hint">Swipe the button up to answer</string>
 </resources>

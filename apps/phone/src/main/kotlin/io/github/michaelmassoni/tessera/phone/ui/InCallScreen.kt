@@ -289,32 +289,38 @@ private fun IncomingControls(
         QuickReplyDialog(onSend = { text -> actions.declineWithMessage(call.id, text) }, onDismiss = { replying = false })
     }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            RoundAction(
-                DesignR.drawable.ic_call_end,
-                stringResource(R.string.decline),
-                MaterialTheme.colorScheme.error,
-                MaterialTheme.colorScheme.onError,
-            ) {
-                actions.decline(call.id)
-            }
-            if (waiting) {
+        // One call ringing: swipe, so a pocket can't answer it. A second call while on one keeps the
+        // buttons, where Hold & answer and End & answer need choosing between.
+        if (!waiting) {
+            SwipeToAnswer(onAnswer = { actions.answer(call.id) }, onDecline = { actions.decline(call.id) })
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 RoundAction(
-                    DesignR.drawable.ic_call,
-                    stringResource(R.string.end_and_answer),
-                    MaterialTheme.colorScheme.tertiary,
-                    MaterialTheme.colorScheme.onTertiary,
+                    DesignR.drawable.ic_call_end,
+                    stringResource(R.string.decline),
+                    MaterialTheme.colorScheme.error,
+                    MaterialTheme.colorScheme.onError,
                 ) {
-                    actions.endAndAnswer(call.id)
+                    actions.decline(call.id)
                 }
-            }
-            RoundAction(
-                if (waiting) DesignR.drawable.ic_pause else DesignR.drawable.ic_call,
-                stringResource(if (waiting) R.string.hold_and_answer else R.string.answer),
-                MaterialTheme.colorScheme.primary,
-                MaterialTheme.colorScheme.onPrimary,
-            ) {
-                actions.answer(call.id)
+                if (waiting) {
+                    RoundAction(
+                        DesignR.drawable.ic_call,
+                        stringResource(R.string.end_and_answer),
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.onTertiary,
+                    ) {
+                        actions.endAndAnswer(call.id)
+                    }
+                }
+                RoundAction(
+                    if (waiting) DesignR.drawable.ic_pause else DesignR.drawable.ic_call,
+                    stringResource(if (waiting) R.string.hold_and_answer else R.string.answer),
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    actions.answer(call.id)
+                }
             }
         }
         // Decline with a text: only for a number that can get one.
