@@ -11,6 +11,7 @@ import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactDetail
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.ContactIndex
+import io.github.michaelmassoni.tessera.contacts.engine.ContactQr
 import io.github.michaelmassoni.tessera.contacts.engine.ContactSummary
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
@@ -151,5 +152,13 @@ private fun ContactEditorPreview() {
 private fun PermissionPreview() {
     TesseraTheme(dynamicColor = false) {
         PermissionScreen(denied = false, onGrant = {}, onSettings = {})
+    }
+}
+
+@TesseraPreviews
+@Composable
+private fun QrCodePreview() {
+    TesseraTheme(dynamicColor = false) {
+        QrCodeDialog(sampleDetail.name, ContactQr.vcard(sampleDetail), onDismiss = {})
     }
 }

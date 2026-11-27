@@ -152,3 +152,11 @@ See [setup.md](setup.md) for what contacts asks for the first time it opens.
 ## Launcher shortcuts (0.6)
 
 Long-press the app icon: **New contact** opens a blank contact (`ACTION_INSERT`). Each icon is the Material Symbol on the app's launcher colour.
+
+## Share as QR code (0.7)
+
+A contact's menu has **Share as QR code**: a vCard 3.0 (`ContactQr`: name, numbers, emails,
+addresses, company, job title, websites; no photo or note so it stays small) drawn as a QR code
+(ZXing core, Apache-2.0, pure Java; error correction M) for another phone's camera to add. Dark
+squares on a light ground in both themes (the inverse surface in dark), since most scanners need
+that. A card too long for a code says so and points to Share.
