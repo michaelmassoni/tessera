@@ -7,8 +7,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.gallery"
-        versionCode = 17
-        versionName = "0.6.3"
+        versionCode = 18
+        versionName = "0.6.4"
     }
 }
 

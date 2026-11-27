@@ -62,6 +62,7 @@ import coil3.compose.AsyncImage
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
+import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.gallery.Collection
 import io.github.michaelmassoni.tessera.gallery.GalleryState
 import io.github.michaelmassoni.tessera.gallery.R
@@ -137,6 +138,8 @@ fun GalleryApp(
     var viewing by rememberSaveable(stateSaver = ViewingSaver) { mutableStateOf<Pair<Collection, Long>?>(null) }
     // The photo open in the editor, by id.
     var editing by rememberSaveable { mutableStateOf<Long?>(null) }
+    // What's typed in the Photos tab's search bar.
+    var photosQuery by rememberSaveable { mutableStateOf("") }
     // Each tab and the open album keep their scroll position while another is shown; a closed album forgets its own.
     val saveable = rememberSaveableStateHolder()
 
@@ -147,6 +150,12 @@ fun GalleryApp(
 
     BackHandler(viewing == null && state.selection.isNotEmpty()) { gridActions.clearSelection() }
     BackHandler(viewing == null && state.selection.isEmpty() && album != null) { closeAlbum() }
+    // Back clears the Photos search (not while the keyboard is up: Back closes it first).
+    BackHandler(
+        viewing == null && state.selection.isEmpty() && album == null && tab == 0 && photosQuery.isNotEmpty() && !keyboardVisible(),
+    ) {
+        photosQuery = ""
+    }
 
     val open: (Collection, MediaItem) -> Unit = { c, item ->
         if (pickMode) {
@@ -190,16 +199,18 @@ fun GalleryApp(
                     }
 
                     tab == 0 -> {
+                        // The search bar is the top bar: typing shows matches here, clearing it the timeline.
+                        val shown = if (photosQuery.isBlank()) Collection.All else Collection.Search(photosQuery)
                         CollectionScreen(
                             state,
-                            Collection.All,
-                            state.items,
+                            shown,
+                            if (shown == Collection.All) state.items else itemsOf(shown),
                             gridActions,
                             null,
-                            { open(Collection.All, it) },
+                            { open(shown, it) },
                             now,
                             pickMode,
-                            onOpenSearch = if (pickMode) null else ({ album = Collection.Search("") }),
+                            onQuery = if (pickMode) null else ({ photosQuery = it }),
                         )
                     }
 
@@ -252,8 +263,7 @@ private fun CollectionScreen(
     onOpen: (MediaItem) -> Unit,
     now: () -> Long,
     pickMode: Boolean,
-    // The Photos tab: opens search. A search screen: the query changed.
-    onOpenSearch: (() -> Unit)? = null,
+    // The Photos tab (and an old search screen): the search bar is the top bar; the query changed.
     onQuery: ((String) -> Unit)? = null,
 ) {
     val locale = LocalConfiguration.current.locales[0]
@@ -281,8 +291,18 @@ private fun CollectionScreen(
         topBar = {
             if (state.selection.isNotEmpty() && !pickMode) {
                 SelectionBar(state.selection.size, collection == Collection.Trash, state.albums, actions)
-            } else if (collection is Collection.Search && onQuery != null) {
-                SearchTopBar(collection.query, onQuery, onBack ?: {})
+            } else if (onQuery != null) {
+                TesseraSearchTopBar(
+                    query = (collection as? Collection.Search)?.query.orEmpty(),
+                    onQuery = onQuery,
+                    placeholder = stringResource(R.string.search_hint),
+                    onBack = onBack,
+                    action = {
+                        IconButton(onClick = actions::openSettings) {
+                            Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+                        }
+                    },
+                )
             } else {
                 TopAppBar(
                     title = { Text(if (pickMode) stringResource(R.string.pick_title) else title) },
@@ -298,11 +318,6 @@ private fun CollectionScreen(
                     },
                     actions = {
                         if (onBack == null && !pickMode) {
-                            onOpenSearch?.let {
-                                IconButton(onClick = it) {
-                                    Icon(painterResource(DesignR.drawable.ic_search), contentDescription = stringResource(R.string.search))
-                                }
-                            }
                             IconButton(onClick = actions::openSettings) {
                                 Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                             }
@@ -636,19 +651,3 @@ private val ViewingSaver: Saver<Pair<Collection, Long>?, Any> =
             if (list.isEmpty()) null else decodeCollection(list.drop(1)) to (list[0] as Long)
         },
     )
-
-/** Search's top bar: back, and the search field (focused when it opens). */
-@Composable
-private fun SearchTopBar(
-    query: String,
-    onQuery: (String) -> Unit,
-    onBack: () -> Unit,
-) {
-    TesseraSearchTopBar(
-        query = query,
-        onQuery = onQuery,
-        placeholder = stringResource(R.string.search_hint),
-        onBack = onBack,
-        focusOnOpen = true,
-    )
-}
