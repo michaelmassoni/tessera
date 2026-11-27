@@ -168,3 +168,9 @@ covers the incoming-call screen.
 ## First run
 
 See [setup.md](setup.md) for what phone asks for the first time it opens.
+
+## Copy and paste on the keypad (0.10)
+
+Long-press the number on the keypad: **Copy** (once something is typed) and **Paste**. Paste keeps
+only what can be dialled (digits, * and #, and a + at the start), so "Ph: (03) 9876-5432" pastes as
+0398765432, added after what is already typed. `Dialpad.paste` (unit tested).

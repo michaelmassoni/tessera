@@ -182,3 +182,11 @@ Long-press the app icon: **New message** opens the new-message screen (`NEW_MESS
 - **Call** in a one-to-one conversation's top bar opens the default phone app with the number
   (`ACTION_DIAL`, so Messages needs no phone permission).
 - A picture with no text no longer has an empty band under it.
+
+## Copying links (0.10)
+
+Long-press a link, email address or number in a message: a menu offers **Copy link / Copy email
+address / Copy number** and **Open link / Send email / Call**. A web link is copied whole (with
+https://), a number or address as written. Long-pressing anywhere else selects the message, as
+before. The bubble handles its links (a tap opens one), so TalkBack gets "Open …" and "Copy …"
+actions for each link.

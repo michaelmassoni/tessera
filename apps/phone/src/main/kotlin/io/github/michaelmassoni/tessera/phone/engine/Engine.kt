@@ -26,6 +26,25 @@ object Dialpad {
     fun longPress(key: String): String = if (key == "0") "+" else key
 
     fun delete(number: String): String = number.dropLast(1)
+
+    /**
+     * [number] with pasted [text] added: only what can be dialled (digits, * and #, and a + at
+     * the very start) is kept, so "Ph: (03) 9876-5432" pastes as 0398765432.
+     */
+    fun paste(
+        number: String,
+        text: String,
+    ): String {
+        val kept =
+            text.trim().filterIndexed { i, c ->
+                c.isDigit() || c == '*' || c == '#' ||
+                    (c == '+' && i == text.trim().indexOfFirst { it == '+' || it.isDigit() })
+            }
+        val dialable = if (number.isEmpty()) kept else kept.replace("+", "")
+        return (number + dialable).take(MAX_DIGITS)
+    }
+
+    private const val MAX_DIGITS = 40
 }
 
 /** Digits only, for matching however numbers are formatted. */

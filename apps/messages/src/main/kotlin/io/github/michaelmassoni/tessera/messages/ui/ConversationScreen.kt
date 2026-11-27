@@ -6,6 +6,8 @@ import android.content.Intent
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -52,8 +56,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalConfiguration
@@ -61,11 +70,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -78,6 +90,7 @@ import io.github.michaelmassoni.tessera.messages.R
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
 import io.github.michaelmassoni.tessera.messages.engine.Grouping
 import io.github.michaelmassoni.tessera.messages.engine.Message
+import io.github.michaelmassoni.tessera.messages.engine.MessageLink
 import io.github.michaelmassoni.tessera.messages.engine.MessageLinks
 import io.github.michaelmassoni.tessera.messages.engine.Row
 import io.github.michaelmassoni.tessera.messages.engine.SmsLength
@@ -247,6 +260,7 @@ internal fun ConversationScreen(
                                         sender = if (group && !row.message.outgoing) row.message.sender?.let { names[it] ?: it } else null,
                                         selected = isSelected,
                                         onClick = { if (selected.isNotEmpty()) toggle() },
+                                        selecting = selected.isNotEmpty(),
                                         onLongClick = toggle,
                                         actions = actions,
                                     )
@@ -330,14 +344,63 @@ private fun Bubble(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     actions: MessagesActions,
+    // Messages are being selected: a tap or long-press selects, even on a link.
+    selecting: Boolean = false,
 ) {
     val m = row.message
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    // Long-press on a link, email or number: a menu to copy or open it. Anywhere else: select the message.
+    val links = remember(m.body) { MessageLinks.find(m.body) }
+    var pressAt by remember { mutableStateOf(Offset.Zero) }
+    var bubbleCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var textCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var linkMenu by remember { mutableStateOf<MessageLink?>(null) }
+    val openLabel = stringResource(R.string.open_item)
+    val copyLabel = stringResource(R.string.copy_item)
+
+    fun linkPressed(): MessageLink? {
+        val outer = bubbleCoords ?: return null
+        val inner = textCoords?.takeIf { it.isAttached } ?: return null
+        val layout = textLayout ?: return null
+        val local = inner.localPositionOf(outer, pressAt)
+        if (local.x < 0 || local.y < 0 || local.x > inner.size.width || local.y > inner.size.height) return null
+        val offset = layout.getOffsetForPosition(local)
+        return links.firstOrNull { offset in it.start until it.end }
+    }
     val scheme = MaterialTheme.colorScheme
     Column(
         Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick, onLongClickLabel = stringResource(R.string.select))
-            .semantics { this.selected = selected },
+            .onGloballyPositioned { bubbleCoords = it }
+            // Where the finger went down (watched, not taken: selecting still works).
+            .pointerInput(Unit) {
+                awaitEachGesture { pressAt = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position }
+            }.combinedClickable(
+                // The bubble handles its links: a tap opens one, a long-press offers to copy it.
+                onClick = { (if (selecting) null else linkPressed())?.let { openLink(context, it) } ?: onClick() },
+                onLongClick = { (if (selecting) null else linkPressed())?.let { linkMenu = it } ?: onLongClick() },
+                onLongClickLabel = stringResource(R.string.select),
+            ).semantics {
+                this.selected = selected
+                // TalkBack can't touch a link inside the bubble: each gets Open and Copy actions.
+                customActions =
+                    links.flatMap { link ->
+                        val shown = m.body.substring(link.start, link.end)
+                        listOf(
+                            CustomAccessibilityAction(openLabel.format(shown)) {
+                                openLink(context, link)
+                                true
+                            },
+                            CustomAccessibilityAction(copyLabel.format(shown)) {
+                                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(shown, copyValue(link, shown)))) }
+                                true
+                            },
+                        )
+                    }
+            },
         horizontalAlignment = if (m.outgoing) Alignment.End else Alignment.Start,
     ) {
         if (sender != null && row.firstInGroup) {
@@ -390,7 +453,17 @@ private fun Bubble(
                                 color = scheme.onSurfaceVariant,
                             )
                         }
-                        if (m.body.isNotEmpty()) Text(linked(m.body), style = MaterialTheme.typography.bodyLarge)
+                        if (m.body.isNotEmpty()) {
+                            Box {
+                                Text(
+                                    linked(m.body),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    onTextLayout = { textLayout = it },
+                                    modifier = Modifier.onGloballyPositioned { textCoords = it },
+                                )
+                                linkMenu?.let { link -> LinkMenu(link, m.body.substring(link.start, link.end)) { linkMenu = null } }
+                            }
+                        }
                     }
                 }
             }
@@ -509,19 +582,12 @@ private fun Composer(
 private fun linked(text: String): AnnotatedString {
     val links = remember(text) { MessageLinks.find(text) }
     if (links.isEmpty()) return AnnotatedString(text)
-    val context = LocalContext.current
-    val style = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline))
+    val style = SpanStyle(textDecoration = TextDecoration.Underline)
     return remember(text, links) {
         buildAnnotatedString {
             append(text)
-            links.forEach { link ->
-                // Numbers go to the default phone app (a plain tel: link may ask which app).
-                if (link.target.startsWith("tel:")) {
-                    addLink(LinkAnnotation.Clickable(link.target, style) { dial(context, link.target) }, link.start, link.end)
-                } else {
-                    addLink(LinkAnnotation.Url(link.target, style), link.start, link.end)
-                }
-            }
+            // Drawn as links; the bubble opens them on a tap and offers Copy on a long-press.
+            links.forEach { link -> addStyle(style, link.start, link.end) }
         }
     }
 }
@@ -533,3 +599,91 @@ private fun dial(
 ) {
     runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, tel.toUri())) }
 }
+
+/** Long-press on a link, email address or number in a message: copy it, or open it. */
+@Composable
+private fun LinkMenu(
+    link: MessageLink,
+    shown: String,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val kind =
+        when {
+            link.target.startsWith("tel:") -> LinkKind.Number
+            link.target.startsWith("mailto:") -> LinkKind.Email
+            else -> LinkKind.Web
+        }
+    val copied = copyValue(link, shown)
+    DropdownMenu(expanded = true, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = {
+                Text(
+                    stringResource(
+                        when (kind) {
+                            LinkKind.Number -> R.string.copy_number
+                            LinkKind.Email -> R.string.copy_email
+                            LinkKind.Web -> R.string.copy_link
+                        },
+                    ),
+                )
+            },
+            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_content_copy), contentDescription = null) },
+            onClick = {
+                onDismiss()
+                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(shown, copied))) }
+            },
+        )
+        DropdownMenuItem(
+            text = {
+                Text(
+                    stringResource(
+                        when (kind) {
+                            LinkKind.Number -> R.string.call_number
+                            LinkKind.Email -> R.string.send_email
+                            LinkKind.Web -> R.string.open_link
+                        },
+                    ),
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    painterResource(
+                        when (kind) {
+                            LinkKind.Number -> DesignR.drawable.ic_call
+                            LinkKind.Email -> DesignR.drawable.ic_mail
+                            LinkKind.Web -> DesignR.drawable.ic_open_in_new
+                        },
+                    ),
+                    contentDescription = null,
+                )
+            },
+            onClick = {
+                onDismiss()
+                openLink(context, link)
+            },
+        )
+    }
+}
+
+private enum class LinkKind { Web, Email, Number }
+
+/** Opens a link: a number in the default phone app, anything else in whatever handles it. */
+private fun openLink(
+    context: Context,
+    link: MessageLink,
+) {
+    if (link.target.startsWith("tel:")) {
+        dial(context, link.target)
+    } else {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, link.target.toUri())) }
+    }
+}
+
+/** What Copy puts on the clipboard: a web link whole (with https://), a number or address as written. */
+private fun copyValue(
+    link: MessageLink,
+    shown: String,
+): String = if (link.target.startsWith("tel:") || link.target.startsWith("mailto:")) shown else link.target
