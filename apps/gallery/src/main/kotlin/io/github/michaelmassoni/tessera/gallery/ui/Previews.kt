@@ -119,3 +119,12 @@ private fun AlbumPickerPreview() {
         Surface(Modifier.fillMaxSize()) { AlbumPicker(sampleState.albums, "Move to album", onDismiss = {}, onPick = {}) }
     }
 }
+
+// Collections and folders; covers and counts must not be clipped by the tile's rounding.
+@TesseraPreviews
+@Composable
+private fun AlbumsPreview() {
+    TesseraTheme(dynamicColor = false) {
+        AlbumsScreen(sampleState, { c -> if (c == Collection.Videos) emptyList() else itemsOf(c) }, {}, NoGrid)
+    }
+}

@@ -419,7 +419,7 @@ private fun SelectionBar(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-private fun AlbumsScreen(
+internal fun AlbumsScreen(
     state: GalleryState,
     itemsOf: (Collection) -> List<MediaItem>,
     onOpen: (Collection) -> Unit,
@@ -484,7 +484,8 @@ private fun AlbumTile(
     onClick: () -> Unit,
 ) {
     Surface(onClick = onClick, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
-        Column {
+        // The text sits inside the corner rounding (which shapes the ripple), not under it.
+        Column(Modifier.padding(bottom = 8.dp)) {
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -514,12 +515,13 @@ private fun AlbumTile(
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 8.dp, start = 8.dp, end = 8.dp),
             )
             Text(
                 pluralStringResource(R.plurals.item_count, count, count),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
             )
         }
     }
