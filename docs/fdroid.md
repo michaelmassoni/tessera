@@ -64,7 +64,7 @@ rule) and release again.
    a lot for one review; submitting a few first (Calculator, Clock, Notes, Files) and the rest once
    those are in may go faster.
 5. Answer the reviewers. Common requests: categories (ours are best guesses from F-Droid's list),
-   the licence (`GPL-3.0-only` unless you want "or later"), and build details.
+   and build details. The licence is GPL-3.0-or-later (the maintainer's choice, 2026-11-27).
 6. Once merged, the apps appear in F-Droid after its next build cycle (usually within a few days).
    Then add an F-Droid badge and links to the README.
 

@@ -40,7 +40,7 @@ for dir in apps/*/; do
   {
     echo "Categories:"
     echo "  - $(category "$app")"
-    echo "License: GPL-3.0-only"
+    echo "License: GPL-3.0-or-later"
     echo "SourceCode: $repo"
     echo "IssueTracker: $repo/issues"
     echo "Changelog: $repo/releases"
