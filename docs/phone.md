@@ -174,3 +174,11 @@ See [setup.md](setup.md) for what phone asks for the first time it opens.
 Long-press the number on the keypad: **Copy** (once something is typed) and **Paste**. Paste keeps
 only what can be dialled (digits, * and #, and a + at the start), so "Ph: (03) 9876-5432" pastes as
 0398765432, added after what is already typed. `Dialpad.paste` (unit tested).
+
+## Swipe to answer (0.11)
+
+An incoming call is answered by swiping the call button up and declined by swiping it down, so a
+stray touch can't pick up. The button follows the finger and turns the answer or decline colour; let
+go before 120 dp and it springs back, and a tap only shows a hint. TalkBack gets Answer and Decline
+as actions on the button. A second call while you're on one keeps the buttons (Decline, End & answer,
+Hold & answer), where the choice matters. Reply with message stays below.
