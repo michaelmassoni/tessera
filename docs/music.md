@@ -390,19 +390,16 @@ Asked for by the maintainer, after the way other players lay it out:
 - **Under the controls:** the Cast button on the left, with "Casting to <device>" beside it while
   casting, and the queue on the right. No share button.
 
-## Genres and folders (0.13)
+## Genres (0.13)
 
-The Songs tab has **Genres** and **Folders** chips beside the sort (two more tabs would crowd the
-bar). Each opens a list, then a page of that genre's or folder's songs with Shuffle all;
-the player says "Playing from genre / folder" and goes back to it.
+The Songs tab has a **Genres** chip beside the sort (another tab would crowd the bar). It opens a
+list, then a page of that genre's songs with Shuffle all; the player says "Playing from genre"
+and goes back to it. (0.13.0 also had Folders; removed in 0.13.2 at the maintainer's request.)
 
 - **Genres** come from the genre tag (MediaStore `GENRE`; a server's OpenSubsonic `genres`, else
   `genre`). Spellings that differ only in case or spacing are one genre, shown as the most common
   spelling; "Rock; Pop" and "Rock/Pop" put a song under both. Untagged songs aren't listed.
-- **Folders** are the folders that hold songs (MediaStore `RELATIVE_PATH`; on a server, the
-  song's `path` without the file name), A to Z by path, each named by its last part with the
-  path underneath. A flat list, not a tree.
-- Songs in a group play album by album, in track order. `Groups` (unit tested).
+- Songs in a genre play album by album, in track order. `Groups` (unit tested).
 
 ## Out of scope for v0.1
 

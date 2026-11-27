@@ -201,9 +201,9 @@ private fun CastingPlayerPreview() {
 private val genreSongs =
     songs.mapIndexed { i, s -> s.copy(genre = listOf("Ambient", "Ambient; Electronic", "Jazz", "Indie Folk", "indie folk")[i]) }
 
-// Genres from the Songs tab's chip; folders look the same with a folder icon and the path.
+// Genres from the Songs tab's chip.
 @TesseraPreviews
 @Composable
 private fun GenresPreview() {
-    TesseraTheme(dynamicColor = false) { GroupsScreen(Groups.genres(genreSongs), folders = false, onOpen = {}, onBack = {}) }
+    TesseraTheme(dynamicColor = false) { GenresScreen(Groups.genres(genreSongs), onOpen = {}, onBack = {}) }
 }

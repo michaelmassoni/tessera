@@ -1,12 +1,12 @@
 package io.github.michaelmassoni.tessera.music.engine
 
-/** A genre or a folder, and its songs in album order (docs/music.md, Genres and folders). */
+/** A genre and its songs in album order (docs/music.md, Genres). */
 data class SongGroup(
     /** Stable across launches (from [key]), so a page can be reopened after rotation. */
     val id: Long,
-    /** The genre as tagged, or the folder's path. */
+    /** The genre, normalised (case and accents folded). */
     val key: String,
-    /** What to show: the genre, or the folder's last part. */
+    /** What to show: the most common spelling. */
     val name: String,
     val songs: List<Song>,
 )
@@ -33,15 +33,6 @@ object Groups {
                 SongGroup(idOf("genre", key), key, name, ordered(tagged.map { it.second }.distinctBy { it.id }))
             }.sortedBy { Library.sortKey(it.name) }
     }
-
-    /** Folders that hold songs (not their parents), A to Z by path. Songs with no folder are left out. */
-    fun folders(songs: List<Song>): List<SongGroup> =
-        songs
-            .filter { it.folder.isNotBlank() }
-            .groupBy { it.folder.trimEnd('/') }
-            .map { (path, inFolder) ->
-                SongGroup(idOf("folder", path), path, path.substringAfterLast('/').ifBlank { path }, ordered(inFolder))
-            }.sortedWith(compareBy({ Library.normalize(it.key) }, { it.key }))
 
     fun splitGenres(tag: String): List<String> =
         tag
