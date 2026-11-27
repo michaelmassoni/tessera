@@ -136,7 +136,8 @@ The viewer is always full-screen.
 
 ## Search (0.6)
 
-The search button on Photos opens a search field (keyboard up). Every word must match something
+The Photos tab's top bar is the search bar ("Search your photos", settings inside it); typing shows
+matches in place and clearing it (or Back) returns to the timeline. Every word must match something
 about a photo or video: its file name, its album, the month it was taken (name, or three or more
 letters of it), the year, the day of the month, or "photo" / "video". Case and accents are
 ignored; no on-device AI. Results are a flat grid, newest first; tapping one opens the viewer,

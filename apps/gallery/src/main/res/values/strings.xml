@@ -121,7 +121,6 @@
     <string name="setup_access_title">Your photos and videos</string>
     <string name="setup_access_text">To show the photos and videos on this phone. You can allow all of them, or only the ones you pick. Nothing leaves this phone.</string>
     <!-- Search (docs/gallery.md, Search). -->
-    <string name="search">Search</string>
-    <string name="search_hint">Search: name, album, month, year</string>
+    <string name="search_hint">Search your photos</string>
     <string name="no_matching_photos">No matching photos or videos</string>
 </resources>
