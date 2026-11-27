@@ -11,13 +11,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,9 +37,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.recorder.R
 import io.github.michaelmassoni.tessera.recorder.data.Recording
 import io.github.michaelmassoni.tessera.recorder.engine.Durations
@@ -168,21 +169,23 @@ internal fun PlayerScreen(
     }
     if (renaming) {
         // The whole name selected, so typing replaces it; the keyboard opens straight away.
-        var text by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-            mutableStateOf(TextFieldValue(recording.title, TextRange(0, recording.title.length)))
-        }
+        val text = rememberTextFieldState(recording.title, TextRange(0, recording.title.length))
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { focus.requestFocus() }
         AlertDialog(
             onDismissRequest = { renaming = false },
             title = { Text(stringResource(R.string.rename)) },
             text = {
-                OutlinedTextField(text, { text = it }, singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(focus))
+                TesseraTextField(
+                    text,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                )
             },
             confirmButton = {
                 TextButton(onClick = {
                     renaming = false
-                    actions.rename(recording, text.text)
+                    actions.rename(recording, text.text.toString())
                 }) { Text(stringResource(R.string.save)) }
             },
             dismissButton = { TextButton(onClick = { renaming = false }) { Text(stringResource(R.string.cancel)) } },

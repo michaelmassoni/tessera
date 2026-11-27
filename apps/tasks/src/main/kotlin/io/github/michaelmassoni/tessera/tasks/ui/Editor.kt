@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
@@ -61,6 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.tasks.R
 import io.github.michaelmassoni.tessera.tasks.data.TaskData
 import io.github.michaelmassoni.tessera.tasks.engine.Due
@@ -465,7 +465,7 @@ internal fun RepeatDialog(
                 if (frequency != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(stringResource(R.string.repeat_every))
-                        OutlinedTextField(
+                        TesseraTextField(
                             interval,
                             { interval = it.filter(Char::isDigit).take(3) },
                             singleLine = true,

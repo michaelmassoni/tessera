@@ -48,6 +48,7 @@ import io.github.michaelmassoni.tessera.clock.worldclock.City
 import io.github.michaelmassoni.tessera.clock.worldclock.CityCatalog
 import io.github.michaelmassoni.tessera.clock.worldclock.CityOffset
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -167,33 +168,14 @@ fun CityPicker(
     BackHandler(onBack = onClose)
     var query by rememberSaveable { mutableStateOf("") }
     val results = remember(query, catalog) { catalog.search(query) }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
     Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            painterResource(DesignR.drawable.ic_arrow_back),
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-                title = {
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = { Text(stringResource(R.string.cities_search)) },
-                        singleLine = true,
-                        colors =
-                            TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            ),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                    )
-                },
+            TesseraSearchTopBar(
+                query = query,
+                onQuery = { query = it },
+                placeholder = stringResource(R.string.cities_search),
+                onBack = onClose,
+                focusOnOpen = true,
             )
             LazyColumn(Modifier.fillMaxSize()) {
                 items(results, key = { it.zoneId }) { city ->

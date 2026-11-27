@@ -21,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.podcasts.R
 import io.github.michaelmassoni.tessera.podcasts.data.AddException
 import io.github.michaelmassoni.tessera.podcasts.data.AddProblem
@@ -261,7 +261,7 @@ private fun AddByUrlDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.add_by_url)) },
         text = {
-            OutlinedTextField(
+            TesseraTextField(
                 value = text,
                 onValueChange = { text = it },
                 label = { Text(stringResource(R.string.feed_url)) },

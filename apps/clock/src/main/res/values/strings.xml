@@ -37,8 +37,6 @@
     <string name="alarm_skipping">Skipping %1$s</string>
     <string name="alarm_skip_next">Skip next alarm</string>
     <string name="alarm_add_label">Add label</string>
-    <string name="alarm_label">Label</string>
-    <string name="timer_edit_label">Edit label</string>
     <string name="alarm_vibrate">Vibrate</string>
     <string name="alarm_select_time">Select time</string>
     <string name="alarm_set_for">Alarm set for %1$s from now</string>

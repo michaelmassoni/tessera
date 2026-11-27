@@ -106,35 +106,20 @@ private fun TimerCard(
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            var editingLabel by rememberSaveable { mutableStateOf(false) }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                // Tap the title to name the timer; the original duration stays underneath.
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .clip(MaterialTheme.shapes.small)
-                        .clickable(onClickLabel = stringResource(R.string.timer_edit_label)) { editingLabel = true }
-                        .padding(vertical = 4.dp),
-                ) {
-                    Text(
-                        timer.label.ifEmpty { stringResource(R.string.alarm_add_label) },
+                // Tap the title to name the timer, typing in place; the original duration stays underneath.
+                Column(Modifier.weight(1f)) {
+                    InlineLabel(
+                        label = timer.label,
+                        placeholder = stringResource(R.string.alarm_add_label),
+                        onCommit = { actions.onLabel(timer.id, it) },
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (timer.label.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
                         DurationFormat.timer(timer.durationMillis),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (editingLabel) {
-                    LabelDialog(
-                        initial = timer.label,
-                        onDismiss = { editingLabel = false },
-                        onConfirm = {
-                            editingLabel = false
-                            actions.onLabel(timer.id, it)
-                        },
                     )
                 }
                 IconButton(onClick = { actions.onDelete(timer.id) }) {

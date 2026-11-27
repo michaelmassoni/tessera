@@ -9,7 +9,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +23,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.gallery.R
 import io.github.michaelmassoni.tessera.gallery.engine.Album
 import io.github.michaelmassoni.tessera.gallery.engine.AlbumTarget
@@ -50,7 +50,7 @@ fun AlbumPicker(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.new_album)) },
             text = {
-                OutlinedTextField(
+                TesseraTextField(
                     state = name,
                     label = { Text(stringResource(R.string.album_name)) },
                     lineLimits = TextFieldLineLimits.SingleLine,

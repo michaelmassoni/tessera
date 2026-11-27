@@ -30,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +58,7 @@ import io.github.michaelmassoni.tessera.contacts.engine.AccountRef
 import io.github.michaelmassoni.tessera.contacts.engine.ContactForm
 import io.github.michaelmassoni.tessera.contacts.engine.Labeled
 import io.github.michaelmassoni.tessera.core.design.Avatar
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -184,7 +184,7 @@ private fun Field(
     singleLine: Boolean = true,
     keyboard: KeyboardType = KeyboardType.Text,
 ) {
-    OutlinedTextField(
+    TesseraTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
@@ -223,7 +223,7 @@ private fun LabeledList(
         }
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                TesseraTextField(
                     value = item.value,
                     onValueChange = { v -> onChange(items.toMutableList().also { it[index] = item.copy(value = v) }) },
                     label = { Text(fieldLabel) },

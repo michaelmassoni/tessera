@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.input.selectAll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -35,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.files.R
 import io.github.michaelmassoni.tessera.files.engine.ArchiveFormat
@@ -64,7 +64,7 @@ internal fun CompressDialog(
         title = { Text(stringResource(R.string.action_compress)) },
         text = {
             Column {
-                OutlinedTextField(
+                TesseraTextField(
                     state = name,
                     label = { Text(stringResource(R.string.archive_name)) },
                     suffix = { Text(".${format.extension}") },

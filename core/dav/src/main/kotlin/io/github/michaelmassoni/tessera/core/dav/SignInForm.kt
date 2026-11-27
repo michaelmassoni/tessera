@@ -11,7 +11,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +30,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.dav.R
 import io.github.michaelmassoni.tessera.core.design.TesseraPasswordField
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -56,7 +56,7 @@ fun SignInForm(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
+        TesseraTextField(
             fields.address,
             { onChange(fields.copy(address = it)) },
             label = { Text(stringResource(R.string.server_address)) },
@@ -67,7 +67,7 @@ fun SignInForm(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        TesseraTextField(
             fields.username,
             { onChange(fields.copy(username = it)) },
             label = { Text(stringResource(R.string.username)) },

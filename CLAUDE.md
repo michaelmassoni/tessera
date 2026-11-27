@@ -78,6 +78,9 @@ docs/decisions.md dated decision log
   - **Search:** use `TesseraSearchBar`, never a plain text field. A screen whose job includes
     search (a list, a search screen) uses `TesseraSearchTopBar` as its top bar: no title, back
     outside the bar when there is somewhere to go back to, settings or a menu inside it.
+  - **Text fields:** use `TesseraTextField` (or `TesseraPasswordField`), never Material's
+    `OutlinedTextField` directly: its 4 dp corners look dated next to Expressive shapes. Prefer
+    editing in place (Clock's labels) over a dialog with a single field.
   - Never put `clearAndSetSemantics` on a container that holds buttons: it hides them from TalkBack.
     Give an icon button its label (the icon's `contentDescription`) and hide a duplicate caption instead.
 - Glance calls `provideGlance` on the main thread: read files, preferences and providers inside

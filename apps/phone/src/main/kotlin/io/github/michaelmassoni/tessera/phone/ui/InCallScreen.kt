@@ -27,7 +27,6 @@ import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +50,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.call.CallFocus
@@ -607,7 +607,7 @@ private fun QuickReplyDialog(
         text = {
             Column {
                 if (writing) {
-                    OutlinedTextField(
+                    TesseraTextField(
                         state = own,
                         label = { Text(stringResource(R.string.reply_write)) },
                         modifier = Modifier.fillMaxWidth(),

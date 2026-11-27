@@ -7,7 +7,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraPasswordField
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.engine.ServerProblem
@@ -50,7 +50,7 @@ fun ServerSignInFields(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
+        TesseraTextField(
             value = fields.address,
             onValueChange = { onChange(fields.copy(address = it)) },
             label = { Text(stringResource(R.string.server_address)) },
@@ -61,7 +61,7 @@ fun ServerSignInFields(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        TesseraTextField(
             value = fields.username,
             onValueChange = { onChange(fields.copy(username = it)) },
             label = { Text(stringResource(R.string.server_username)) },
