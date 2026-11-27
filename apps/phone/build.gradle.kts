@@ -7,8 +7,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.phone"
-        versionCode = 21
-        versionName = "0.9.2"
+        versionCode = 22
+        versionName = "0.9.3"
     }
 }
 

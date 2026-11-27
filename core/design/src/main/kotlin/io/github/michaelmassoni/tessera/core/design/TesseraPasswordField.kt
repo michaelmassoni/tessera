@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +49,8 @@ fun TesseraPasswordField(
     OutlinedSecureTextField(
         state = state,
         modifier = modifier,
+        // Rounded like TesseraTextField.
+        shape = MaterialTheme.shapes.large,
         enabled = enabled,
         label = { Text(label) },
         isError = isError,

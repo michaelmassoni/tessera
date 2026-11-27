@@ -5,11 +5,12 @@ import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -19,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -26,8 +28,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.files.R
 import io.github.michaelmassoni.tessera.files.data.FileIntents
 import io.github.michaelmassoni.tessera.files.data.OperationKind
@@ -110,27 +112,29 @@ fun NameDialog(
     onDismiss: () -> Unit,
 ) {
     val selectionEnd = if (selectBaseName) Naming.split(initial).first.length else initial.length
-    var value by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, selectionEnd))) }
+    val value = rememberTextFieldState(initial, TextRange(0, selectionEnd))
     var problem by remember { mutableStateOf<NameProblem?>(null) }
+    // Editing clears the last complaint.
+    LaunchedEffect(value) { snapshotFlow { value.text.toString() }.collect { problem = null } }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = {
-                    value = it
-                    problem = null
-                },
-                singleLine = true,
+            TesseraTextField(
+                state = value,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 isError = problem != null,
                 supportingText = { problem?.let { Text(it.message()) } },
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         },
-        confirmButton = { TextButton(onClick = { problem = onConfirm(value.text) }) { Text(stringResource(R.string.action_ok)) } },
+        confirmButton = {
+            TextButton(
+                onClick = { problem = onConfirm(value.text.toString()) },
+            ) { Text(stringResource(R.string.action_ok)) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

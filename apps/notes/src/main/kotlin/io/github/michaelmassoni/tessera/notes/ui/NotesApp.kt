@@ -35,7 +35,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarDuration
@@ -68,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.notes.EditorState
 import io.github.michaelmassoni.tessera.notes.ListState
@@ -570,7 +570,7 @@ private fun LabelDialog(
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
+                    TesseraTextField(
                         value = newLabel,
                         onValueChange = { newLabel = it.replace("\n", "") },
                         label = { Text(stringResource(R.string.label_new_hint)) },
