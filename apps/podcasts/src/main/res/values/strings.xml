@@ -39,7 +39,6 @@
     <string name="search_intro">Search by show name or topic. Results come from the Apple Podcasts and fyyd directories; only your search words are sent.</string>
     <string name="search_failed">Couldn\'t search. Check your connection.</string>
     <string name="search_none">No shows found</string>
-    <string name="clear">Clear</string>
     <string name="add_by_url">Add by URL</string>
     <string name="feed_url">Feed or Apple Podcasts link</string>
     <string name="feed_url_help">For example https://example.com/feed.xml</string>

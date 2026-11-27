@@ -75,6 +75,9 @@ docs/decisions.md dated decision log
   them.
 - All user-facing strings go in `strings.xml`. Provide content descriptions for icons and
   check TalkBack order, touch target size (48dp) and font scaling up to 200%.
+  - **Search:** use `TesseraSearchBar`, never a plain text field. A screen whose job includes
+    search (a list, a search screen) uses `TesseraSearchTopBar` as its top bar: no title, back
+    outside the bar when there is somewhere to go back to, settings or a menu inside it.
   - Never put `clearAndSetSemantics` on a container that holds buttons: it hides them from TalkBack.
     Give an icon button its label (the icon's `contentDescription`) and hide a duplicate caption instead.
 - Glance calls `provideGlance` on the main thread: read files, preferences and providers inside

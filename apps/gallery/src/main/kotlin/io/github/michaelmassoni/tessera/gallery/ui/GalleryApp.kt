@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.gallery.Collection
 import io.github.michaelmassoni.tessera.gallery.GalleryState
@@ -643,22 +644,11 @@ private fun SearchTopBar(
     onQuery: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val text = rememberTextFieldState(query)
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect(onQuery) }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-    Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
-        }
-        TesseraSearchBar(
-            text = text,
-            placeholder = stringResource(R.string.search_hint),
-            modifier = Modifier.weight(1f),
-            focusRequester = focus,
-        )
-    }
+    TesseraSearchTopBar(
+        query = query,
+        onQuery = onQuery,
+        placeholder = stringResource(R.string.search_hint),
+        onBack = onBack,
+        focusOnOpen = true,
+    )
 }

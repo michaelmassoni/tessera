@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.messages.R
 import io.github.michaelmassoni.tessera.messages.engine.Conversation
 import kotlinx.coroutines.Dispatchers
@@ -385,45 +386,13 @@ private fun SearchBar(
     onQuery: (String) -> Unit,
     onClose: () -> Unit,
 ) {
-    val focus = remember { FocusRequester() }
-    // Only when search opens: not again when coming back to the results from a conversation.
-    var focused by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!focused) {
-            focus.requestFocus()
-            focused = true
-        }
-    }
-    TopAppBar(
-        title = {
-            TextField(
-                value = query,
-                onValueChange = onQuery,
-                placeholder = { Text(stringResource(R.string.search)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                colors =
-                    TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                    ),
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            )
-        },
-        navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
-            }
-        },
-        actions = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQuery("") }) {
-                    Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
-                }
-            }
-        },
+    TesseraSearchTopBar(
+        query = query,
+        onQuery = onQuery,
+        placeholder = stringResource(R.string.search),
+        onBack = onClose,
+        // Only when search opens: not again when coming back to the results from a conversation.
+        focusOnOpen = true,
     )
 }
 

@@ -494,12 +494,8 @@ private fun NotesDrawer(
     onSettings: () -> Unit,
 ) {
     ModalDrawerSheet {
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
-            Text(
-                stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp),
-            )
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 12.dp)) {
+            // No "Notes" title: the first entry already says Notes.
             val entry: @Composable (NoteView, String, Int) -> Unit = { view, label, icon ->
                 NavigationDrawerItem(
                     label = { Text(label) },

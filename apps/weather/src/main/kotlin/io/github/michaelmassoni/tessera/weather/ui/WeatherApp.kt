@@ -62,6 +62,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.weather.PlacePage
 import io.github.michaelmassoni.tessera.weather.R
 import io.github.michaelmassoni.tessera.weather.WeatherState
@@ -321,16 +322,13 @@ fun PlacesScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(if (onBack != null) R.string.places else R.string.app_name)) },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_back))
-                        }
-                    }
-                },
-                actions = {
+            // Like Contacts: the search bar is the top bar, with settings inside it.
+            TesseraSearchTopBar(
+                query = state.query,
+                onQuery = actions::search,
+                placeholder = stringResource(R.string.search_places),
+                onBack = onBack,
+                action = {
                     IconButton(onClick = actions::openSettings) {
                         Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                     }
@@ -345,7 +343,6 @@ fun PlacesScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            item(key = "search") { SearchField(state.query, actions::search) }
             if (state.query.isNotBlank()) {
                 when {
                     state.searching && state.results.isEmpty() -> {
@@ -390,37 +387,6 @@ fun PlacesScreen(
             }
         }
     }
-}
-
-@Composable
-private fun SearchField(
-    query: String,
-    onChange: (String) -> Unit,
-) {
-    val clear = Color.Transparent
-    TextField(
-        value = query,
-        onValueChange = onChange,
-        placeholder = { Text(stringResource(R.string.search_places)) },
-        leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onChange("") }) {
-                    Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.action_back))
-                }
-            }
-        },
-        singleLine = true,
-        shape = CircleShape,
-        colors =
-            TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                focusedIndicatorColor = clear,
-                unfocusedIndicatorColor = clear,
-            ),
-        modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(vertical = 8.dp),
-    )
 }
 
 @Composable

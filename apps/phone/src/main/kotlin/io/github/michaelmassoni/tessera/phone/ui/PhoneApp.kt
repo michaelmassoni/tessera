@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.design.Avatar
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.phone.R
 import io.github.michaelmassoni.tessera.phone.data.ContactNumber
@@ -216,15 +217,19 @@ private fun PhoneTab(
     onHistory: (String) -> Unit,
     onEdit: (String) -> Unit,
 ) {
-    val search = rememberTextFieldState()
+    // Contacts and Recents each keep their own search.
+    val contactSearch = rememberTextFieldState()
+    val recentSearch = rememberTextFieldState()
+    val search = if (tab == Tab.Recents) recentSearch else contactSearch
     // Each list tab keeps its own scroll position when switching tabs.
     val tabs = rememberSaveableStateHolder()
     // Not while the keyboard is up: Back closes it first, as in every other app.
-    BackHandler(enabled = tab == Tab.Contacts && search.text.isNotEmpty() && !keyboardVisible()) { search.clearText() }
+    BackHandler(enabled = tab in SEARCH_TABS && search.text.isNotEmpty() && !keyboardVisible()) { search.clearText() }
     Scaffold(
         topBar = {
-            if (tab == Tab.Contacts) {
-                ContactSearch(search, actions)
+            // Tabs with a search show only the search bar (settings inside it); the others a title.
+            if (tab in SEARCH_TABS) {
+                TabSearch(search, stringResource(if (tab == Tab.Recents) R.string.search_recents else R.string.search_contacts), actions)
             } else {
                 TopAppBar(
                     title = { Text(stringResource(tab.label)) },
@@ -259,8 +264,8 @@ private fun PhoneTab(
                 tabs.SaveableStateProvider(tabKey(tab.name)) {
                     when (tab) {
                         Tab.Favourites -> Favourites(state, actions)
-                        Tab.Recents -> Recents(state, actions, onHistory, onEdit)
-                        Tab.Contacts -> Contacts(state, actions, search.text.toString())
+                        Tab.Recents -> Recents(state, actions, onHistory, onEdit, recentSearch.text.toString())
+                        Tab.Contacts -> Contacts(state, actions, contactSearch.text.toString())
                         Tab.Keypad -> Unit
                     }
                 }
@@ -323,6 +328,7 @@ private fun Recents(
     actions: PhoneActions,
     onHistory: (String) -> Unit,
     onEdit: (String) -> Unit,
+    query: String,
 ) {
     if (state.loaded && state.recents.isEmpty()) {
         Empty(stringResource(R.string.empty_recents))
@@ -330,9 +336,8 @@ private fun Recents(
     }
     val context = LocalContext.current
     val country = LocalConfiguration.current.locales[0].country
-    val query = rememberTextFieldState()
     var missedOnly by rememberSaveable { mutableStateOf(false) }
-    val shown = remember(state.recents, query.text, missedOnly) { RecentsFilter.filter(state.recents, query.text.toString(), missedOnly) }
+    val shown = remember(state.recents, query, missedOnly) { RecentsFilter.filter(state.recents, query, missedOnly) }
     var options by remember { mutableStateOf<CallGroup?>(null) }
     var confirmBlock by rememberSaveable { mutableStateOf<String?>(null) }
     confirmBlock?.let { number -> BlockDialog(number, onBlock = { actions.block(number) }, onDismiss = { confirmBlock = null }) }
@@ -366,13 +371,7 @@ private fun Recents(
     }
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
         item(key = "filter") {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                TesseraSearchBar(
-                    text = query,
-                    placeholder = stringResource(R.string.search_recents),
-                    leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            Column(Modifier.padding(horizontal = 16.dp)) {
                 FilterChip(
                     selected = missedOnly,
                     onClick = { missedOnly = !missedOnly },
@@ -383,7 +382,6 @@ private fun Recents(
                         } else {
                             null
                         },
-                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
@@ -576,35 +574,23 @@ private fun callTypeLabel(type: CallType) =
         else -> R.string.type_incoming
     }
 
-/** The Contacts tab's search bar, as in the Contacts app: clear while typing, settings otherwise. */
+/** A tab's search bar, as in the Contacts app: clear while typing, settings otherwise. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ContactSearch(
+private fun TabSearch(
     text: TextFieldState,
+    placeholder: String,
     actions: PhoneActions,
 ) {
-    Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TesseraSearchBar(
-            text = text,
-            placeholder = stringResource(R.string.search_contacts),
-            modifier = Modifier.weight(1f),
-            leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-            trailingIcon = {
-                if (text.text.isNotEmpty()) {
-                    IconButton(onClick = { text.clearText() }) {
-                        Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
-                    }
-                } else {
-                    IconButton(onClick = actions::openSettings) {
-                        Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
-                    }
-                }
-            },
-        )
-    }
+    TesseraSearchTopBar(
+        text = text,
+        placeholder = placeholder,
+        action = {
+            IconButton(onClick = actions::openSettings) {
+                Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -902,3 +888,6 @@ private fun callTypeIcon(type: CallType) =
         CallType.Missed, CallType.Rejected, CallType.Blocked -> DesignR.drawable.ic_call_missed
         else -> DesignR.drawable.ic_call_received
     }
+
+/** Tabs whose top bar is a search bar. */
+private val SEARCH_TABS = setOf(Tab.Recents, Tab.Contacts)
