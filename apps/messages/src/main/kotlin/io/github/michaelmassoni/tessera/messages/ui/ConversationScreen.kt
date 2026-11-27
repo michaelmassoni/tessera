@@ -1,6 +1,8 @@
 package io.github.michaelmassoni.tessera.messages.ui
 
 import android.content.ClipData
+import android.content.Context
+import android.content.Intent
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
@@ -61,14 +63,22 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import io.github.michaelmassoni.tessera.messages.R
 import io.github.michaelmassoni.tessera.messages.engine.Attachment
 import io.github.michaelmassoni.tessera.messages.engine.Grouping
 import io.github.michaelmassoni.tessera.messages.engine.Message
+import io.github.michaelmassoni.tessera.messages.engine.MessageLinks
 import io.github.michaelmassoni.tessera.messages.engine.Row
 import io.github.michaelmassoni.tessera.messages.engine.SmsLength
 import kotlinx.coroutines.launch
@@ -177,6 +187,16 @@ internal fun ConversationScreen(
                         if (showBack) {
                             IconButton(onClick = actions::close) {
                                 Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
+                            }
+                        }
+                    },
+                    actions = {
+                        // One person with a phone number: call them (the phone app opens with the number).
+                        val number = thread.addresses.singleOrNull()?.takeIf { a -> a.count(Char::isDigit) >= 3 }
+                        if (number != null) {
+                            val context = LocalContext.current
+                            IconButton(onClick = { dial(context, "tel:$number") }) {
+                                Icon(painterResource(DesignR.drawable.ic_call), contentDescription = stringResource(R.string.call, title))
                             }
                         }
                     },
@@ -348,26 +368,30 @@ private fun Bubble(
         ) {
             Column {
                 m.attachments.forEach { a -> AttachmentView(a, actions, enabled = !selected) }
-                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    if (m.downloadable) {
-                        Text(stringResource(R.string.picture_not_downloaded), style = MaterialTheme.typography.bodyMedium)
-                        FilledTonalButton(onClick = { actions.download(m.id) }, modifier = Modifier.padding(top = 6.dp)) {
-                            Icon(
-                                painterResource(DesignR.drawable.ic_download),
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp),
-                            )
-                            Text(stringResource(R.string.download))
+                // A picture with no text has no text area (it left an empty band under the picture).
+                val label = m.hasMedia && m.attachments.isEmpty()
+                if (m.downloadable || label || m.body.isNotEmpty()) {
+                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        if (m.downloadable) {
+                            Text(stringResource(R.string.picture_not_downloaded), style = MaterialTheme.typography.bodyMedium)
+                            FilledTonalButton(onClick = { actions.download(m.id) }, modifier = Modifier.padding(top = 6.dp)) {
+                                Icon(
+                                    painterResource(DesignR.drawable.ic_download),
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                )
+                                Text(stringResource(R.string.download))
+                            }
                         }
+                        if (label) {
+                            Text(
+                                stringResource(R.string.picture_message),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = scheme.onSurfaceVariant,
+                            )
+                        }
+                        if (m.body.isNotEmpty()) Text(linked(m.body), style = MaterialTheme.typography.bodyLarge)
                     }
-                    if (m.hasMedia) {
-                        Text(
-                            stringResource(R.string.picture_message),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = scheme.onSurfaceVariant,
-                        )
-                    }
-                    if (m.body.isNotEmpty()) Text(m.body, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -478,4 +502,34 @@ private fun Composer(
         }
     }
     if (scheduling) ScheduleSheet(actions, onDismiss = { scheduling = false })
+}
+
+/** [text] with its web links, email addresses and phone numbers underlined and tappable. */
+@Composable
+private fun linked(text: String): AnnotatedString {
+    val links = remember(text) { MessageLinks.find(text) }
+    if (links.isEmpty()) return AnnotatedString(text)
+    val context = LocalContext.current
+    val style = TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline))
+    return remember(text, links) {
+        buildAnnotatedString {
+            append(text)
+            links.forEach { link ->
+                // Numbers go to the default phone app (a plain tel: link may ask which app).
+                if (link.target.startsWith("tel:")) {
+                    addLink(LinkAnnotation.Clickable(link.target, style) { dial(context, link.target) }, link.start, link.end)
+                } else {
+                    addLink(LinkAnnotation.Url(link.target, style), link.start, link.end)
+                }
+            }
+        }
+    }
+}
+
+/** Opens the default phone app with [tel] ready to call. */
+private fun dial(
+    context: Context,
+    tel: String,
+) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, tel.toUri())) }
 }

@@ -173,3 +173,12 @@ or the Desktop Head Unit (no Android Auto on the AOSP emulator).
 ## Launcher shortcuts (0.8)
 
 Long-press the app icon: **New message** opens the new-message screen (`NEW_MESSAGE`). Each icon is the Material Symbol on the app's launcher colour.
+
+## Links and calling (0.9)
+
+- **Links:** web links (with or without `https://`), email addresses and phone numbers (8 to 15
+  digits, not dates) in a message are underlined and tappable: links open in the browser, emails
+  in the mail app, numbers in the default phone app ready to call. `MessageLinks` (unit tested).
+- **Call** in a one-to-one conversation's top bar opens the default phone app with the number
+  (`ACTION_DIAL`, so Messages needs no phone permission).
+- A picture with no text no longer has an empty band under it.
