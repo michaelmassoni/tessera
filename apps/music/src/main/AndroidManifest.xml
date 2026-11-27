@@ -8,8 +8,13 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Downloads for offline listening run as foreground work (docs/music.md, Downloads). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Only to reach the music server the person adds (docs/music.md). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Knowing when the phone is offline: songs that aren't downloaded are greyed out. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Reaching a music server on the local network (Android 17 asks first). Casting's permissions
          come from core:cast. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
@@ -141,6 +146,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- Downloads run as WorkManager foreground work of type dataSync. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 
 </manifest>
