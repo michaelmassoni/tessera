@@ -52,6 +52,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
+import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.recorder.R
 import io.github.michaelmassoni.tessera.recorder.data.Recording
 import io.github.michaelmassoni.tessera.recorder.engine.Durations
@@ -74,15 +76,11 @@ internal fun ListScreen(
     modifier: Modifier = Modifier,
 ) {
     var selected by rememberSaveable { mutableStateOf(emptySet<Long>()) }
-    var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val chosen = ui.recordings.filter { it.id in selected }
-    // Back clears a selection, then closes search, before leaving the app.
+    // Back clears a selection, then the search (not while the keyboard is up: Back closes it first).
     BackHandler(selected.isNotEmpty()) { selected = emptySet() }
-    BackHandler(searching && selected.isEmpty()) {
-        searching = false
-        query = ""
-    }
+    BackHandler(selected.isEmpty() && query.isNotEmpty() && !keyboardVisible()) { query = "" }
     val shown =
         if (query.isBlank()) ui.recordings else ui.recordings.filter { it.title.contains(query.trim(), ignoreCase = true) }
     Scaffold(
@@ -114,55 +112,13 @@ internal fun ListScreen(
                     )
                 }
 
-                searching -> {
-                    val focus = remember { FocusRequester() }
-                    // Only when search opens, not when the list comes back from a recording.
-                    var focused by rememberSaveable { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        if (!focused) focus.requestFocus()
-                        focused = true
-                    }
-                    TopAppBar(
-                        title = {
-                            TextField(
-                                query,
-                                { query = it },
-                                placeholder = { Text(stringResource(R.string.search_hint)) },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                colors =
-                                    TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                    ),
-                                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                searching = false
-                                query = ""
-                            }) {
-                                Icon(
-                                    painterResource(DesignR.drawable.ic_arrow_back),
-                                    contentDescription = stringResource(R.string.close_search),
-                                )
-                            }
-                        },
-                    )
-                }
-
+                // Like Contacts: the search bar is the top bar, with settings inside it.
                 else -> {
-                    CenterAlignedTopAppBar(
-                        title = { Text(stringResource(R.string.app_name)) },
-                        navigationIcon = {
-                            IconButton(onClick = { searching = true }) {
-                                Icon(painterResource(DesignR.drawable.ic_search), contentDescription = stringResource(R.string.search))
-                            }
-                        },
-                        actions = {
+                    TesseraSearchTopBar(
+                        query = query,
+                        onQuery = { query = it },
+                        placeholder = stringResource(R.string.search_hint),
+                        action = {
                             IconButton(onClick = actions::openSettings) {
                                 Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                             }

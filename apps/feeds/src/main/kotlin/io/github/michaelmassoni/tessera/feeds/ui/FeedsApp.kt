@@ -77,6 +77,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.feeds.R
 import io.github.michaelmassoni.tessera.feeds.engine.Article
 import io.github.michaelmassoni.tessera.feeds.engine.ArticleState
@@ -344,98 +345,68 @@ private fun ArticleList(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = {
-                    if (searching) {
-                        val focus = remember { FocusRequester() }
-                        LaunchedEffect(Unit) { focus.requestFocus() }
-                        TextField(
-                            query,
-                            { query = it },
-                            placeholder = { Text(stringResource(R.string.search_hint)) },
-                            singleLine = true,
-                            colors =
-                                TextFieldDefaults.colors(
-                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                ),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                        )
-                    } else {
-                        Text(selectionTitle(state), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                },
-                navigationIcon = {
-                    when {
-                        searching -> {
-                            BackHandler {
-                                searching = false
-                                query = ""
-                            }
-                            IconButton(onClick = {
-                                searching = false
-                                query = ""
-                            }) {
-                                Icon(
-                                    painterResource(DesignR.drawable.ic_arrow_back),
-                                    contentDescription = stringResource(R.string.close_search),
-                                )
-                            }
-                        }
-
-                        openDrawer != null -> {
+            if (searching) {
+                val close = {
+                    searching = false
+                    query = ""
+                }
+                BackHandler(onBack = close)
+                TesseraSearchTopBar(query, { query = it }, stringResource(R.string.search_hint), onBack = close, focusOnOpen = true)
+            } else {
+                TopAppBar(
+                    title = { Text(selectionTitle(state), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    navigationIcon = {
+                        if (openDrawer != null) {
                             IconButton(onClick = openDrawer) {
                                 Icon(painterResource(DesignR.drawable.ic_menu), contentDescription = stringResource(R.string.open_drawer))
                             }
                         }
-                    }
-                },
-                actions = {
-                    if (!searching) {
+                    },
+                    actions = {
                         IconButton(onClick = { searching = true }) {
                             Icon(painterResource(DesignR.drawable.ic_search), contentDescription = stringResource(R.string.search))
                         }
-                    }
-                    IconButton(onClick = { menu = true }) {
-                        Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
-                    }
-                    DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.mark_all_read)) },
-                            enabled = articles.any { it.unread },
-                            onClick = {
-                                menu = false
-                                val ids = Library.unreadIds(articles)
-                                onKeep(ids)
-                                actions.setState(ids, ArticleState.Read)
-                                scope.launch {
-                                    val result =
-                                        snackbar.showSnackbar(
-                                            markedText.getQuantityString(R.plurals.marked_read, ids.size, ids.size),
-                                            actionLabel = undo,
-                                            withDismissAction = true,
-                                        )
-                                    if (result == SnackbarResult.ActionPerformed) actions.setState(ids, ArticleState.Unread)
-                                }
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.refresh)) },
-                            onClick = {
-                                menu = false
-                                actions.refresh()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings)) },
-                            onClick = {
-                                menu = false
-                                actions.openSettings()
-                            },
-                        )
-                    }
-                },
-            )
+                        IconButton(onClick = { menu = true }) {
+                            Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
+                        }
+                        DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.mark_all_read)) },
+                                enabled = articles.any { it.unread },
+                                onClick = {
+                                    menu = false
+                                    val ids = Library.unreadIds(articles)
+                                    onKeep(ids)
+                                    actions.setState(ids, ArticleState.Read)
+                                    scope.launch {
+                                        val result =
+                                            snackbar.showSnackbar(
+                                                markedText.getQuantityString(R.plurals.marked_read, ids.size, ids.size),
+                                                actionLabel = undo,
+                                                withDismissAction = true,
+                                            )
+                                        if (result == SnackbarResult.ActionPerformed) actions.setState(ids, ArticleState.Unread)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.refresh)) },
+                                onClick = {
+                                    menu = false
+                                    actions.refresh()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings)) },
+                                onClick = {
+                                    menu = false
+                                    actions.openSettings()
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->

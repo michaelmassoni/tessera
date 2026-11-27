@@ -64,6 +64,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.files.ClipMode
 import io.github.michaelmassoni.tessera.files.FilesEvent
 import io.github.michaelmassoni.tessera.files.FilesUiState
@@ -682,28 +683,12 @@ private fun SearchBarTop(
     onQuery: (String) -> Unit,
     onClose: () -> Unit,
 ) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-    TopAppBar(
-        navigationIcon = {
-            IconButton(onClick = onClose) {
-                Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.action_close_search))
-            }
-        },
-        title = {
-            TextField(
-                value = query,
-                onValueChange = onQuery,
-                placeholder = { Text(stringResource(R.string.search_hint)) },
-                singleLine = true,
-                colors =
-                    TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            )
-        },
+    TesseraSearchTopBar(
+        query = query,
+        onQuery = onQuery,
+        placeholder = stringResource(R.string.search_hint),
+        onBack = onClose,
+        focusOnOpen = true,
     )
 }
 

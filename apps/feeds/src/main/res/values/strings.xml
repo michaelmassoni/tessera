@@ -14,7 +14,6 @@
     <string name="open_drawer">Open navigation</string>
     <string name="search">Search</string>
     <string name="search_hint">Search articles</string>
-    <string name="close_search">Close search</string>
     <string name="more">More options</string>
     <string name="mark_all_read">Mark all as read</string>
     <string name="refresh">Refresh</string>
