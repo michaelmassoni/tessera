@@ -107,6 +107,9 @@ interface MessagesActions {
 
     fun download(messageId: String)
 
+    /** Sends a failed SMS again ([messageId] is "s" and its provider id). */
+    fun retry(messageId: String) {}
+
     fun openAttachment(attachment: Attachment)
 
     fun share(text: String)

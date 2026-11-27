@@ -11,6 +11,8 @@ data class Message(
     val date: Long,
     val outgoing: Boolean,
     val failed: Boolean = false,
+    /** A sent SMS the other phone confirmed receiving (delivery reports on; docs/messages.md). */
+    val delivered: Boolean = false,
     val pending: Boolean = false,
     /** For MMS with media that can't be shown inline: a placeholder is shown alongside any text. */
     val hasMedia: Boolean = false,

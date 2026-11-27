@@ -121,6 +121,10 @@
                 android:resource="@xml/mms_paths" />
         </provider>
 
+        <!-- Delivery reports for sent texts (Settings > Sending). -->
+        <receiver
+            android:name=".data.DeliveredReceiver"
+            android:exported="false" />
         <receiver
             android:name=".data.SentReceiver"
             android:exported="false" />

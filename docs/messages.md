@@ -190,3 +190,14 @@ address / Copy number** and **Open link / Send email / Call**. A web link is cop
 https://), a number or address as written. Long-pressing anywhere else selects the message, as
 before. The bubble handles its links (a tap opens one), so TalkBack gets "Open …" and "Copy …"
 actions for each link.
+
+## Retrying, delivery reports, selecting text (0.11)
+
+- **Retrying:** a text that failed to send says "Not sent · Tap to try again"; tapping it removes the
+  failed copy and sends the text again (`retrySms`). Picture messages keep their own retry.
+- **Delivery reports** (Settings > Sending, off by default): the carrier is asked to report when a
+  text reaches the other phone (on the last part of a long text); the message then shows
+  "Delivered · time" (`DeliveredReceiver` records the SMS `STATUS`). Texts only: MMS reports vary
+  too much by carrier.
+- **Select text:** with one message selected, Select text shows its text to pick out any part and
+  copy it.

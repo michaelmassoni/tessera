@@ -1,0 +1,1 @@
+Tap a text that failed to send to try again; delivery reports (Settings > Sending); select part of a message to copy.

@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.messages.data
 
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -121,7 +122,14 @@ class MessagesRepository(
         resolver
             .query(
                 Telephony.Sms.CONTENT_URI,
-                arrayOf(Telephony.Sms._ID, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.ADDRESS),
+                arrayOf(
+                    Telephony.Sms._ID,
+                    Telephony.Sms.BODY,
+                    Telephony.Sms.DATE,
+                    Telephony.Sms.TYPE,
+                    Telephony.Sms.ADDRESS,
+                    Telephony.Sms.STATUS,
+                ),
                 "${Telephony.Sms.THREAD_ID} = ?$unread",
                 arrayOf(threadId.toString()),
                 newest,
@@ -136,6 +144,7 @@ class MessagesRepository(
                             date = c.getLong(2),
                             outgoing = outgoing,
                             failed = type == Telephony.Sms.MESSAGE_TYPE_FAILED,
+                            delivered = outgoing && c.getInt(5) == Telephony.Sms.STATUS_COMPLETE,
                             pending = type == Telephony.Sms.MESSAGE_TYPE_OUTBOX || type == Telephony.Sms.MESSAGE_TYPE_QUEUED,
                             sender = if (outgoing) null else c.getString(4),
                         )
@@ -390,6 +399,26 @@ class MessagesRepository(
         val row = if (default) MessageStore(context).insertOutgoingSms(address, text) else null
         val sms = context.getSystemService(SmsManager::class.java)
         val parts = sms.divideMessage(text)
+        // Delivery reports (Settings > Sending): asked for on the last part only, so a long text reports once.
+        val delivered =
+            if (row != null && MessagesPrefs(context).deliveryReports) {
+                ArrayList(
+                    parts.indices.map { i ->
+                        if (i < parts.lastIndex) {
+                            null
+                        } else {
+                            PendingIntent.getBroadcast(
+                                context,
+                                DELIVERY_REQUEST + (row.lastPathSegment?.toIntOrNull() ?: 0),
+                                Intent(context, DeliveredReceiver::class.java).putExtra(SentReceiver.EXTRA_ROW, row.toString()),
+                                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                            )
+                        }
+                    },
+                )
+            } else {
+                null
+            }
         val sent =
             ArrayList(
                 parts.indices.map {
@@ -407,8 +436,24 @@ class MessagesRepository(
                     )
                 },
             )
-        sms.sendMultipartTextMessage(address, null, parts, sent, null)
+        sms.sendMultipartTextMessage(address, null, parts, sent, delivered)
         if (!default) sentLog.add(address, text, System.currentTimeMillis())
+    }
+
+    /**
+     * Sends a failed SMS again: the failed copy is removed and the text goes out as a new message
+     * (docs/messages.md, Retrying). [id] is the provider's SMS id.
+     */
+    fun retrySms(id: Long) {
+        val uri = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id)
+        val (address, body) =
+            resolver
+                .query(uri, arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0).orEmpty() to c.getString(1).orEmpty() else null }
+                ?: return
+        if (address.isBlank() || body.isBlank()) return
+        resolver.delete(uri, null, null)
+        sms(address, body)
     }
 
     private companion object {
@@ -417,6 +462,9 @@ class MessagesRepository(
 
         /** Request codes per sent message leave room for this many parts. */
         const val PARTS = 64
+
+        /** Delivery-report request codes start here, clear of the sent ones. */
+        const val DELIVERY_REQUEST = 1 shl 28
     }
 }
 
