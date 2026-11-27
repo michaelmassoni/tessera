@@ -1,8 +1,32 @@
 # Roadmap to 1.0
 
-Written 2026-11-26 from each app's spec and a check of the code. It replaces
+Written 2026-11-26 from each app's spec and a check of the code; updated 2026-11-27. It replaces
 [feature-gaps.md](feature-gaps.md) (2026-11-19/20), which is kept as a record. Strike items
 through when they ship, with the version.
+
+## Next session: still to do
+
+Features the maintainer asked for on 2026-11-27 that haven't been built yet, in this order:
+
+1. **Feeds:** swipe between articles (left and right in the reader, following the list's order
+   and filter).
+2. **Recorder:** trim a recording (pick start and end on the waveform; save as a copy or replace).
+3. **Notes:** images in notes (attach from the photo picker; stored in app storage; shown in the
+   note and in the grid; included in backups).
+4. **Gallery:**
+   - video trimming (Media3 Transformer, saved as a new video);
+   - motion photos: press and hold a photo to play its motion part (the embedded MP4 in Pixel and
+     Samsung motion photos, found through the XMP `MicroVideoOffset` / `GCamera` data);
+   - tap, hold and drag across the grid to select many photos at once.
+
+Each one ships as its own PR and release, as usual (spec section, version bump, changelog, goldens
+checked in both themes, `check`, emulator test).
+
+**Waiting on the maintainer's phone:** MMS receiving (sending works); Phone call waiting,
+Bluetooth and proximity; delivery reports and swipe to answer on a real carrier.
+
+**Waiting on GitHub Support:** purging the old PR refs #90 to #167 after the history rewrite of
+2026-11-27.
 
 ## What 1.0 means
 
@@ -20,12 +44,15 @@ An app reaches 1.0 when:
 **Decided 2026-11-26:**
 
 - **1.0 is English-only.** All strings are in `strings.xml` already, so translations can follow.
-- **F-Droid:** submit if the apps meet its criteria. They should: everything is open source and
-  built from source, with no Play Services or trackers. F-Droid builds and hosts apps in its main
-  repository for free. Apps that use non-free network services are listed with the `NonFreeNet`
-  anti-feature rather than refused (Sports: ESPN; Podcasts: Apple's search). The work is a build
-  recipe per app in `fdroiddata`, the review, and F-Droid's build servers supporting AGP 9 and
-  Gradle 9.
+- **F-Droid:** everything is ready (docs/fdroid.md). Submission waits until about 2027-02-19,
+  because F-Droid asks for three months of active development (the first commit was 2026-11-19).
+  Until then, releases go out through GitHub and Obtainium only.
+
+**Decided 2026-11-27:** the remaining P3s not listed under "Next session" are dropped: unit
+converter, timer starter widget, Tasks subtasks, Android Auto showing the chosen icon, Podcasts
+widget, Miniflux and FreshRSS in Feeds, notes from the lock screen, ringtone per contact, Gallery
+slideshow and hidden albums, Messages voice messages, Phone speed dial. Baseline profiles are on
+hold.
 
 **Priority:** P1 is expected by nearly everyone, or broken without it. P2 is common and missed by
 many. P3 is nice to have.
@@ -34,148 +61,49 @@ many. P3 is nice to have.
 
 | Item | State | Notes |
 |------|-------|-------|
-| Real-phone pass | Music and Podcasts in Android Auto: ✅ 2026-11-26. Feeds against yarr: ✅ 2026-11-26. Music Cast: ✅. Still to do: Phone call waiting, Bluetooth and proximity; Messages MMS. | Blocks Phone's "experimental" label. |
-| Accessibility audit | Not done | TalkBack, 200% font, touch targets, app by app. Scriptable on the emulator. |
+| Real-phone pass | Music and Podcasts in Android Auto: ✅ 2026-11-26. Feeds against yarr: ✅ 2026-11-26. Music Cast: ✅. Phone calls: ✅ (experimental label dropped 2026-11-27). MMS sending: ✅ 2026-11-27. Still to do: MMS receiving; Phone call waiting, Bluetooth and proximity. | |
+| Accessibility audit | Partly | TalkBack quick actions done (#147). A full pass (TalkBack order, 200% font, touch targets, app by app) is still to do. |
 | material3 | ✅ 1.5.0 stable (2026-11-26) | Was `1.5.0-rc01`. |
-| Compose 1.13 (BOM 2026.11.01) | ✅ 2026-11-26 | compileSdk 37.1; password fields, Messages recipients and Notes checklist rows moved to the state-based text fields. F-Droid recipes need `platforms;android-37.1`. |
+| Compose 1.13 (BOM 2026.11.01) | ✅ 2026-11-26 | compileSdk 37.1. F-Droid recipes need `platforms;android-37.1`. |
 | `androidx.pdf` `1.0.0-beta01` (Files) | Pre-release | Stable when it ships, or accept the beta for Files 1.0 in `decisions.md`. |
 | Final icons | Commissioned | `scripts/launcher-icons.sh` turns each glyph into the Colour, Light, Dark and monochrome icons. |
-| Baseline profiles | None | Biggest remaining performance win (about 20–30% faster cold start). A `:baselineprofile` module with Macrobenchmark; the profile is a checked-in text file, so it suits F-Droid. |
-| F-Droid submission | Not started | See above. |
-| StrictMode in debug builds | Not done | Catches main-thread I/O during development. |
-| Launcher shortcuts | Notes, Recorder | P3. Clock (new alarm, timer, stopwatch), Calendar (new event), Contacts (new contact), Tasks (new task). |
-| Quick Settings tiles | Recorder | P3. Clock (stopwatch, timer), Notes (new note). |
-| Android Auto shows the chosen icon | Not done | P3. Auto shows the playback service's icon, not the launcher alias. Needs one service component per icon, switched with the alias. |
+| Baseline profiles | On hold | Decided 2026-11-27. |
+| F-Droid submission | Ready, waiting | About 2027-02-19 (see above). |
+| ~~StrictMode in debug builds~~ | ✅ | `core:settings`. |
+| ~~Launcher shortcuts~~ | ✅ | Calendar, Clock (new alarm in 0.10, timer, stopwatch), Contacts, Messages, Notes, Recorder, Tasks. |
+| ~~Quick Settings tiles~~ | ✅ | Clock (stopwatch, timer), Notes (new note), Recorder. |
 
 ## Apps
 
-### Nearly ready: polish and audits
+Current versions on 2026-11-27: Calculator 0.4.2, Calendar 0.11.4, Clock 0.10.0, Contacts 0.7.0,
+Feeds 0.3.7, Files 0.8.3, Gallery 0.6.5, Messages 0.11.0, Music 0.14.4, Notes 0.6.3, Phone 0.11.0,
+Podcasts 0.5.4, Recorder 0.2.5, Sports 0.6.3, Tasks 0.6.2, Weather 0.8.5.
 
-**Calculator 0.3**
+Every P1 and P2 on this roadmap has shipped (except the real-phone checks above).
 
-| Gap | Priority |
-|-----|----------|
-| Move the cursor to edit inside the expression | P2 |
-| Paste a number | P2 |
-| Unit converter (no currency: that needs the network) | P3 |
-
-**Clock 0.6**
-
-| Gap | Priority |
-|-----|----------|
-| Gradually increasing alarm volume | P2 |
-| Timer starter widget (one-tap preset timers) | P3 |
-| Shortcuts and tiles (see suite-wide) | P3 |
-
-**Weather 0.8:** complete for its spec. Radar stays out (no free source). Needs only the suite
-audits.
-
-**Sports 0.6:** complete for its spec. WNBL has no source.
-
-**Recorder 0.2:** complete for v0.1. P3: trim a recording.
-
-**Tasks 0.5:** complete for daily and medication use (repeats, widget). P3: subtasks.
-
-### Mid-way: a feature or two each
-
-**Music 0.12**
-
-| Gap | Priority | Notes |
-|-----|----------|-------|
-| Genres and Folders tabs | P2 | Gramophone and Auxio have them. |
-| Sleep timer, equaliser | Won't do | Not wanted (2026-11-26). |
-| Android Auto: chosen icon | P3 | See suite-wide. |
-
-**Calendar 0.9**
-
-| Gap | Priority | Notes |
-|-----|----------|-------|
-| Search events | P2 | |
-
-Done since the gap list: week and day views, single-occurrence edits, CalDAV sync, event colours,
-ICS, attendees, time zones.
-
-**Files 0.6**
-
-| Gap | Priority | Notes |
-|-----|----------|-------|
-| Copies and moves that keep running after leaving the app, with progress | P2 | Large copies stop today. |
-| Zip: extract and compress | P2 | `java.util.zip`. |
-| Bookmarked folders | P2 | |
-
-Done since: trash, PDF viewer, storage summary.
-
-**Podcasts 0.4**
-
-| Gap | Priority |
-|-----|----------|
-| New-episode notifications | P2 |
-| Widget (now playing / Up Next) | P3 |
-
-**Feeds 0.3:** works against yarr (2026-11-26). P3: swipe between articles; Miniflux and
-FreshRSS through the Fever or Google Reader API.
-
-### Further out
-
-**Notes 0.4**
-
-| Gap | Priority |
-|-----|----------|
-| Tappable links, phone numbers and emails | P2 |
-| Note colours | P2 |
-| Reminders | P2 |
-| Notes from the lock screen (`ROLE_NOTES`) | P3 |
-| Images | P3 |
-
-**Contacts 0.4**
-
-| Gap | Priority |
-|-----|----------|
-| Set or change a contact's photo | P2 |
-| Find and merge duplicates | P2 |
-| More than one address in the editor | P2 |
-| Ringtone per contact, share as a QR code | P3 |
-
-Done since: groups and labels, CardDAV sync.
-
-**Gallery 0.5**
-
-| Gap | Priority |
-|-----|----------|
-| Search (name, folder, date; no on-device AI) | P2 |
-| Slideshow, hidden albums | P3 |
-| Video trimming, motion photos | P3 |
-
-**Messages 0.6**
-
-| Gap | Priority | Notes |
-|-----|----------|-------|
-| MMS on a real phone | P1 | Untested off the emulator. |
-| Search inside message text | P2 | The list search covers names and the latest message. |
-| Contact photos in the list | P2 | |
-| Retry a failed SMS | P2 | MMS has retry. |
-| Delivery reports, voice messages, precise copy | P3 | |
-
-RCS is out of scope (no open API); the README should say so plainly.
-
-**Phone 0.8 (experimental)**
-
-| Gap | Priority | Notes |
-|-----|----------|-------|
-| Real-phone test: call waiting, Bluetooth, proximity | P1 | Then drop "experimental" (README lines ~53 and ~118, `docs/phone.md`). |
-| Dual SIM: choose per call or per contact | P2 | `PhoneAccountHandle`. |
-| Quick reply when declining | P2 | `RESPOND_VIA_MESSAGE`. |
-| Recents: search, missed-calls filter | P2 | |
-| Speed dial, swipe to answer | P3 | |
+| App | Shipped since 2026-11-26 | Still to do |
+|-----|--------------------------|-------------|
+| Calculator | ~~cursor editing, paste~~ (0.4) | |
+| Clock | ~~gradual alarm volume~~ (0.7), ~~New alarm shortcut~~ (0.10), ~~tiles~~ | |
+| Weather | Complete for its spec. Radar stays out (no free source). | |
+| Sports | Complete for its spec. WNBL has no source. | |
+| Recorder | | Trim a recording |
+| Tasks | Complete for daily and medication use. | |
+| Music | ~~Genres~~ (0.13; Folders removed in 0.13.2 at the maintainer's request), ~~offline downloads~~ (0.14), liked hearts, swipe the album art to skip | |
+| Calendar | ~~search events~~ (0.10) | |
+| Files | ~~background copies and moves, zip, bookmarks~~ (0.7), archives open in Files (0.8) | |
+| Podcasts | ~~new-episode notifications~~ (0.5) | |
+| Feeds | Works against yarr. | Swipe between articles |
+| Notes | ~~links, colours, reminders~~ (0.5) | Images |
+| Contacts | ~~photos, merge duplicates, several addresses~~ (0.5), ~~share as a QR code~~ (0.7) | |
+| Gallery | ~~search~~ (0.6) | Video trimming, motion photos, drag to select |
+| Messages | ~~search inside messages, contact photos~~ (0.7), ~~links~~ (0.9), ~~retry a failed SMS, delivery reports, select part of a message~~ (0.11) | MMS receiving on a real phone. RCS is out of scope (no open API). |
+| Phone | ~~recents search, reply with message, dual SIM~~ (0.9), ~~copy and paste~~ (0.10), ~~swipe to answer~~ (0.11) | Real-phone: call waiting, Bluetooth, proximity |
 
 ## Order
 
-1. **Quick wins** (2026-11-26): ~~stale dependency PRs~~, ~~material3 stable~~, this roadmap, Calculator paste and cursor
-   editing, Clock gradual volume, Calendar search.
-2. **Real-phone pass:** Phone and Messages MMS. Then drop Phone's "experimental".
-3. **P2 batches:** Notes (links, colours, reminders); Contacts (photo, merge, addresses); Files
-   (background copies, zip, bookmarks); Podcasts notifications; Gallery search; Messages search
-   and photos; Phone dual SIM, decline replies and recents; Music genres and folders.
-4. **Suite polish:** accessibility audit, baseline profiles, shortcuts and tiles, StrictMode.
-5. **1.0 gate:** `androidx.pdf` stable (or the exception), final icons, F-Droid submission. Ship in
-   waves: Calculator, Clock, Weather, Sports, Recorder and Tasks first.
+1. **Next session list** above: Feeds, Recorder, Notes, Gallery.
+2. **Real-phone checks:** MMS receiving; Phone call waiting, Bluetooth and proximity.
+3. **Suite polish:** full accessibility audit.
+4. **1.0 gate:** `androidx.pdf` stable (or the exception), final icons, F-Droid submission (about
+   2027-02-19). Ship in waves: Calculator, Clock, Weather, Sports, Recorder and Tasks first.
