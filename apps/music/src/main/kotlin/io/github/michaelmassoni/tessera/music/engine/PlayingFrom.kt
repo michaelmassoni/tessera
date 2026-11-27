@@ -10,7 +10,7 @@ data class PlayingFrom(
     /** The album, artist or playlist id, for going back to it from the player (0 if unknown). */
     val id: Long = 0,
 ) {
-    enum class Kind { Songs, Album, Artist, Playlist, Search, Genre, Folder }
+    enum class Kind { Songs, Album, Artist, Playlist, Search, Genre }
 }
 
 /**
@@ -43,7 +43,7 @@ fun PlayingFrom.sourceId(
 
         PlayingFrom.Kind.Songs, PlayingFrom.Kind.Search -> null
 
-        // Groups aren't stored: the page shows nothing if the genre or folder has gone.
-        PlayingFrom.Kind.Genre, PlayingFrom.Kind.Folder -> id.takeIf { it != 0L }
+        // Genres aren't stored: the page shows nothing if the genre has gone.
+        PlayingFrom.Kind.Genre -> id.takeIf { it != 0L }
     }
 }

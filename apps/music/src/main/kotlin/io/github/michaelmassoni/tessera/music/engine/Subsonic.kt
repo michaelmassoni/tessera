@@ -229,7 +229,6 @@ object Subsonic {
                     ?.takeIf { it.isNotEmpty() }
                     ?.joinToString("; ")
                     ?: o.string("genre").orEmpty(),
-            folder = o.string("path")?.substringBeforeLast('/', "").orEmpty(),
             // OpenSubsonic: "explicit", "clean" or blank; some servers abbreviate to "e" / "c".
             explicit = o.string("explicitStatus")?.lowercase() in setOf("explicit", "e"),
         )

@@ -1,17 +1,15 @@
 package io.github.michaelmassoni.tessera.music.engine
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class GroupsTest {
     private fun song(
         id: Long,
         genre: String = "",
-        folder: String = "",
         album: String = "A",
         track: Int = 0,
-    ) = Song(id, "u$id", "Song $id", "Artist", 1, album, album.hashCode().toLong(), 1000, track = track, genre = genre, folder = folder)
+    ) = Song(id, "u$id", "Song $id", "Artist", 1, album, album.hashCode().toLong(), 1000, track = track, genre = genre)
 
     @Test
     fun `genres merge case and spacing, use the common spelling, and skip untagged`() {
@@ -29,25 +27,9 @@ class GroupsTest {
     }
 
     @Test
-    fun `folders group by path, name by last part, songs in album and track order`() {
-        val songs =
-            listOf(
-                song(1, folder = "Music/B/", album = "Z", track = 2),
-                song(2, folder = "Music/B", album = "Z", track = 1),
-                song(3, folder = "Music/a"),
-                song(4),
-            )
-        val f = Groups.folders(songs)
-        assertEquals(listOf("Music/a", "Music/B"), f.map { it.key })
-        assertEquals(listOf("a", "B"), f.map { it.name })
-        assertEquals(listOf(2L, 1L), f[1].songs.map { it.id })
-    }
-
-    @Test
-    fun `ids are stable and differ between genres and folders`() {
+    fun `ids are stable across spellings`() {
         val a = Groups.genres(listOf(song(1, "Rock"))).single().id
         val b = Groups.genres(listOf(song(9, "ROCK"))).single().id
         assertEquals(a, b)
-        assertNotEquals(a, Groups.folders(listOf(song(1, folder = "rock"))).single().id)
     }
 }

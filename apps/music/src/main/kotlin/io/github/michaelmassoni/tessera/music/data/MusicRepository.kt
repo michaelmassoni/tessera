@@ -28,7 +28,6 @@ class MusicRepository(
                     MediaStore.Audio.Media.ALBUM_ARTIST,
                     MediaStore.Audio.Media.DATE_ADDED,
                     MediaStore.Audio.Media.GENRE,
-                    MediaStore.Audio.Media.RELATIVE_PATH,
                 ),
                 "${MediaStore.Audio.Media.IS_MUSIC} != 0",
                 null,
@@ -51,7 +50,6 @@ class MusicRepository(
                             albumArtist = c.getString(9).orEmpty(),
                             addedAt = c.getLong(10) * 1000,
                             genre = c.getString(11).orEmpty(),
-                            folder = c.getString(12).orEmpty().trimEnd('/'),
                         )
                 }
             }

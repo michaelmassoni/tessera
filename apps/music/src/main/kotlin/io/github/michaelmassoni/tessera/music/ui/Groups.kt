@@ -32,31 +32,28 @@ import io.github.michaelmassoni.tessera.music.engine.Song
 import io.github.michaelmassoni.tessera.music.engine.SongGroup
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
-/** Every genre, or every folder (docs/music.md, Genres and folders). */
+/** Every genre (docs/music.md, Genres). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun GroupsScreen(
+internal fun GenresScreen(
     groups: List<SongGroup>,
-    folders: Boolean,
     onOpen: (Long) -> Unit,
     onBack: () -> Unit,
 ) {
-    Scaffold(topBar = { BackBar(stringResource(if (folders) R.string.folders else R.string.genres), onBack) }) { padding ->
+    Scaffold(topBar = { BackBar(stringResource(R.string.genres), onBack) }) { padding ->
         if (groups.isEmpty()) {
-            Empty(stringResource(if (folders) R.string.no_folders else R.string.no_genres))
+            Empty(stringResource(R.string.no_genres))
             return@Scaffold
         }
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 16.dp)) {
             items(groups, key = { it.id }) { g ->
                 ListItem(
                     supportingContent = {
-                        val count = pluralStringResource(R.plurals.group_songs, g.songs.size, g.songs.size)
-                        // A folder's full path tells apart two folders with the same name.
-                        Text(if (folders) "${g.key} · $count" else count, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(pluralStringResource(R.plurals.group_songs, g.songs.size, g.songs.size))
                     },
                     leadingContent = {
                         Icon(
-                            painterResource(if (folders) DesignR.drawable.ic_folder else DesignR.drawable.ic_label),
+                            painterResource(DesignR.drawable.ic_label),
                             contentDescription = null,
                         )
                     },
@@ -67,12 +64,11 @@ internal fun GroupsScreen(
     }
 }
 
-/** One genre's or folder's songs, with Shuffle; long press for song options. */
+/** One genre's songs, with Shuffle; long press for song options. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun GroupScreen(
+internal fun GenreScreen(
     group: SongGroup,
-    folders: Boolean,
     playlists: List<Playlist>,
     actions: LibraryActions,
     onBack: () -> Unit,
@@ -89,7 +85,7 @@ internal fun GroupScreen(
             SongList(
                 group.songs,
                 actions,
-                PlayingFrom(if (folders) PlayingFrom.Kind.Folder else PlayingFrom.Kind.Genre, group.name, group.id),
+                PlayingFrom(PlayingFrom.Kind.Genre, group.name, group.id),
                 showShuffle = true,
                 onLongClick = { _, song -> options = song },
                 playingId = playingId,
