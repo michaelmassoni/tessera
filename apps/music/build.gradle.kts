@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.music"
-        versionCode = 34
-        versionName = "0.14.2"
+        versionCode = 35
+        versionName = "0.14.3"
     }
 }
 

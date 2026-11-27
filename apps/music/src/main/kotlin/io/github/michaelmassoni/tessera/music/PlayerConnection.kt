@@ -179,6 +179,9 @@ class PlayerConnection(
 
     fun previous() = controller?.seekToPrevious()
 
+    /** The previous song, never a restart of this one (swiping the art). */
+    fun previousSong() = controller?.seekToPreviousMediaItem()
+
     fun seekTo(positionMs: Long) = controller?.seekTo(positionMs)
 
     fun skipTo(index: Int) = controller?.seekTo(index, 0)

@@ -459,3 +459,10 @@ server can be downloaded. Songs on the phone (local library) need nothing.
 In song lists the playing song's moving bars sit before its title (as Spotify shows them), and every
 song has a heart on the right, beside its length: an outline, filled once liked; tapping it likes or
 unlikes the song (0.14.2). TalkBack reads "Liked" on the row and offers the heart as a "Like" toggle.
+
+## Swipe the art to skip (0.14.3)
+
+On the player, swipe the album art left for the next song or right for the previous one (always the previous
+song, unlike the Previous button, which first restarts a song more than a few seconds in). The art follows the
+finger; past a quarter of its width, or a quick flick, it slides off and the song changes, otherwise
+it springs back. TalkBack gets Next and Previous as actions on the art.

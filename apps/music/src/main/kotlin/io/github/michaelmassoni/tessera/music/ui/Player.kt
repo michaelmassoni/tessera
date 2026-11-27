@@ -104,6 +104,9 @@ interface PlayerActions {
 
     fun previous()
 
+    /** Straight to the previous song, never restarting this one (swiping the art right). */
+    fun previousSong() = previous()
+
     fun seekTo(positionMs: Long)
 
     fun toggleShuffle()
@@ -373,8 +376,17 @@ fun FullPlayer(
             },
         ) { padding ->
             BoxWithConstraints(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+                val nextLabel = stringResource(R.string.next)
+                val previousLabel = stringResource(R.string.previous)
+                val swipe = rememberSkipSwipe()
                 val art: @Composable (Modifier) -> Unit = { m ->
-                    AlbumArt(state.albumId, artwork = state.artwork, size = 320.dp, modifier = m)
+                    // Swipe left for the next song, right for the previous.
+                    AlbumArt(
+                        state.albumId,
+                        artwork = state.artwork,
+                        size = 320.dp,
+                        modifier = m.swipeToSkip(swipe, nextLabel, previousLabel, actions::next, actions::previousSong),
+                    )
                 }
                 val details: @Composable () -> Unit = {
                     TitleRow(state, explicit, liked, playlists, libraryActions, links, onSave = { saving = true })
