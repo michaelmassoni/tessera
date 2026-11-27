@@ -7,7 +7,7 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.recorder"
-        versionCode = 6
-        versionName = "0.2.3"
+        versionCode = 7
+        versionName = "0.2.4"
     }
 }
