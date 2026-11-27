@@ -201,4 +201,6 @@
     <string name="clear_search">Clear search</string>
     <string name="no_matching_events">No matching events</string>
     <string name="past_events">Past events</string>
+    <!-- Launcher shortcuts (long-press the icon). -->
+    <string name="shortcut_new_event">New event</string>
 </resources>

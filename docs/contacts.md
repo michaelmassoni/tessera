@@ -148,3 +148,7 @@ overwrite it. Name, company, birthday and note come from that copy too (`RawChoi
 ## First run
 
 See [setup.md](setup.md) for what contacts asks for the first time it opens.
+
+## Launcher shortcuts (0.6)
+
+Long-press the app icon: **New contact** opens a blank contact (`ACTION_INSERT`). Each icon is the Material Symbol on the app's launcher colour.

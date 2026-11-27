@@ -9,6 +9,7 @@ import io.github.michaelmassoni.tessera.clock.sleep.BedtimeController
 import io.github.michaelmassoni.tessera.clock.sleep.BedtimeReminder
 import io.github.michaelmassoni.tessera.clock.stopwatch.Stopwatch
 import io.github.michaelmassoni.tessera.clock.stopwatch.StopwatchController
+import io.github.michaelmassoni.tessera.clock.stopwatch.StopwatchTile
 import io.github.michaelmassoni.tessera.clock.timer.ClockTimer
 import io.github.michaelmassoni.tessera.clock.timer.TimerController
 import kotlinx.serialization.builtins.ListSerializer
@@ -52,7 +53,10 @@ class AppGraph(
         StopwatchController(
             store = JsonStore(File(storage, "stopwatch.json"), Stopwatch.serializer(), Stopwatch()),
             time = time,
-            onChanged = { notifications.updateStopwatch(it, time.elapsedRealtime(), time.currentTimeMillis()) },
+            onChanged = {
+                notifications.updateStopwatch(it, time.elapsedRealtime(), time.currentTimeMillis())
+                StopwatchTile.refresh(context)
+            },
         )
 
     /** What is ringing now, if anything. */

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App shortcut icon: the Material Symbol on the launcher icon's colour. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_light_background" />
+    <foreground>
+        <inset
+            android:drawable="@drawable/ic_shortcut_stopwatch_glyph"
+            android:inset="33%" />
+    </foreground>
+</adaptive-icon>
