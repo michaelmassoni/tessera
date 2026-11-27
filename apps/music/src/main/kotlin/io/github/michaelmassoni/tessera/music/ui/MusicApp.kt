@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -67,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -89,6 +91,8 @@ import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
+import io.github.michaelmassoni.tessera.music.data.Connectivity
+import io.github.michaelmassoni.tessera.music.data.Downloads
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.engine.Album
 import io.github.michaelmassoni.tessera.music.engine.Artist
@@ -97,6 +101,8 @@ import io.github.michaelmassoni.tessera.music.engine.Library
 import io.github.michaelmassoni.tessera.music.engine.LikeChange
 import io.github.michaelmassoni.tessera.music.engine.Likes
 import io.github.michaelmassoni.tessera.music.engine.Lyrics
+import io.github.michaelmassoni.tessera.music.engine.Offline
+import io.github.michaelmassoni.tessera.music.engine.OfflineKind
 import io.github.michaelmassoni.tessera.music.engine.PageKeys
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
@@ -142,6 +148,13 @@ enum class ServerNotice {
 
 /** Library-level actions. */
 interface LibraryActions {
+    /** Turns downloading for offline listening on or off for an album, playlist or Liked songs. */
+    fun setDownload(
+        kind: OfflineKind,
+        id: Long,
+        on: Boolean,
+    ) {}
+
     fun play(
         songs: List<Song>,
         index: Int,
@@ -523,7 +536,15 @@ fun MusicApp(
                                         }
 
                                         is Page.PlaylistPage -> {
-                                            library.playlists.firstOrNull { it.id == p.id }?.let { playlist ->
+                                            val likedName = stringResource(R.string.liked_songs)
+                                            val liked =
+                                                remember(
+                                                    library.songs,
+                                                    library.likes,
+                                                    library.fromServer,
+                                                    likedName,
+                                                ) { library.likedPlaylist(likedName) }
+                                            (listOfNotNull(liked) + library.playlists).firstOrNull { it.id == p.id }?.let { playlist ->
                                                 PlaylistScreen(
                                                     playlist,
                                                     Playlists.songs(playlist, library.byId),
@@ -632,8 +653,18 @@ private fun LibraryScreen(
             )
         },
     ) { padding ->
+        val downloads by Downloads.state.collectAsState()
+        val online by Connectivity.online.collectAsState()
+        // The Downloaded chip shows once something is downloaded (or downloading).
+        val anyDownloads = library.fromServer && (downloads.onPhone.isNotEmpty() || !downloads.pins.isEmpty)
+        var downloadedOnlyChoice by rememberSaveable { mutableStateOf(false) }
+        val downloadedOnly = anyDownloads && downloadedOnlyChoice
+        val downloadedChip: @Composable () -> Unit = {
+            if (anyDownloads) DownloadedChip(downloadedOnly) { downloadedOnlyChoice = !downloadedOnlyChoice }
+        }
         Column(Modifier.fillMaxSize().padding(padding)) {
             library.notice?.let { Notice(it, actions) }
+            if (library.fromServer && !online) OfflineNotice()
             val browsing = library.loaded && library.songs.isNotEmpty() && query.isBlank()
             if (browsing) {
                 fun change(block: () -> Unit) {
@@ -644,13 +675,14 @@ private fun LibraryScreen(
                     Tab.Songs -> {
                         SortBar(Sorts.songs, view.songSort, { change { view.songSort = it } }) {
                             AssistChip(onClick = onGenres, label = { Text(stringResource(R.string.genres)) })
+                            downloadedChip()
                         }
                     }
 
                     Tab.Albums -> {
                         SortBar(Sorts.albums, view.albumSort, { change { view.albumSort = it } }, grid = view.albumGrid, onGrid = {
                             change { view.albumGrid = it }
-                        })
+                        }) { downloadedChip() }
                     }
 
                     Tab.Artists -> {
@@ -668,7 +700,7 @@ private fun LibraryScreen(
                             change { view.playlistSort = it }
                         }, grid = view.playlistGrid, onGrid = {
                             change { view.playlistGrid = it }
-                        })
+                        }) { downloadedChip() }
                     }
                 }
             }
@@ -739,7 +771,9 @@ private fun LibraryScreen(
                                 library.songs,
                                 view.songSort,
                                 library.history,
-                            ) { Sorts.songs(library.songs, view.songSort, library.history) }
+                            ) { Sorts.songs(library.songs, view.songSort, library.history) }.let { all ->
+                                if (downloadedOnly) all.filter { Offline.isDownloaded(it, downloads.onPhone) } else all
+                            }
                         SongList(
                             songs,
                             actions,
@@ -752,9 +786,22 @@ private fun LibraryScreen(
                     }
 
                     tab == Tab.Playlists -> {
+                        // Liked songs first (a server library), then the playlists in the chosen order.
+                        val likedName = stringResource(R.string.liked_songs)
+                        val liked =
+                            remember(library.songs, library.likes, library.fromServer, likedName) { library.likedPlaylist(likedName) }
                         val playlists =
-                            remember(library.playlists, view.playlistSort, library.history) {
-                                Sorts.playlists(library.playlists, view.playlistSort, library.byId, library.history)
+                            remember(library.playlists, view.playlistSort, library.history, liked) {
+                                listOfNotNull(liked) + Sorts.playlists(library.playlists, view.playlistSort, library.byId, library.history)
+                            }.let { all ->
+                                if (downloadedOnly) {
+                                    all.filter { p ->
+                                        downloads.pins.has(OfflineKind.Playlist, p.id) ||
+                                            Downloads.complete(Playlists.songs(p, library.byId), downloads)
+                                    }
+                                } else {
+                                    all
+                                }
                             }
                         PlaylistList(playlists, library.byId, view.playlistGrid, actions, onPlaylist)
                     }
@@ -765,7 +812,15 @@ private fun LibraryScreen(
                                 library.albums,
                                 view.albumSort,
                                 library.history,
-                            ) { Sorts.albums(library.albums, view.albumSort, library.history) }
+                            ) { Sorts.albums(library.albums, view.albumSort, library.history) }.let { all ->
+                                if (downloadedOnly) {
+                                    all.filter { a ->
+                                        downloads.pins.has(OfflineKind.Album, a.id) || Downloads.complete(a.songs, downloads)
+                                    }
+                                } else {
+                                    all
+                                }
+                            }
                         if (view.albumGrid) AlbumGrid(albums, onAlbum) else AlbumList(albums, onAlbum)
                     }
 
@@ -795,6 +850,8 @@ internal fun SongList(
     // The current song is playing (not paused): its indicator moves.
     playing: Boolean = false,
 ) {
+    val downloads by Downloads.state.collectAsState()
+    val online by Connectivity.online.collectAsState()
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
         header?.invoke(this)
         if (showShuffle && songs.isNotEmpty()) {
@@ -813,7 +870,11 @@ internal fun SongList(
             val explicit = if (song.explicit) ", " + stringResource(R.string.explicit) else ""
             val current = playingId != 0L && song.id == playingId
             val nowPlaying = if (current) ", " + stringResource(R.string.now_playing) else ""
-            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$nowPlaying"
+            val downloaded = Offline.isDownloaded(song, downloads.onPhone)
+            // Offline, a server song that isn't downloaded can't play (unless cached): shown faded.
+            val unavailable = !online && Offline.serverId(song) != null && !downloaded
+            val saved = if (downloaded) ", " + stringResource(R.string.downloaded) else ""
+            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$saved$nowPlaying"
             ListItem(
                 selected = current,
                 onClick = { actions.play(songs, i, from) },
@@ -821,10 +882,20 @@ internal fun SongList(
                 onLongClickLabel = onLongClick?.let { stringResource(R.string.song_options) },
                 leadingContent = if (showArt) ({ AlbumArt(song.albumId) }) else null,
                 supportingContent = {
-                    WithExplicitBadge(
-                        song.explicit,
-                        badgeSize = 14.dp,
-                    ) { m -> Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = m) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (downloaded) {
+                            Icon(
+                                painterResource(DesignR.drawable.ic_download_done),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 4.dp).size(14.dp),
+                            )
+                        }
+                        WithExplicitBadge(
+                            song.explicit,
+                            badgeSize = 14.dp,
+                        ) { m -> Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = m) }
+                    }
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -832,7 +903,11 @@ internal fun SongList(
                         Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium)
                     }
                 },
-                modifier = Modifier.padding(horizontal = 8.dp).semantics(mergeDescendants = true) { contentDescription = description },
+                modifier =
+                    Modifier
+                        .padding(horizontal = 8.dp)
+                        .alpha(if (unavailable) UNAVAILABLE_ALPHA else 1f)
+                        .semantics(mergeDescendants = true) { contentDescription = description },
             ) {
                 Text(
                     song.title,
@@ -906,7 +981,9 @@ private fun AlbumScreen(
                                     Icon(painterResource(DesignR.drawable.ic_shuffle), contentDescription = null)
                                     Text(stringResource(R.string.shuffle), modifier = Modifier.padding(start = 8.dp))
                                 }
+                                DownloadToggle(OfflineKind.Album, album.id, album.songs, actions)
                             }
+                            DownloadStatus(OfflineKind.Album, album.id, album.songs)
                         }
                     }
                 },
@@ -1138,3 +1215,13 @@ sealed interface LyricsState {
         val canLookOnline: Boolean,
     ) : LyricsState
 }
+
+/**
+ * Liked songs as a read-only playlist at the top of Playlists (a server library only), so it can
+ * be played and downloaded like one. Its id is [Offline.LIKED].
+ */
+internal fun LibraryState.likedPlaylist(name: String): Playlist? =
+    if (fromServer) Playlist(Offline.LIKED, name, songIds = Likes.songs(songs, likes).map { it.id }, readOnly = true) else null
+
+/** How faded a song that can't play offline is. */
+private const val UNAVAILABLE_ALPHA = 0.38f

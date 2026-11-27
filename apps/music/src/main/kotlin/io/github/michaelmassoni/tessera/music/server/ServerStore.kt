@@ -18,17 +18,6 @@ enum class StreamQuality(
     Low(128),
 }
 
-/** Offline cache sizes offered in Settings. */
-enum class CacheSize(
-    val bytes: Long,
-) {
-    // Decimal, as Android shows file sizes: "500 MB", "1 GB".
-    Small(500_000_000L),
-    Medium(1_000_000_000L),
-    Large(2_000_000_000L),
-    Huge(5_000_000_000L),
-}
-
 /**
  * The music source, the server account and the playback settings for it. Kept in
  * `music_server.xml`, which is left out of every backup; the password is encrypted with a key that
@@ -53,10 +42,6 @@ class ServerStore(
     var quality: StreamQuality
         get() = StreamQuality.entries.firstOrNull { it.name == prefs.getString(KEY_QUALITY, null) } ?: StreamQuality.Original
         set(value) = prefs.edit { putString(KEY_QUALITY, value.name) }
-
-    var cacheSize: CacheSize
-        get() = CacheSize.entries.firstOrNull { it.name == prefs.getString(KEY_CACHE, null) } ?: CacheSize.Medium
-        set(value) = prefs.edit { putString(KEY_CACHE, value.name) }
 
     private val box = SecretBox(ALIAS)
 
@@ -83,7 +68,6 @@ class ServerStore(
         private const val KEY_USER = "user"
         private const val KEY_PASSWORD = "password"
         private const val KEY_QUALITY = "quality"
-        private const val KEY_CACHE = "cache_size"
         private const val ALIAS = "music_server_password"
     }
 }

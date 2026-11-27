@@ -26,6 +26,9 @@ import io.github.michaelmassoni.tessera.core.settings.AskForLocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.core.settings.SetupGate
 import io.github.michaelmassoni.tessera.core.settings.setTesseraContent
+import io.github.michaelmassoni.tessera.music.data.Connectivity
+import io.github.michaelmassoni.tessera.music.data.DownloadStore
+import io.github.michaelmassoni.tessera.music.data.Downloads
 import io.github.michaelmassoni.tessera.music.data.LikeStore
 import io.github.michaelmassoni.tessera.music.data.LyricsQuery
 import io.github.michaelmassoni.tessera.music.data.LyricsRepository
@@ -33,6 +36,8 @@ import io.github.michaelmassoni.tessera.music.data.MusicRepository
 import io.github.michaelmassoni.tessera.music.data.MusicSettings
 import io.github.michaelmassoni.tessera.music.data.PlayHistory
 import io.github.michaelmassoni.tessera.music.engine.Library
+import io.github.michaelmassoni.tessera.music.engine.Offline
+import io.github.michaelmassoni.tessera.music.engine.OfflineKind
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.Playlists
@@ -107,6 +112,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null && intent?.action == ACTION_OPEN_PLAYER) openPlayerRequests++
         source = store.source
         granted = hasAudio()
+        Connectivity.start(this)
+        lifecycleScope.launch(Dispatchers.IO) { Downloads.refresh(this@MainActivity) }
         val libraryActions = LibraryActionsImpl()
         val playerActions = PlayerActionsImpl()
         setTesseraContent {
@@ -264,6 +271,8 @@ class MainActivity : ComponentActivity() {
                         ServerLibrary.save(this@MainActivity, account, songs, playlists)
                         // Likes made here (or in the car) that the server hasn't got yet.
                         LikeStore.sync(this@MainActivity, songs, client)
+                        // Downloaded playlists follow the server: new songs download, removed ones go.
+                        Downloads.sync(this@MainActivity)
                         songs to playlists
                     }
                 if (store.source != MusicSource.Server) return@launch
@@ -432,12 +441,30 @@ class MainActivity : ComponentActivity() {
                 editPlaylists { Playlists.delete(it, id) }
             }
 
+        override fun setDownload(
+            kind: OfflineKind,
+            id: Long,
+            on: Boolean,
+        ) {
+            // The progress notification needs permission on Android 13+; asked the first time.
+            if (on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+            }
+            lifecycleScope.launch(Dispatchers.IO) { Downloads.pin(this@MainActivity, kind, id, on) }
+        }
+
         override fun setLiked(
             songId: Long,
             liked: Boolean,
         ) {
             val song = library.byId[songId] ?: return
-            lifecycleScope.launch(Dispatchers.IO) { LikeStore.set(this@MainActivity, song, liked) }
+            lifecycleScope.launch(Dispatchers.IO) {
+                LikeStore.set(this@MainActivity, song, liked)
+                // Liked songs downloaded: a newly liked song downloads, an unliked one goes.
+                if (DownloadStore(this@MainActivity).pins.has(OfflineKind.Playlist, Offline.LIKED)) Downloads.sync(this@MainActivity)
+            }
         }
 
         override fun addToPlaylist(
