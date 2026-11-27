@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
+        android:icon="@drawable/ic_shortcut_new_alarm"
+        android:shortcutId="new_alarm"
+        android:shortcutShortLabel="@string/shortcut_new_alarm">
+        <intent
+            android:action="android.intent.action.SET_ALARM"
+            android:targetClass="io.github.michaelmassoni.tessera.clock.MainActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.clock" />
+    </shortcut>
+    <shortcut
         android:icon="@drawable/ic_shortcut_timer"
         android:shortcutId="timer"
         android:shortcutShortLabel="@string/shortcut_timer">

@@ -24,12 +24,20 @@ class MainActivity : ComponentActivity() {
     private val viewModel: ClockViewModel by viewModels { viewModelFactory { initializer { ClockViewModel(graph) } } }
     private var tab by mutableIntStateOf(TAB_ALARMS)
 
+    // Goes up when the app is asked to set an alarm without a time (the New alarm shortcut): the time picker opens.
+    private var newAlarmRequests by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null && handleIntent(intent)) return
         setTesseraContent {
             SetupGate(clockSetup) {
-                ClockRoot(viewModel, initialTab = tab, onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) })
+                ClockRoot(
+                    viewModel,
+                    initialTab = tab,
+                    onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                    newAlarmRequests = newAlarmRequests,
+                )
             }
         }
     }
@@ -63,6 +71,9 @@ class MainActivity : ComponentActivity() {
                             .toSet()
                     thread { graph.alarms.add(hour, minute, label, days, vibrate) }
                     if (skipUi) return finishNow()
+                } else {
+                    // No time given: show the picker for a new alarm, as the standard intent asks.
+                    newAlarmRequests++
                 }
             }
 

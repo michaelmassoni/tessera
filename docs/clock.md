@@ -261,7 +261,7 @@ See [setup.md](setup.md) for what clock asks for the first time it opens.
 
 ## Launcher shortcuts (0.8)
 
-Long-press the app icon: **Timer** and **Stopwatch** open those tabs (`SHOW_TIMERS`, and the tab extra). Each icon is the Material Symbol on the app's launcher colour.
+Long-press the app icon: **New alarm** opens the time picker for a new alarm (`SET_ALARM` without a time; 0.10), **Timer** and **Stopwatch** open those tabs (`SHOW_TIMERS`, and the tab extra). Each icon is the Material Symbol on the app's launcher colour.
 
 ## Quick Settings tiles (0.9)
 

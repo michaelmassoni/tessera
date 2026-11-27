@@ -1,0 +1,1 @@
+A New alarm launcher shortcut, and the standard "set an alarm" request opens the time picker.
