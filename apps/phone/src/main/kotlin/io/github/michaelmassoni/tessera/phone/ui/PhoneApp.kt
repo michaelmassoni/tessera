@@ -70,6 +70,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -848,12 +849,12 @@ internal fun CallHistory(
                             onClick: () -> Unit,
                         ) = Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             FilledTonalIconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
-                                Icon(painterResource(icon), contentDescription = null)
+                                Icon(painterResource(icon), contentDescription = stringResource(label))
                             }
                             Text(
                                 stringResource(label),
                                 style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(top = 4.dp),
+                                modifier = Modifier.padding(top = 4.dp).clearAndSetSemantics { },
                             )
                         }
                         Action(DesignR.drawable.ic_call, R.string.call) { actions.call(number) }

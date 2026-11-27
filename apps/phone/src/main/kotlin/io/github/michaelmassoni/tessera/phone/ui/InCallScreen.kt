@@ -45,6 +45,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -340,9 +341,9 @@ private fun RoundAction(
             colors = IconButtonDefaults.filledIconButtonColors(containerColor = container, contentColor = content),
             modifier = Modifier.size(72.dp),
         ) {
-            Icon(painterResource(icon), contentDescription = null)
+            Icon(painterResource(icon), contentDescription = label)
         }
-        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp).clearAndSetSemantics { })
     }
 }
 

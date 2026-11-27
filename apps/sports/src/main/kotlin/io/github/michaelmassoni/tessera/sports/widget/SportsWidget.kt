@@ -52,6 +52,8 @@ import io.github.michaelmassoni.tessera.sports.engine.Side
 import io.github.michaelmassoni.tessera.sports.engine.Team
 import io.github.michaelmassoni.tessera.sports.engine.WidgetPick
 import io.github.michaelmassoni.tessera.sports.ui.label
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -67,14 +69,15 @@ class SportsWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
-        val follows = context.followStore().load()
+        // Glance calls this on the main thread: read saved teams off it.
+        val follows = withContext(Dispatchers.IO) { context.followStore().load() }
         val zone = ZoneId.systemDefault()
         val game =
             runCatching { EspnSource().followedGames(follows, zone) }
                 .getOrNull()
                 ?.let { WidgetPick.game(it, follows.teamKeys, System.currentTimeMillis()) }
         val logos = game?.let { g -> listOf(g.away.team, g.home.team).associate { it.key to logo(context, it) } }.orEmpty()
-        val hide = context.sportsSettings().hideScores
+        val hide = withContext(Dispatchers.IO) { context.sportsSettings().hideScores }
         provideContent { GlanceTheme { Content(context, game, logos, hide, follows.teams.isEmpty(), zone) } }
     }
 
