@@ -43,6 +43,8 @@ import io.github.michaelmassoni.tessera.weather.engine.TemperatureUnit
 import io.github.michaelmassoni.tessera.weather.engine.Timeline
 import io.github.michaelmassoni.tessera.weather.ui.icon
 import io.github.michaelmassoni.tessera.weather.ui.label
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -61,10 +63,15 @@ class WeatherWidget : GlanceAppWidget() {
         context: Context,
         id: GlanceId,
     ) {
-        val settings = WeatherWidgets.settings(context, id, WeatherWidgetSettings())
-        val place = WeatherWidgets.place(context, settings.place)
-        val forecast = WeatherWidgets.forecast(context, place)
-        val unit = context.weatherSettings().units.temperature
+        // Glance calls this on the main thread: read settings and the cached forecast off it.
+        val (settings, place, forecast, unit) =
+            withContext(Dispatchers.IO) {
+                val settings = WeatherWidgets.settings(context, id, WeatherWidgetSettings())
+                val place = WeatherWidgets.place(context, settings.place)
+                val forecast = WeatherWidgets.forecast(context, place)
+                val unit = context.weatherSettings().units.temperature
+                Loaded(settings, place, forecast, unit)
+            }
         val name = place?.name?.ifBlank { null } ?: context.getString(R.string.current_location)
         val (scheme, background) = settings.colors(context)
         provideContent { GlanceTheme(colors = scheme) { Content(context, name, forecast, unit, settings, background) } }

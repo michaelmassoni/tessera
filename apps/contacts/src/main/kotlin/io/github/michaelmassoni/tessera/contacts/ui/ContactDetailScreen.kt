@@ -190,16 +190,18 @@ private fun QuickAction(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clearAndSetSemantics { }) {
+    // The button carries the label for TalkBack; the caption under it is not read a second time.
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         FilledTonalIconButton(
             onClick = onClick,
             enabled = enabled,
-            modifier = Modifier.widthIn(min = 64.dp).clearAndSetSemantics { contentDescription = label },
+            modifier = Modifier.widthIn(min = 64.dp),
         ) {
-            Icon(painterResource(icon), contentDescription = null)
+            Icon(painterResource(icon), contentDescription = label)
         }
         Text(
             label,
+            modifier = Modifier.clearAndSetSemantics { },
             style = MaterialTheme.typography.labelLarge,
             color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
         )

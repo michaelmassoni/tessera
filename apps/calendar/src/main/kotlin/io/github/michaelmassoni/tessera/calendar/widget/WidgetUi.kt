@@ -170,8 +170,12 @@ class AgendaWidget : GlanceAppWidget() {
         id: GlanceId,
     ) {
         val today = LocalDate.now()
-        val data = CalendarWidgets.load(context, today, today.plusDays(WidgetPlan.AGENDA_DAYS - 1))
-        val rows = if (data.allowed) WidgetPlan.agenda(data.instances, data.now, data.zone) else emptyList()
+        // Glance calls this on the main thread: query the calendar off it.
+        val (data, rows) =
+            withContext(Dispatchers.IO) {
+                val data = CalendarWidgets.load(context, today, today.plusDays(WidgetPlan.AGENDA_DAYS - 1))
+                data to if (data.allowed) WidgetPlan.agenda(data.instances, data.now, data.zone) else emptyList()
+            }
         provideContent { GlanceTheme { Content(context, data, rows) } }
     }
 
