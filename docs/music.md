@@ -411,3 +411,11 @@ and goes back to it. (0.13.0 also had Folders; removed in 0.13.2 at the maintain
 ## First run
 
 See [setup.md](setup.md) for what music asks for the first time it opens.
+
+## Search per tab (0.13.3)
+
+The search bar searches the tab it is on: "Search your songs" lists songs (title, artist or
+album), "Search your albums" albums (title or artist), "Search your artists" artists and "Search
+your playlists" playlists, shown as that tab shows them (list or grid). Every word must match,
+ignoring case and accents. While typing, the settings button becomes a clear button; Back clears
+the search. Each tab keeps its own search.
