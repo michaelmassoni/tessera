@@ -1,6 +1,7 @@
 # Versions checked against Maven Central / Google Maven / Gradle Plugin Portal on 2026-11-19.
 # Latest stable only; any exception needs a comment here and an entry in docs/decisions.md.
 [versions]
+commons-compress = "1.28.0"
 libphonenumber = "9.0.44"
 phonenumber-geocoder = "3.44"
 # Android SDK levels, read by the convention plugins in build-logic/.
@@ -50,6 +51,7 @@ ktlint = "1.8.0"
 compose-lint-checks = "1.6.1"
 
 [libraries]
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
 libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
 libphonenumber-geocoder = { module = "com.googlecode.libphonenumber:geocoder", version.ref = "phonenumber-geocoder" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }

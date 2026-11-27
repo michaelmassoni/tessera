@@ -72,7 +72,9 @@ import io.github.michaelmassoni.tessera.files.TrashState
 import io.github.michaelmassoni.tessera.files.data.OperationKind
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
 import io.github.michaelmassoni.tessera.files.data.Volume
+import io.github.michaelmassoni.tessera.files.engine.ArchiveSummary
 import io.github.michaelmassoni.tessera.files.engine.Archives
+import io.github.michaelmassoni.tessera.files.engine.CompressOptions
 import io.github.michaelmassoni.tessera.files.engine.FileEntry
 import io.github.michaelmassoni.tessera.files.engine.FolderKeys
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
@@ -141,9 +143,12 @@ interface FilesActions {
 
     fun openSettings()
 
-    fun compressSelection() {}
+    fun compressSelection(options: CompressOptions) {}
 
-    fun extract(zip: File) {}
+    fun extract(archive: File) {}
+
+    /** What [archive] holds, or null if it can't be read. Blocking. */
+    fun archiveSummary(archive: File): ArchiveSummary? = null
 
     fun toggleBookmark(dir: File) {}
 }
@@ -252,8 +257,8 @@ fun FilesScreen(
                         onDelete = { dialog = FileDialog.Delete(selected) },
                         onRename = selected.singleOrNull()?.let { f -> { dialog = FileDialog.Rename(f) } },
                         onDetails = selected.singleOrNull()?.let { f -> { dialog = FileDialog.Details(f) } },
-                        onCompress = actions::compressSelection,
-                        onExtract = selected.singleOrNull()?.takeIf(Archives::isZip)?.let { z -> { actions.extract(z) } },
+                        onCompress = { dialog = FileDialog.Compress(selected) },
+                        onExtract = selected.singleOrNull()?.takeIf(Archives::isArchive)?.let { z -> { actions.extract(z) } },
                         onBookmark = selected.singleOrNull()?.takeIf { it.isDirectory }?.let { d -> { actions.toggleBookmark(d) } },
                         bookmarked =
                             selected.singleOrNull()?.let { s ->
@@ -347,7 +352,12 @@ fun FilesScreen(
                                     onItemClick = { entry ->
                                         when {
                                             state.selection.isNotEmpty() -> actions.toggleSelection(entry.file)
+
                                             entry.isDirectory -> actions.open(entry.file)
+
+                                            // Archives open here (contents, Extract), not in another app.
+                                            Archives.isArchive(entry.file) -> dialog = FileDialog.Archive(entry.file)
+
                                             else -> actions.openFile(entry.file)
                                         }
                                     },
@@ -395,6 +405,33 @@ fun FilesScreen(
             DetailsDialog(d.file, onDismiss = { dialog = null })
         }
 
+        is FileDialog.Compress -> {
+            CompressDialog(
+                suggested = Archives.suggestedName(d.files, state.location ?: d.files.first().parentFile ?: File("/")),
+                onConfirm = { options ->
+                    dialog = null
+                    actions.compressSelection(options)
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+
+        is FileDialog.Archive -> {
+            ArchiveDialog(
+                archive = d.file,
+                summary = actions::archiveSummary,
+                onExtract = {
+                    dialog = null
+                    actions.extract(d.file)
+                },
+                onOpenWith = {
+                    dialog = null
+                    actions.openFile(d.file)
+                },
+                onDismiss = { dialog = null },
+            )
+        }
+
         null -> {}
     }
 }
@@ -411,6 +448,14 @@ private sealed interface FileDialog {
     data object NewFolder : FileDialog
 
     data class Details(
+        val file: File,
+    ) : FileDialog
+
+    data class Compress(
+        val files: List<File>,
+    ) : FileDialog
+
+    data class Archive(
         val file: File,
     ) : FileDialog
 }

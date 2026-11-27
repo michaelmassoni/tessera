@@ -29,6 +29,8 @@ import io.github.michaelmassoni.tessera.files.data.SharedPreferencesFilesSetting
 import io.github.michaelmassoni.tessera.files.data.StorageVolumes
 import io.github.michaelmassoni.tessera.files.data.Transfers
 import io.github.michaelmassoni.tessera.files.data.ViewOptions
+import io.github.michaelmassoni.tessera.files.engine.Archives
+import io.github.michaelmassoni.tessera.files.engine.CompressOptions
 import io.github.michaelmassoni.tessera.files.engine.FileOperations
 import io.github.michaelmassoni.tessera.files.engine.NameProblem
 import io.github.michaelmassoni.tessera.files.engine.Trash
@@ -49,9 +51,9 @@ class MainActivity : ComponentActivity() {
                     ops = FileOperations(freeSpace = AndroidFreeSpace(applicationContext)),
                     trash = Trash(File(filesDir, "trash.json")),
                     // Copies, moves and zips run in a foreground service, so they finish after the app is left.
-                    startTransfer = { kind, files, target ->
+                    startTransfer = { kind, files, target, options ->
                         askForNotifications()
-                        Transfers.start(applicationContext, kind, files, target)
+                        Transfers.start(applicationContext, kind, files, target, options)
                     },
                 )
             }
@@ -162,9 +164,11 @@ private class Actions(
 
     override fun openSettings() = activity.startActivity(Intent(activity, SettingsActivity::class.java))
 
-    override fun compressSelection() = vm.compressSelection()
+    override fun compressSelection(options: CompressOptions) = vm.compressSelection(options)
 
-    override fun extract(zip: File) = vm.extract(zip)
+    override fun extract(archive: File) = vm.extract(archive)
+
+    override fun archiveSummary(archive: File) = runCatching { Archives.summary(archive) }.getOrNull()
 
     override fun toggleBookmark(dir: File) = vm.toggleBookmark(dir)
 }

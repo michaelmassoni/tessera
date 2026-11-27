@@ -4,6 +4,14 @@ Newest first. Each entry records the date, the decision, the reason and its stat
 entries wait for the maintainer's sign-off. Agreed changes to the founding decisions are recorded
 here.
 
+## 2026-11-27: Files uses Apache Commons Compress for tar archives (Accepted)
+
+The maintainer asked for compression formats other than zip and for archives to open when
+tapped. Zip stays on `java.util.zip`; .tar and .tar.gz use `org.apache.commons:commons-compress`
+(Apache-2.0, pure Java, already in F-Droid builds), with gzip from `java.util.zip`. It brings
+commons-io and commons-lang3; R8 strips what Files doesn't use. 7z and rar are not offered: 7z
+needs the xz library on top and rar is proprietary.
+
 ## 2026-11-27: Note colours are fixed hues tinted onto the theme (Accepted)
 
 **Decision:** Notes has ten named colours (red to grey). Each is a fixed hue in code, blended into
