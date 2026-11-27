@@ -820,7 +820,12 @@ internal fun SongList(
                 onLongClick = onLongClick?.let { { it(i, song) } },
                 onLongClickLabel = onLongClick?.let { stringResource(R.string.song_options) },
                 leadingContent = if (showArt) ({ AlbumArt(song.albumId) }) else null,
-                supportingContent = { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = {
+                    WithExplicitBadge(
+                        song.explicit,
+                        badgeSize = 14.dp,
+                    ) { m -> Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = m) }
+                },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (current) NowPlayingBars(playing, Modifier.size(16.dp))
@@ -829,17 +834,11 @@ internal fun SongList(
                 },
                 modifier = Modifier.padding(horizontal = 8.dp).semantics(mergeDescendants = true) { contentDescription = description },
             ) {
-                TitleWithBadge(
-                    { m ->
-                        Text(
-                            song.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (current) MaterialTheme.colorScheme.primary else Color.Unspecified,
-                            modifier = m,
-                        )
-                    },
-                    song.explicit,
+                Text(
+                    song.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (current) MaterialTheme.colorScheme.primary else Color.Unspecified,
                 )
             }
         }

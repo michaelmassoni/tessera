@@ -426,3 +426,4 @@ the search. Each tab keeps its own search.
   full player (the session activity, `OPEN_PLAYER`).
 - The current song's mark is three bars that move while it plays and rest when paused.
 - The player's title is one line; a long title scrolls sideways to show the rest.
+- The explicit "E" sits before the artist (player and song lists), not after the title, as Spotify shows it.
