@@ -95,4 +95,8 @@
     <string name="filter_missed">Missed</string>
     <string name="no_matching_calls">No matching calls</string>
     <string name="call_with">Call with</string>
+    <!-- Long-press the keypad's number. -->
+    <string name="copy">Copy</string>
+    <string name="paste">Paste</string>
+    <string name="copy_or_paste">Copy or paste</string>
 </resources>

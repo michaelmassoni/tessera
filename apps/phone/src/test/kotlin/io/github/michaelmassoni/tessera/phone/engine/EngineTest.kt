@@ -52,4 +52,14 @@ class EngineTest {
         assertEquals(listOf(1L to DurationUnit.Hours, 2L to DurationUnit.Minutes), callDuration(3723))
         assertEquals(listOf(2L to DurationUnit.Hours), callDuration(7205))
     }
+
+    @Test
+    fun `paste keeps only what can be dialled`() {
+        assertEquals("0398765432", Dialpad.paste("", "Ph: (03) 9876-5432"))
+        assertEquals("+61412345678", Dialpad.paste("", " +61 412 345 678 "))
+        assertEquals("*123#", Dialpad.paste("", "*123#"))
+        // A + only counts at the start of the number.
+        assertEquals("04123", Dialpad.paste("04", "+123"))
+        assertEquals("", Dialpad.paste("", "no digits here"))
+    }
 }
