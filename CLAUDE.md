@@ -26,7 +26,8 @@ build-logic/      convention plugins: tessera.android.application, .library, .co
 core/design       TesseraTheme (MaterialExpressiveTheme + dynamic color), shared components
 core/settings     settings screen, theme and icon settings, theme sync between apps
 core/cast         casting to Chromecasts and TVs without Play Services (Music, Podcasts)
-scripts/          launcher-icons.sh (generates Colour/Light/Dark launcher icons)
+scripts/          launcher-icons.sh (generates Colour/Light/Dark launcher icons), fastlane-images.sh and
+                  fdroid-metadata.sh (F-Droid store listings and recipes; docs/fdroid.md)
 apps/<name>       one application module per app, package io.github.michaelmassoni.tessera.<name>
 docs/<name>.md    spec for each app, written before the implementation
 docs/decisions.md dated decision log
@@ -58,7 +59,10 @@ docs/decisions.md dated decision log
   `TESSERA_KEYSTORE_PASSWORD`, `TESSERA_KEY_ALIAS`, `TESSERA_KEY_PASSWORD`. Without them,
   release APKs are unsigned, which is what F-Droid wants. Never commit a keystore.
 - **Releases:** push a tag `<app>-v<versionName>` (for example `calculator-v1.0.0`) and
-  `.github/workflows/release.yml` builds, signs and publishes that app.
+  `.github/workflows/release.yml` builds, signs and publishes that app. Add
+  `apps/<app>/fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` first (F-Droid's
+  "What's new"), and push one tag per push. Releases must be reproducible (docs/fdroid.md); the
+  workflow's second job checks it.
 
 ## Design rules
 

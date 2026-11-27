@@ -1,0 +1,10 @@
+Your photos and videos, without the cloud.
+
+* A timeline by day and albums by folder, with favourites and videos
+* Search by file name, album, month, year or day
+* Zoom, play videos, see photo details
+* A photo editor: crop, rotate, adjust
+* Move and copy between albums, and a trash you can restore from
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

@@ -1,0 +1,1 @@
+Archive and rename dialogs use the rounded text fields.

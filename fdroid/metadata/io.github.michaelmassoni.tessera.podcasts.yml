@@ -1,0 +1,37 @@
+Categories:
+  - Podcast
+License: GPL-3.0-or-later
+SourceCode: https://github.com/michaelmassoni/tessera
+IssueTracker: https://github.com/michaelmassoni/tessera/issues
+Changelog: https://github.com/michaelmassoni/tessera/releases
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Show search uses the Apple Podcasts directory (fyyd, which is free, too).
+
+AutoName: Tessera Podcasts
+
+RepoType: git
+Repo: https://github.com/michaelmassoni/tessera.git
+Binaries: https://github.com/michaelmassoni/tessera/releases/download/podcasts-v%v/tessera-podcasts-%v.apk
+
+Builds:
+  - versionName: 0.5.4
+    versionCode: 10
+    commit: podcasts-v0.5.4
+    subdir: apps/podcasts
+    sudo:
+      - echo 'deb https://deb.debian.org/debian trixie main' > /etc/apt/sources.list.d/trixie.list
+      - apt-get update
+      - apt-get install -y -t trixie openjdk-21-jdk-headless
+      - update-java-alternatives -a
+    gradle:
+      - yes
+    prebuild: sdkmanager 'platforms;android-37.1' 'build-tools;37.0.0'
+
+AllowedAPKSigningKeys: 25ccbbff35e9147b00ded2860ae9794fe403216e8f278e93ad680dc00ee78f85
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^podcasts-v.*$
+CurrentVersion: 0.5.4
+CurrentVersionCode: 10

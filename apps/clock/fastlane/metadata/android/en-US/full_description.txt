@@ -1,0 +1,10 @@
+Alarms, timers, a stopwatch and a world clock in one app.
+
+* Alarms that repeat on chosen days, with gentle (rising) volume, snooze and vibration
+* Several timers at once, with labels you type in place
+* A stopwatch with laps, also as a Quick Settings tile
+* World clock with cities and their time difference
+* Home-screen clock widget and launcher shortcuts for Timer and Stopwatch
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

@@ -1,0 +1,13 @@
+Play the music on your phone, or stream from your own Subsonic server (Navidrome and others).
+
+* Songs, albums, artists, playlists and genres, each with its own search
+* Download albums, playlists and Liked songs for listening offline
+* Like songs (stars on your server), with a heart in every list
+* Lyrics, a queue you can reorder, and casting to Chromecasts and TVs
+* Android Auto with shuffle, repeat, likes and browsing
+* Home-screen widget
+
+Lyrics can be looked up on LRCLIB, an open lyrics database, if you turn that on.
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

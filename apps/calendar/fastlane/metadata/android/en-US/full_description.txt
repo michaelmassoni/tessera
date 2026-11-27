@@ -1,0 +1,10 @@
+A calendar for your own events, synced with your own server.
+
+* Month, week, day and schedule views
+* Repeating events, reminders and search
+* Month and agenda widgets you can set up
+* Import ICS files
+* Sync with your own CalDAV server (Nextcloud, Radicale and others), no Google account needed
+
+
+Part of Tessera, a suite of free apps that replace Google's defaults with Material 3 Expressive design, dynamic colour and dark mode. No ads, no tracking, no Google services. Licensed under GPL-3.0.

@@ -8,8 +8,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.michaelmassoni.tessera.weather"
-        versionCode = 15
-        versionName = "0.8.4"
+        versionCode = 16
+        versionName = "0.8.5"
     }
 }
 

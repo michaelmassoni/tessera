@@ -31,6 +31,8 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                         isMinifyEnabled = true
                         isShrinkResources = true
                         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+                        // Rules every app needs for reproducible builds (F-Droid; docs/fdroid.md).
+                        proguardFiles(project.rootProject.file("build-logic/reproducible-rules.pro"))
                         // An app's own R8 rules, when it needs any (Calendar's widgets do).
                         project.file("proguard-rules.pro").takeIf { it.exists() }?.let { proguardFiles(it) }
                     }
