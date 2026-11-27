@@ -456,5 +456,6 @@ server can be downloaded. Songs on the phone (local library) need nothing.
 
 ## Song rows (0.14.1)
 
-In song lists the playing song's moving bars sit before its title (as Spotify shows them), and a liked
-song has a small filled heart on the right, beside its length (read as "Liked" by TalkBack).
+In song lists the playing song's moving bars sit before its title (as Spotify shows them), and every
+song has a heart on the right, beside its length: an outline, filled once liked; tapping it likes or
+unlikes the song (0.14.2). TalkBack reads "Liked" on the row and offers the heart as a "Like" toggle.
