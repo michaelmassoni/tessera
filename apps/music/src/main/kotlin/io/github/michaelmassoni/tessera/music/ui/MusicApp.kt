@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -904,13 +905,13 @@ internal fun SongList(
                 },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Liked songs show a heart, as Spotify shows its check.
-                        if (liked) {
+                        // Like or unlike from the list: an outline heart, filled once liked.
+                        IconToggleButton(checked = liked, onCheckedChange = { actions.setLiked(song.id, it) }) {
                             Icon(
-                                painterResource(DesignR.drawable.ic_favorite_filled),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp),
+                                painterResource(if (liked) DesignR.drawable.ic_favorite_filled else DesignR.drawable.ic_favorite),
+                                contentDescription = stringResource(R.string.like),
+                                tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                         Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium)
