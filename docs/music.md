@@ -462,7 +462,7 @@ unlikes the song (0.14.2). TalkBack reads "Liked" on the row and offers the hear
 
 ## Swipe the art to skip (0.14.3)
 
-On the player, swipe the album art left for the next song or right for the previous (which, like the
-Previous button, restarts the song when it is more than a few seconds in). The art follows the
+On the player, swipe the album art left for the next song or right for the previous one (always the previous
+song, unlike the Previous button, which first restarts a song more than a few seconds in). The art follows the
 finger; past a quarter of its width, or a quick flick, it slides off and the song changes, otherwise
 it springs back. TalkBack gets Next and Previous as actions on the art.
