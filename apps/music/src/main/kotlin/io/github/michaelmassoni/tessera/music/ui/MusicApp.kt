@@ -83,6 +83,8 @@ import androidx.window.core.layout.WindowSizeClass
 import io.github.michaelmassoni.tessera.core.cast.CastButton
 import io.github.michaelmassoni.tessera.core.cast.castingTo
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
+import io.github.michaelmassoni.tessera.core.design.keyboardVisible
 import io.github.michaelmassoni.tessera.core.settings.LocalNetwork
 import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
@@ -595,16 +597,24 @@ private fun LibraryScreen(
         SongOptions(song, library.playlists, actions, onDismiss = { options = null }, onAlbum = onAlbum, onArtist = onArtist)
     }
     val onLongClick: (Int, Song) -> Unit = { _, song -> options = song }
+    // Back clears the search (not while the keyboard is up: Back closes it first).
+    BackHandler(query.isNotEmpty() && !keyboardVisible()) { query = "" }
     Scaffold(
         topBar = {
-            val text = rememberTextFieldState()
-            LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect { query = it } }
-            TesseraSearchBar(
-                text = text,
-                placeholder = stringResource(R.string.search_hint),
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
-                leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-                trailingIcon = {
+            // Each tab searches its own kind: songs, albums, artists or playlists.
+            TesseraSearchTopBar(
+                query = query,
+                onQuery = { query = it },
+                placeholder =
+                    stringResource(
+                        when (tab) {
+                            Tab.Songs -> R.string.search_songs
+                            Tab.Albums -> R.string.search_albums
+                            Tab.Artists -> R.string.search_artists
+                            Tab.Playlists -> R.string.search_playlists
+                        },
+                    ),
+                action = {
                     IconButton(onClick = actions::openSettings) {
                         Icon(painterResource(DesignR.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
                     }
@@ -664,14 +674,52 @@ private fun LibraryScreen(
                     }
 
                     query.isNotBlank() -> {
-                        SongList(
-                            remember(library.songs, query) { Library.search(library.songs, query) },
-                            actions,
-                            PlayingFrom(PlayingFrom.Kind.Search, query),
-                            showShuffle = false,
-                            onLongClick = onLongClick,
-                            playingId = playingId,
-                        )
+                        // Results of the tab's own kind, shown the way the tab shows them (list or grid).
+                        when (tab) {
+                            Tab.Songs -> {
+                                val songs = remember(library.songs, query) { Library.search(library.songs, query) }
+                                if (songs.isEmpty()) {
+                                    Empty(stringResource(R.string.no_results))
+                                } else {
+                                    SongList(
+                                        songs,
+                                        actions,
+                                        PlayingFrom(PlayingFrom.Kind.Search, query),
+                                        showShuffle = false,
+                                        onLongClick = onLongClick,
+                                        playingId = playingId,
+                                    )
+                                }
+                            }
+
+                            Tab.Albums -> {
+                                val albums = remember(library.albums, query) { Library.searchAlbums(library.albums, query) }
+                                when {
+                                    albums.isEmpty() -> Empty(stringResource(R.string.no_results))
+                                    view.albumGrid -> AlbumGrid(albums, onAlbum)
+                                    else -> AlbumList(albums, onAlbum)
+                                }
+                            }
+
+                            Tab.Artists -> {
+                                val source = if (view.albumArtists) library.albumArtists else library.artists
+                                val artists = remember(source, query) { Library.searchArtists(source, query) }
+                                when {
+                                    artists.isEmpty() -> Empty(stringResource(R.string.no_results))
+                                    view.artistGrid -> ArtistGrid(artists, onArtist)
+                                    else -> ArtistList(artists, onArtist)
+                                }
+                            }
+
+                            Tab.Playlists -> {
+                                val playlists = remember(library.playlists, query) { Library.searchPlaylists(library.playlists, query) }
+                                if (playlists.isEmpty()) {
+                                    Empty(stringResource(R.string.no_results))
+                                } else {
+                                    PlaylistList(playlists, library.byId, view.playlistGrid, actions, onPlaylist)
+                                }
+                            }
+                        }
                     }
 
                     tab == Tab.Songs -> {

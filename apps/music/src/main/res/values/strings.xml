@@ -4,7 +4,12 @@
     <string name="tab_songs">Songs</string>
     <string name="tab_albums">Albums</string>
     <string name="tab_artists">Artists</string>
-    <string name="search_hint">Search your music</string>
+    <!-- Each tab searches its own kind. -->
+    <string name="search_songs">Search your songs</string>
+    <string name="search_albums">Search your albums</string>
+    <string name="search_artists">Search your artists</string>
+    <string name="search_playlists">Search your playlists</string>
+    <string name="no_results">No matches</string>
     <string name="settings">Settings</string>
     <string name="back">Back</string>
     <string name="shuffle_all">Shuffle all</string>

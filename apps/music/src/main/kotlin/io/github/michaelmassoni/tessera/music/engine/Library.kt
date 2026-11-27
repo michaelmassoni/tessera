@@ -172,6 +172,35 @@ object Library {
         if (terms.isEmpty()) return emptyList()
         return songs(all.filter { s -> normalize("${s.title} ${s.artist} ${s.album}").let { text -> terms.all { it in text } } })
     }
+
+    /** Albums whose title or artist holds every word of [query], in the order given. */
+    fun searchAlbums(
+        albums: List<Album>,
+        query: String,
+    ): List<Album> = albums.filter { matches("${it.title} ${it.artist}", query) }
+
+    /** Artists whose name holds every word of [query], in the order given. */
+    fun searchArtists(
+        artists: List<Artist>,
+        query: String,
+    ): List<Artist> = artists.filter { matches(it.name, query) }
+
+    /** Playlists whose name holds every word of [query], in the order given. */
+    fun searchPlaylists(
+        playlists: List<Playlist>,
+        query: String,
+    ): List<Playlist> = playlists.filter { matches(it.name, query) }
+
+    /** Every word of [query] is in [text], ignoring case and accents; a blank query matches nothing. */
+    private fun matches(
+        text: String,
+        query: String,
+    ): Boolean {
+        val terms = normalize(query).split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (terms.isEmpty()) return false
+        val haystack = normalize(text)
+        return terms.all { it in haystack }
+    }
 }
 
 /** "3:05", "1:02:03". */
