@@ -103,4 +103,6 @@
     <string name="setup_notifications_text">For new messages, with reply and mark-as-read.</string>
     <!-- Launcher shortcuts (long-press the icon). -->
     <string name="shortcut_new_message">New message</string>
+    <!-- Conversation top bar: call this person. -->
+    <string name="call">Call %1$s</string>
 </resources>
