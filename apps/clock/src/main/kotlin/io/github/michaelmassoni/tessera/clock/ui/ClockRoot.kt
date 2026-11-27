@@ -80,6 +80,8 @@ fun ClockRoot(
     initialTab: Int,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    // Goes up when a new alarm is asked for from outside (the New alarm shortcut).
+    newAlarmRequests: Int = 0,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(initialTab) }
     LaunchedEffect(initialTab) { tab = initialTab }
@@ -89,6 +91,12 @@ fun ClockRoot(
     var pickingCity by rememberSaveable { mutableStateOf(false) }
     var timerInput by rememberSaveable(stateSaver = TimerInputSaver) { mutableStateOf(TimerInput()) }
     var addingTimer by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(newAlarmRequests) {
+        if (newAlarmRequests > 0) {
+            tab = ClockTab.Alarms.ordinal
+            addingAlarm = true
+        }
+    }
 
     val alarms by viewModel.alarms.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
