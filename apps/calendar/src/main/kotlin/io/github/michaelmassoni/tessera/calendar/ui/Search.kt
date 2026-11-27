@@ -26,6 +26,7 @@ import io.github.michaelmassoni.tessera.calendar.R
 import io.github.michaelmassoni.tessera.calendar.SearchState
 import io.github.michaelmassoni.tessera.calendar.engine.Instance
 import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import java.time.LocalDate
 import io.github.michaelmassoni.tessera.core.design.R as DesignR
 
@@ -45,33 +46,16 @@ fun SearchScreen(
     focusOnOpen: Boolean = true,
 ) {
     val text = rememberTextFieldState(search.query)
-    val focus = remember { FocusRequester() }
     LaunchedEffect(text) { snapshotFlow { text.text.toString() }.collect(onQuery) }
-    if (focusOnOpen) LaunchedEffect(Unit) { focus.requestFocus() }
     Scaffold(
         modifier = modifier,
         topBar = {
-            Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onClose) {
-                    Icon(painterResource(DesignR.drawable.ic_arrow_back), contentDescription = stringResource(R.string.close_search))
-                }
-                TesseraSearchBar(
-                    text = text,
-                    placeholder = stringResource(R.string.search_events),
-                    modifier = Modifier.weight(1f),
-                    focusRequester = focus,
-                    trailingIcon = {
-                        if (text.text.isNotEmpty()) {
-                            IconButton(onClick = { text.clearText() }) {
-                                Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear_search))
-                            }
-                        }
-                    },
-                )
-            }
+            TesseraSearchTopBar(
+                text = text,
+                placeholder = stringResource(R.string.search_events),
+                onBack = onClose,
+                focusOnOpen = focusOnOpen,
+            )
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {

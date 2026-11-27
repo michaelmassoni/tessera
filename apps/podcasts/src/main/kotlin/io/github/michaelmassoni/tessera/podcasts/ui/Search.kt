@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -24,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -40,6 +45,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchBar
+import io.github.michaelmassoni.tessera.core.design.TesseraSearchTopBar
 import io.github.michaelmassoni.tessera.podcasts.R
 import io.github.michaelmassoni.tessera.podcasts.data.AddException
 import io.github.michaelmassoni.tessera.podcasts.data.AddProblem
@@ -67,7 +74,8 @@ class SearchModel(
     query: String = "",
     phase: SearchPhase = SearchPhase.Idle,
 ) {
-    var query by mutableStateOf(query)
+    val text = TextFieldState(query)
+    val query: String get() = text.text.toString()
     var phase by mutableStateOf(phase)
 }
 
@@ -81,8 +89,9 @@ fun SearchScreen(
     model: SearchModel = remember { SearchModel() },
 ) {
     val scope = rememberCoroutineScope()
-    var query by model::query
     var phase by model::phase
+    // Clearing the field (its clear button) goes back to the introduction.
+    LaunchedEffect(model.text) { snapshotFlow { model.text.text.isEmpty() }.collect { if (it) phase = SearchPhase.Idle } }
     var opening by remember { mutableStateOf<String?>(null) }
     var problem by remember { mutableStateOf<AddProblem?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -90,7 +99,7 @@ fun SearchScreen(
     val keyboard = LocalSoftwareKeyboardController.current
 
     fun search() {
-        val terms = query.trim()
+        val terms = model.query.trim()
         if (terms.isEmpty()) return
         keyboard?.hide()
         phase = SearchPhase.Searching
@@ -119,12 +128,18 @@ fun SearchScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.tab_search)) },
-                actions = {
+            // Like Contacts: no title, the search bar at the top with its menu inside.
+            TesseraSearchTopBar(
+                text = model.text,
+                placeholder = stringResource(R.string.search_hint),
+                onSearch = { search() },
+                action = {
                     Box {
                         IconButton(onClick = { menu = true }) {
-                            Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
+                            Icon(
+                                painterResource(DesignR.drawable.ic_more_vert),
+                                contentDescription = stringResource(R.string.more_options),
+                            )
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(
@@ -150,29 +165,6 @@ fun SearchScreen(
         },
     ) { padding ->
         LazyColumn(contentPadding = padding, modifier = Modifier.fillMaxSize()) {
-            item(key = "field") {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.search_hint)) },
-                    leadingIcon = { Icon(painterResource(DesignR.drawable.ic_search), contentDescription = null) },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = {
-                                query = ""
-                                phase = SearchPhase.Idle
-                            }) {
-                                Icon(painterResource(DesignR.drawable.ic_close), contentDescription = stringResource(R.string.clear))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.extraLarge,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { search() }),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
             when (val p = phase) {
                 SearchPhase.Idle -> {
                     item(key = "idle") {
