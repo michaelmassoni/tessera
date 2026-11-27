@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -47,6 +46,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.messages.R
 import io.github.michaelmassoni.tessera.messages.engine.Recipients
 import kotlinx.coroutines.Dispatchers
@@ -131,7 +131,7 @@ internal fun NewMessage(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                OutlinedTextField(
+                TesseraTextField(
                     state = field,
                     // A number typed with spaces or dashes is kept as bare digits (the layout is added
                     // for display); a comma or semicolon is left for the collector above.

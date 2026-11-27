@@ -24,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +53,7 @@ import androidx.pdf.ExperimentalPdfApi
 import androidx.pdf.compose.PdfViewer
 import androidx.pdf.compose.rememberPdfViewerState
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import io.github.michaelmassoni.tessera.files.R
 import io.github.michaelmassoni.tessera.files.engine.PageJump
@@ -287,7 +287,7 @@ private fun GoToPageDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.viewer_go_to_page)) },
         text = {
-            OutlinedTextField(
+            TesseraTextField(
                 state = text,
                 label = { Text(stringResource(R.string.viewer_page_range, pages)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

@@ -268,3 +268,9 @@ Long-press the app icon: **Timer** and **Stopwatch** open those tabs (`SHOW_TIME
 - **Stopwatch** starts and pauses the stopwatch without opening the app (on while running; the
   paused time underneath). The app redraws it when the stopwatch changes there.
 - **Timer** opens the Timer tab.
+
+## Labels typed in place (0.9.1)
+
+An alarm's or timer's label is edited where it's shown: tap "Add label" (or the label) and type,
+no dialog. It's saved on Done, when the field loses focus or the keyboard closes, and shortly after
+typing stops. One line, up to 60 characters.

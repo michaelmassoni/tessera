@@ -33,7 +33,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -65,6 +64,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.tasks.R
 import io.github.michaelmassoni.tessera.tasks.data.TaskData
 import io.github.michaelmassoni.tessera.tasks.data.TaskStore
@@ -766,7 +766,7 @@ internal fun NameDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(title)) },
-        text = { OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.list_name)) }, singleLine = true) },
+        text = { TesseraTextField(name, { name = it }, label = { Text(stringResource(R.string.list_name)) }, singleLine = true) },
         confirmButton = {
             TextButton(
                 onClick = { onDone(name.trim()) },
@@ -790,7 +790,7 @@ private fun NewListDialog(
         title = { Text(stringResource(R.string.new_list)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.widthIn(max = 400.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.list_name)) }, singleLine = true)
+                TesseraTextField(name, { name = it }, label = { Text(stringResource(R.string.list_name)) }, singleLine = true)
                 if (signedIn) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.on_server), modifier = Modifier.weight(1f))

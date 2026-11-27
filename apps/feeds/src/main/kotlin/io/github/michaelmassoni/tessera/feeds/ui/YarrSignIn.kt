@@ -12,7 +12,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import io.github.michaelmassoni.tessera.core.dav.SignInError
 import io.github.michaelmassoni.tessera.core.dav.SignInProblem
 import io.github.michaelmassoni.tessera.core.design.TesseraPasswordField
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkAccess
 import io.github.michaelmassoni.tessera.core.settings.LocalNetworkDenied
 import io.github.michaelmassoni.tessera.core.settings.rememberLocalNetworkAccess
@@ -59,7 +59,7 @@ fun YarrSignInForm(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
+        TesseraTextField(
             fields.address,
             { onChange(fields.copy(address = it)) },
             label = { Text(stringResource(R.string.server_address)) },
@@ -70,7 +70,7 @@ fun YarrSignInForm(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        TesseraTextField(
             fields.username,
             { onChange(fields.copy(username = it)) },
             label = { Text(stringResource(R.string.username)) },

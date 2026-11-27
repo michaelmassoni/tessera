@@ -31,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +59,7 @@ import androidx.core.net.toUri
 import io.github.michaelmassoni.tessera.clock.R
 import io.github.michaelmassoni.tessera.clock.alarm.Alarm
 import io.github.michaelmassoni.tessera.core.design.TesseraPreviews
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.core.design.TesseraTheme
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -126,7 +126,6 @@ private fun AlarmCard(
     val formatter = rememberClockFormatter()
     val time = LocalTime.of(alarm.hour, alarm.minute)
     var editingTime by rememberSaveable { mutableStateOf(false) }
-    var editingLabel by rememberSaveable { mutableStateOf(false) }
     val locale = LocalConfiguration.current.locales[0]
     val summary = repeatSummary(alarm, locale)
     val onOff = stringResource(if (alarm.enabled) R.string.alarm_on else R.string.alarm_off)
@@ -220,15 +219,21 @@ private fun AlarmCard(
             AnimatedVisibility(visible = expanded) {
                 Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DayToggles(alarm, locale) { days -> actions.onUpdate(alarm.copy(days = days)) }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { editingLabel = true }) {
-                            Icon(
-                                painterResource(DesignR.drawable.ic_label),
-                                contentDescription = null,
-                                modifier = Modifier.padding(end = 8.dp),
-                            )
-                            Text(alarm.label.ifEmpty { stringResource(R.string.alarm_add_label) })
-                        }
+                    // The label, typed in place (no dialog).
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp)) {
+                        Icon(
+                            painterResource(DesignR.drawable.ic_label),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                        InlineLabel(
+                            label = alarm.label,
+                            placeholder = stringResource(R.string.alarm_add_label),
+                            onCommit = { actions.onUpdate(alarm.copy(label = it)) },
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                     SoundRow(alarm) { sound -> actions.onUpdate(alarm.copy(ringtone = sound)) }
                     Row(
@@ -273,16 +278,6 @@ private fun AlarmCard(
             onConfirm = { h, m ->
                 editingTime = false
                 actions.onUpdate(alarm.copy(hour = h, minute = m, enabled = true))
-            },
-        )
-    }
-    if (editingLabel) {
-        LabelDialog(
-            initial = alarm.label,
-            onDismiss = { editingLabel = false },
-            onConfirm = {
-                editingLabel = false
-                actions.onUpdate(alarm.copy(label = it))
             },
         )
     }
@@ -461,32 +456,6 @@ fun TimePickerDialog(
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
         },
-    )
-}
-
-@Composable
-internal fun LabelDialog(
-    initial: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    var text by rememberSaveable { mutableStateOf(initial) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.alarm_label)) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it.take(60).replace('\n', ' ') },
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(text.trim()) },
-            ) { Text(stringResource(R.string.action_ok)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 

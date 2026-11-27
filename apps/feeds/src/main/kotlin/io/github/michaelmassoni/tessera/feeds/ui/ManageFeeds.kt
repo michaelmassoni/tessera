@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -52,6 +51,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 import io.github.michaelmassoni.tessera.feeds.R
 import io.github.michaelmassoni.tessera.feeds.data.Adding
 import io.github.michaelmassoni.tessera.feeds.engine.Feed
@@ -377,7 +377,7 @@ private fun AddFeedDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (list == null) {
-                    OutlinedTextField(
+                    TesseraTextField(
                         address,
                         { address = it },
                         label = { Text(stringResource(R.string.feed_address)) },
@@ -501,7 +501,7 @@ internal fun TextDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
+            TesseraTextField(
                 text,
                 { text = it },
                 singleLine = true,

@@ -19,7 +19,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -47,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.github.michaelmassoni.tessera.core.design.TesseraTextField
 
 /** An app icon drawn from its glyph and two colours, as the launcher would show it. */
 @Composable
@@ -254,7 +254,7 @@ private fun HexField(
 ) {
     var text by remember(color) { mutableStateOf(ColorMath.toHex(color)) }
     val parsed = ColorMath.parseHex(text)
-    OutlinedTextField(
+    TesseraTextField(
         value = text,
         onValueChange = {
             text = it
