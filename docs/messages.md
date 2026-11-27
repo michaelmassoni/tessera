@@ -169,3 +169,7 @@ needs: MessagingStyle with each sender, a Reply action with a RemoteInput
 Both actions now have icons, which the car shows on its buttons. Like Music, a copy not installed
 from the Play Store needs Android Auto's "Unknown sources" developer setting. Not tried in a car
 or the Desktop Head Unit (no Android Auto on the AOSP emulator).
+
+## Launcher shortcuts (0.8)
+
+Long-press the app icon: **New message** opens the new-message screen (`NEW_MESSAGE`). Each icon is the Material Symbol on the app's launcher colour.

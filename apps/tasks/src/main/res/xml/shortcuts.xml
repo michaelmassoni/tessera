@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:icon="@drawable/ic_shortcut_new_task"
+        android:shortcutId="new_task"
+        android:shortcutShortLabel="@string/shortcut_new_task">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetClass="io.github.michaelmassoni.tessera.tasks.QuickAddActivity"
+            android:targetPackage="io.github.michaelmassoni.tessera.tasks" />
+    </shortcut>
+</shortcuts>

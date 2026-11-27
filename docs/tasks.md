@@ -133,3 +133,7 @@ every 15 minutes, fixed.
 
 Locations, tags/labels, attachments, time estimates, sharing lists, DAVx5 or OpenTasks providers,
 Android Auto (not an allowed category).
+
+## Launcher shortcuts (0.6)
+
+Long-press the app icon: **New task** opens the quick-add sheet, as the widget's + does. Each icon is the Material Symbol on the app's launcher colour.
