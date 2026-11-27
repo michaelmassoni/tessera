@@ -75,6 +75,8 @@ internal fun GenreScreen(
     onAlbum: (Long) -> Unit,
     onArtist: (Long) -> Unit,
     playingId: Long = 0,
+    // The current song is playing (not paused): its indicator moves.
+    playing: Boolean = false,
 ) {
     var options by remember { mutableStateOf<Song?>(null) }
     options?.let { song ->
@@ -89,6 +91,7 @@ internal fun GenreScreen(
                 showShuffle = true,
                 onLongClick = { _, song -> options = song },
                 playingId = playingId,
+                playing = playing,
             )
         }
     }

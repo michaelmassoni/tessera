@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,6 +60,9 @@ import java.io.File
 import java.io.IOException
 
 class MainActivity : ComponentActivity() {
+    // Goes up each time the media notification (or Quick Settings player) opens the app: the player opens.
+    private var openPlayerRequests by mutableIntStateOf(0)
+
     private val player by lazy { PlayerConnection(lifecycleScope) }
     private var granted by mutableStateOf(false)
     private var denied by mutableStateOf(false)
@@ -93,8 +97,14 @@ class MainActivity : ComponentActivity() {
             if (ok) onGranted()
         }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == ACTION_OPEN_PLAYER) openPlayerRequests++
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null && intent?.action == ACTION_OPEN_PLAYER) openPlayerRequests++
         source = store.source
         granted = hasAudio()
         val libraryActions = LibraryActionsImpl()
@@ -132,7 +142,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    MusicApp(library, playback, { progress.value }, libraryActions, playerActions, lyrics = lyrics)
+                    MusicApp(
+                        library,
+                        playback,
+                        { progress.value },
+                        libraryActions,
+                        playerActions,
+                        lyrics = lyrics,
+                        openPlayerRequests = openPlayerRequests,
+                    )
                 }
             }
         }
@@ -528,7 +546,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
+    internal companion object {
+        const val ACTION_OPEN_PLAYER = "io.github.michaelmassoni.tessera.music.OPEN_PLAYER"
+
         // Opening the app fetches the server library again at most this often.
         const val REFETCH_MS = 10 * 60 * 1000L
     }

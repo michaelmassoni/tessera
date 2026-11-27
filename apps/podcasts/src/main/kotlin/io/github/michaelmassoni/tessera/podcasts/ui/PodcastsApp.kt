@@ -118,6 +118,8 @@ fun PodcastsApp(
     progress: () -> Progress,
     actions: PodcastsActions,
     modifier: Modifier = Modifier,
+    // Goes up when the app is opened from the media notification: the player opens.
+    openPlayerRequests: Int = 0,
     initialScreen: Screen = Screen(),
     search: SearchModel = remember { SearchModel() },
 ) {
@@ -150,6 +152,7 @@ fun PodcastsApp(
     PlayerSheet(
         hasMedia = state.player.episodeId != null,
         modifier = modifier,
+        openRequests = openPlayerRequests,
         player = { onClose, sheetModifier ->
             FullPlayer(
                 state,

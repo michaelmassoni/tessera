@@ -7,6 +7,7 @@ import android.util.Size
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -197,7 +198,7 @@ fun AlbumArt(
     }
 }
 
-/** The "E" after an explicit song's title. */
+/** The "E" before an explicit song's artist. */
 @Composable
 fun ExplicitBadge(
     modifier: Modifier = Modifier,
@@ -211,21 +212,21 @@ fun ExplicitBadge(
     )
 }
 
-/** A song title with the explicit badge after it; the title gives way (ellipsis) before the badge. */
+/** A song's artist line with the explicit badge before it (as Spotify does); the text gives way (ellipsis) first. */
 @Composable
-fun TitleWithBadge(
-    title: @Composable (Modifier) -> Unit,
+fun WithExplicitBadge(
     explicit: Boolean,
     modifier: Modifier = Modifier,
     badgeSize: Dp = 16.dp,
+    text: @Composable (Modifier) -> Unit,
 ) {
     if (!explicit) {
-        title(modifier)
+        text(modifier)
         return
     }
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        title(Modifier.weight(1f, fill = false))
         ExplicitBadge(size = badgeSize)
+        text(Modifier.weight(1f, fill = false))
     }
 }
 
@@ -446,18 +447,12 @@ private fun TitleRow(
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            TitleWithBadge(
-                { m ->
-                    Text(
-                        state.title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = m,
-                    )
-                },
-                explicit,
-                badgeSize = 20.dp,
+            Text(
+                state.title,
+                style = MaterialTheme.typography.headlineSmall,
+                // One line; a long title scrolls sideways to show the rest (as Spotify does).
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = MARQUEE_DELAY_MS),
             )
             val linkStyle = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant))
             val line =
@@ -478,13 +473,16 @@ private fun TitleRow(
                     part(state.artist, "artist", links.onArtist)
                     part(state.album, "album", links.onAlbum)
                 }
-            Text(
-                line,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            WithExplicitBadge(explicit) { m ->
+                Text(
+                    line,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = m,
+                )
+            }
         }
         if (libraryActions != null && state.songId != 0L && liked != null) {
             IconToggleButton(checked = liked, onCheckedChange = { libraryActions.setLiked(state.songId, it) }) {
@@ -699,3 +697,6 @@ private fun OutputRow(
         }
     }
 }
+
+/** How long a long title rests before (and between) scrolling. */
+private const val MARQUEE_DELAY_MS = 2_000
