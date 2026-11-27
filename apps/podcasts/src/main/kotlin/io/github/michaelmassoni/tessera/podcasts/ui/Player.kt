@@ -1,6 +1,7 @@
 package io.github.michaelmassoni.tessera.podcasts.ui
 
 import android.os.SystemClock
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -185,9 +186,9 @@ fun FullPlayer(
                             episode?.title.orEmpty(),
                             style = MaterialTheme.typography.headlineSmall,
                             textAlign = TextAlign.Center,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 4.dp),
+                            // One line; a long title scrolls sideways to show the rest.
+                            maxLines = 1,
+                            modifier = Modifier.padding(top = 4.dp).basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_000),
                         )
                         if (state.player.failed) {
                             Text(

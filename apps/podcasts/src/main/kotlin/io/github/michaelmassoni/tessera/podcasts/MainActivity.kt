@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,13 +29,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+    // Goes up each time the media notification (or Quick Settings player) opens the app: the player opens.
+    private var openPlayerRequests by mutableIntStateOf(0)
+
     private val podcasts by lazy { applicationContext.podcasts }
     private val player by lazy { PlayerConnection(lifecycleScope) }
     private var refreshing by mutableStateOf(false)
     private val search = SearchModel()
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == ACTION_OPEN_PLAYER) openPlayerRequests++
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null && intent?.action == ACTION_OPEN_PLAYER) openPlayerRequests++
         val store = podcasts.store
         // Background refresh every 6 hours; scheduling again (KEEP) doesn't move the next run.
         RefreshWorker.schedule(this)
@@ -85,7 +95,7 @@ class MainActivity : ComponentActivity() {
                                 chapters = playerState.episodeId?.let(chapters::get).orEmpty(),
                             ),
                     )
-                PodcastsApp(state, { progress }, actions, search = search)
+                PodcastsApp(state, { progress }, actions, search = search, openPlayerRequests = openPlayerRequests)
             }
         }
     }
@@ -215,7 +225,8 @@ class MainActivity : ComponentActivity() {
             withContext(Dispatchers.IO) { podcasts.store.notes(episodeId.substringBefore(':'))[episodeId].orEmpty() }
     }
 
-    private companion object {
+    internal companion object {
+        const val ACTION_OPEN_PLAYER = "io.github.michaelmassoni.tessera.podcasts.OPEN_PLAYER"
         const val AUTO_REFRESH_MS = 60 * 60 * 1000L
     }
 }

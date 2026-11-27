@@ -7,6 +7,7 @@ import android.util.Size
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -451,9 +452,9 @@ private fun TitleRow(
                     Text(
                         state.title,
                         style = MaterialTheme.typography.headlineSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = m,
+                        // One line; a long title scrolls sideways to show the rest (as Spotify does).
+                        maxLines = 1,
+                        modifier = m.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = MARQUEE_DELAY_MS),
                     )
                 },
                 explicit,
@@ -699,3 +700,6 @@ private fun OutputRow(
         }
     }
 }
+
+/** How long a long title rests before (and between) scrolling. */
+private const val MARQUEE_DELAY_MS = 2_000

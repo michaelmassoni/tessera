@@ -324,6 +324,8 @@ fun MusicApp(
     libraryActions: LibraryActions,
     playerActions: PlayerActions,
     modifier: Modifier = Modifier,
+    // Goes up when the app is opened from the media notification: the player opens.
+    openPlayerRequests: Int = 0,
     lyrics: LyricsState = LyricsState.None(false),
 ) {
     val context = LocalContext.current
@@ -375,6 +377,7 @@ fun MusicApp(
     PlayerSheet(
         hasMedia = playback.hasMedia,
         modifier = modifier,
+        openRequests = openPlayerRequests,
         player = { onClose, sheetModifier ->
             FullPlayer(
                 playback,
@@ -500,6 +503,7 @@ fun MusicApp(
                                                     openArtist,
                                                     back,
                                                     playingId = playback.songId,
+                                                    playing = playback.isPlaying,
                                                 )
                                             }
                                         }
@@ -513,6 +517,7 @@ fun MusicApp(
                                                     openAlbum,
                                                     back,
                                                     playingId = playback.songId,
+                                                    playing = playback.isPlaying,
                                                 )
                                             }
                                         }
@@ -528,6 +533,7 @@ fun MusicApp(
                                                     onAlbum = openAlbum,
                                                     onArtist = openArtist,
                                                     playingId = playback.songId,
+                                                    playing = playback.isPlaying,
                                                 )
                                             }
                                         }
@@ -550,6 +556,7 @@ fun MusicApp(
                                                     onAlbum = openAlbum,
                                                     onArtist = openArtist,
                                                     playingId = playback.songId,
+                                                    playing = playback.isPlaying,
                                                 )
                                             }
                                         }
@@ -565,6 +572,7 @@ fun MusicApp(
                                                 { open(Page.PlaylistPage(it)) },
                                                 { open(Page.GenresPage) },
                                                 playingId = playback.songId,
+                                                playing = playback.isPlaying,
                                             )
                                         }
                                     }
@@ -590,6 +598,8 @@ private fun LibraryScreen(
     onPlaylist: (Long) -> Unit,
     onGenres: () -> Unit,
     playingId: Long = 0,
+    // The current song is playing (not paused): its indicator moves.
+    playing: Boolean = false,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var options by remember { mutableStateOf<Song?>(null) }
@@ -688,6 +698,7 @@ private fun LibraryScreen(
                                         showShuffle = false,
                                         onLongClick = onLongClick,
                                         playingId = playingId,
+                                        playing = playing,
                                     )
                                 }
                             }
@@ -736,6 +747,7 @@ private fun LibraryScreen(
                             showShuffle = true,
                             onLongClick = onLongClick,
                             playingId = playingId,
+                            playing = playing,
                         )
                     }
 
@@ -780,6 +792,8 @@ internal fun SongList(
     onLongClick: ((Int, Song) -> Unit)? = null,
     // The song playing now (its id), shown highlighted wherever it appears.
     playingId: Long = 0,
+    // The current song is playing (not paused): its indicator moves.
+    playing: Boolean = false,
 ) {
     LazyColumn(contentPadding = PaddingValues(bottom = 16.dp)) {
         header?.invoke(this)
@@ -798,8 +812,8 @@ internal fun SongList(
             val artist = song.artist.ifBlank { stringResource(R.string.unknown_artist) }
             val explicit = if (song.explicit) ", " + stringResource(R.string.explicit) else ""
             val current = playingId != 0L && song.id == playingId
-            val playing = if (current) ", " + stringResource(R.string.now_playing) else ""
-            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$playing"
+            val nowPlaying = if (current) ", " + stringResource(R.string.now_playing) else ""
+            val description = "${song.title}$explicit, $artist, ${formatDuration(song.durationMillis)}$nowPlaying"
             ListItem(
                 selected = current,
                 onClick = { actions.play(songs, i, from) },
@@ -809,14 +823,7 @@ internal fun SongList(
                 supportingContent = { Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (current) {
-                            Icon(
-                                painterResource(R.drawable.ic_now_playing),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                        if (current) NowPlayingBars(playing, Modifier.size(16.dp))
                         Text(formatDuration(song.durationMillis), style = MaterialTheme.typography.labelMedium)
                     }
                 },
@@ -848,6 +855,8 @@ private fun AlbumScreen(
     onArtist: (Long) -> Unit,
     onBack: () -> Unit,
     playingId: Long = 0,
+    // The current song is playing (not paused): its indicator moves.
+    playing: Boolean = false,
 ) {
     val from = PlayingFrom(PlayingFrom.Kind.Album, album.title, album.id)
     var options by remember { mutableStateOf<Song?>(null) }
@@ -875,6 +884,7 @@ private fun AlbumScreen(
                 showArt = false,
                 onLongClick = { _, song -> options = song },
                 playingId = playingId,
+                playing = playing,
                 header = {
                     item(key = "header") {
                         Column(
@@ -915,6 +925,8 @@ private fun ArtistScreen(
     onAlbum: (Long) -> Unit,
     onBack: () -> Unit,
     playingId: Long = 0,
+    // The current song is playing (not paused): its indicator moves.
+    playing: Boolean = false,
 ) {
     var options by remember { mutableStateOf<Song?>(null) }
     options?.let { song -> SongOptions(song, playlists, actions, onDismiss = { options = null }, onAlbum = onAlbum) }
@@ -938,6 +950,7 @@ private fun ArtistScreen(
                 showShuffle = true,
                 onLongClick = { _, song -> options = song },
                 playingId = playingId,
+                playing = playing,
                 header = {
                     item(key = "header") {
                         Column(
