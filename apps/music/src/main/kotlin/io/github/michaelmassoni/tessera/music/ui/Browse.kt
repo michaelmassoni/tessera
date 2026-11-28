@@ -169,20 +169,22 @@ internal fun AlbumGrid(
             Surface(onClick = { onAlbum(album.id) }, shape = MaterialTheme.shapes.medium) {
                 Column {
                     AlbumArt(album.id, size = 160.dp, modifier = Modifier.fillMaxWidth().aspectRatio(1f).sharedArt("album-${album.id}"))
-                    Text(
-                        album.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Text(
-                        album.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    // Inset from the card's rounded corners, which would otherwise clip the last line's first letter.
+                    Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)) {
+                        Text(
+                            album.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            album.artist,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -252,7 +254,7 @@ internal fun ArtistGrid(
     ) {
         items(artists, key = { it.id }) { artist ->
             Surface(onClick = { onArtist(artist.id) }, shape = MaterialTheme.shapes.medium) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.padding(bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     AlbumArt(
                         artist.albums.firstOrNull()?.id ?: 0,
                         size = 140.dp,

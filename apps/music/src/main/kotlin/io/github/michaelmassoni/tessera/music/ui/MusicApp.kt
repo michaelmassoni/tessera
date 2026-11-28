@@ -381,9 +381,9 @@ fun MusicApp(
         remember(playback.songId, playback.albumId, library.albums) {
             Library.albumOf(library.byId[playback.songId], playback.albumId, library.albums)?.id
         }
-    val playingArtist =
-        remember(playback.songId, playback.artist, library.artists) {
-            Library.artistOf(library.byId[playback.songId], playback.artist, library.artists)?.id
+    val playingArtists =
+        remember(playback.songId, playback.artist, library.artists, library.albumArtists) {
+            Library.creditedArtists(library.byId[playback.songId], playback.artist, library.artists, library.albumArtists)
         }
     val playingSource =
         remember(playback.from, library.albums, library.artists, library.albumArtists, library.playlists) {
@@ -418,12 +418,19 @@ fun MusicApp(
                                     openAlbum(id)
                                 }
                             },
-                        onArtist =
-                            playingArtist?.let { id ->
-                                {
-                                    onClose()
-                                    openArtist(id)
-                                }
+                        artists =
+                            playingArtists.map { (name, artist) ->
+                                ArtistLink(
+                                    name,
+                                    albumId = artist?.albums?.firstOrNull()?.id ?: 0,
+                                    go =
+                                        artist?.let {
+                                            {
+                                                onClose()
+                                                openArtist(it.id)
+                                            }
+                                        },
+                                )
                             },
                         onSource =
                             playback.from?.let { from ->

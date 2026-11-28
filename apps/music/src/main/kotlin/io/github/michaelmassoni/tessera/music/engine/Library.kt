@@ -54,6 +54,7 @@ data class Artist(
 object Library {
     private val DIACRITICS = Regex("\\p{Mn}+")
     private val ARTICLE = Regex("^(the|a|an)\\s+", RegexOption.IGNORE_CASE)
+    private val ARTIST_SEPARATOR = Regex("\\s*[•·;]\\s*|\\s+/\\s+")
 
     fun normalize(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFD).replace(DIACRITICS, "").lowercase(Locale.ROOT)
 
@@ -137,6 +138,38 @@ object Library {
     ): Artist? =
         song?.let { s -> artists.firstOrNull { it.id == s.artistId } }
             ?: name.takeIf { it.isNotBlank() }?.let { n -> artists.firstOrNull { normalize(it.name.trim()) == normalize(n.trim()) } }
+
+    /**
+     * The artists a song credits, one per name: Navidrome joins them with " • ", tags with "; " or
+     * " / ". Commas and "&" stay, as they're part of names ("Tyler, The Creator", "Simon & Garfunkel").
+     */
+    fun artistNames(artist: String): List<String> =
+        artist
+            .split(ARTIST_SEPARATOR)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { normalize(it) }
+
+    /**
+     * Each artist the playing song credits, with their page if the library has one: a track
+     * artist of that name, else an album artist. A song with one artist keeps [artistOf]'s match.
+     */
+    fun creditedArtists(
+        song: Song?,
+        name: String,
+        artists: List<Artist>,
+        albumArtists: List<Artist>,
+    ): List<Pair<String, Artist?>> {
+        fun byName(n: String) =
+            artists.firstOrNull { normalize(it.name.trim()) == normalize(n) }
+                ?: albumArtists.firstOrNull { normalize(it.name.trim()) == normalize(n) }
+        val names = artistNames(name)
+        return if (names.size <= 1) {
+            names.map { n -> n to (artistOf(song, n, artists) ?: byName(n)) }
+        } else {
+            names.map { n -> n to byName(n) }
+        }
+    }
 
     /** A stable id for an album artist (FNV-1a of the name), apart from track artists' ids. */
     fun albumArtistId(name: String): Long {

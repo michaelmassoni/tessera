@@ -56,6 +56,9 @@
     <string name="more">More options</string>
     <string name="go_to_album">Go to album</string>
     <string name="go_to_artist">Go to artist</string>
+    <string name="show_artists_and_album">Show artists and album</string>
+    <string name="credit_artist">Artist</string>
+    <string name="credit_album">Album</string>
     <string name="open_source">Open</string>
     <string name="explicit">Explicit</string>
     <string name="rename">Rename</string>
