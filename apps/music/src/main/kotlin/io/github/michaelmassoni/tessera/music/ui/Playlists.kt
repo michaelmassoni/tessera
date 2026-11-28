@@ -536,18 +536,20 @@ private fun PlaylistGrid(
             Surface(onClick = { onOpen(p.id) }, shape = MaterialTheme.shapes.medium) {
                 Column {
                     PlaylistArt(p, byId, 160.dp, Modifier.fillMaxWidth().aspectRatio(1f))
-                    Text(
-                        p.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Text(
-                        pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // Inset from the card's rounded corners, which would otherwise clip the last line's first letter.
+                    Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)) {
+                        Text(
+                            p.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

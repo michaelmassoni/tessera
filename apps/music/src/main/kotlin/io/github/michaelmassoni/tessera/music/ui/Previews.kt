@@ -1,5 +1,6 @@
 package io.github.michaelmassoni.tessera.music.ui
 
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import io.github.michaelmassoni.tessera.core.cast.CastDevice
 import io.github.michaelmassoni.tessera.core.cast.CastIconButton
@@ -128,7 +129,7 @@ private fun FullPlayerPreview() {
             NoPlayer,
             onClose = {},
             lyrics = LyricsState.Found(previewLyrics),
-            links = NowPlayingLinks(onAlbum = {}, onArtist = {}, onSource = {}),
+            links = NowPlayingLinks(onAlbum = {}, artists = listOf(ArtistLink(playing.artist, go = {})), onSource = {}),
             explicit = true,
             // The heart (liked) and save to playlist, as with a library.
             libraryActions = NoLibrary,
@@ -209,4 +210,20 @@ private val genreSongs =
 @Composable
 private fun GenresPreview() {
     TesseraTheme(dynamicColor = false) { GenresScreen(Groups.genres(genreSongs), onOpen = {}, onBack = {}) }
+}
+
+// Several credited artists (as Navidrome joins them): comma-separated on the player.
+@TesseraPreviews
+@Composable
+private fun FeaturedArtistsPlayerPreview() {
+    TesseraTheme(dynamicColor = false) {
+        FullPlayer(playing.copy(artist = "The Night Shift • Juniper • Aurora Bay"), { progress }, NoPlayer, onClose = {})
+    }
+}
+
+// The Albums grid: titles and artists clear of the cards' rounded corners.
+@TesseraPreviews
+@Composable
+private fun AlbumGridPreview() {
+    TesseraTheme(dynamicColor = false) { Surface { AlbumGrid(library.albums, onAlbum = {}) } }
 }

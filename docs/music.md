@@ -39,7 +39,7 @@ a Media3 `MediaSessionService`.
 - **Mini player:** a bar above the navigation shows the cover, title, artist and play/pause,
   with a thin progress line. Tapping it opens the full player.
 - **Full player:**
-  - Large artwork, title, artist and album.
+  - Large artwork, title, and the song's artists (0.14.5).
   - Seek slider with elapsed and remaining time.
   - Previous, play/pause and next; shuffle and repeat (off, all, one).
   - A queue sheet where you can jump to any track.
@@ -177,7 +177,7 @@ Asked for by the maintainer after using 0.4 with their Navidrome library.
   TalkBack has Move up, Move down and Remove actions. Songs' long-press menu adds **Play next**
   and **Add to queue**.
 - **Go to album and artist (0.8):** the full player's overflow menu has **Go to album** and **Go to
-  artist**, and the artist and album names under the title are links to the same pages (the menu is
+  artist**, and tapping the artists under the title lists them and the album (0.14.5; the menu is
   the dependable target; the names are small). Either closes the player and opens the page over
   the current tab. The page is found from the library song (`Library.albumOf` / `artistOf`), else
   by the album id and artist name the player has, so a restored queue still links; with no match
@@ -466,3 +466,16 @@ On the player, swipe the album art left for the next song or right for the previ
 song, unlike the Previous button, which first restarts a song more than a few seconds in). The art follows the
 finger; past a quarter of its width, or a quick flick, it slides off and the song changes, otherwise
 it springs back. TalkBack gets Next and Previous as actions on the art.
+
+## Artists line and credits (0.14.5)
+
+Under the title the player shows only the song's artists, separated by commas, scrolling sideways
+when they don't fit (as the title does). A server joins several artists into one name (Navidrome
+uses " • "), and tags use "; " or " / "; `Library.artistNames` splits on those but never on commas
+or "&", which are part of names ("Tyler, The Creator"). Tapping the line opens a sheet (as Spotify
+does) listing each artist, then the album, each opening its page; an artist the library has no page
+for (matched by name: a track artist, else an album artist) is listed but not tappable. With several
+artists, the menu's **Go to artist** opens the same sheet.
+
+Album, artist and playlist grid captions sit inset from the cards' rounded corners, which clipped
+the first letter of the second line.

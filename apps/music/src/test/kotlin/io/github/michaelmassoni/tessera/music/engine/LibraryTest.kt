@@ -72,6 +72,24 @@ class LibraryTest {
         assertEquals(null, Library.artistOf(null, "", artists))
     }
 
+    @Test fun `a song's artists split on the server's and tags' separators, not on commas`() {
+        assertEquals(listOf("Lil Baby", "Young Thug", "Rylo Rodriguez"), Library.artistNames("Lil Baby • Young Thug • Rylo Rodriguez"))
+        assertEquals(listOf("A", "B", "C"), Library.artistNames("A; B;C / A"))
+        assertEquals(listOf("Tyler, The Creator"), Library.artistNames("Tyler, The Creator"))
+        assertEquals(listOf("AC/DC"), Library.artistNames("AC/DC"))
+        assertEquals(emptyList<String>(), Library.artistNames(" "))
+    }
+
+    @Test fun `each credited artist leads to their own page when the library has one`() {
+        val all = songs + song(7, "Duet", "Ana Moura • Charli XCX • Nobody", "Duets", 50)
+        val artists = Library.artists(all)
+        val credited = Library.creditedArtists(all.last(), all.last().artist, artists, Library.albumArtists(all))
+        assertEquals(listOf("Ana Moura", "Charli XCX", "Nobody"), credited.map { it.first })
+        assertEquals(listOf("Ana Moura", "Charli xcx", null), credited.map { it.second?.name })
+        // One artist: the song's own artist id, as before.
+        assertEquals(listOf("The Beatles"), Library.creditedArtists(songs[4], "The Beatles", artists, emptyList()).map { it.second?.name })
+    }
+
     @Test
     fun `albums artists and playlists search by their own names`() {
         val albums =

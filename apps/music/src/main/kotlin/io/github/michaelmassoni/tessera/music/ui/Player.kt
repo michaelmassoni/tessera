@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -71,13 +72,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
@@ -85,6 +81,7 @@ import io.github.michaelmassoni.tessera.music.PlaybackState
 import io.github.michaelmassoni.tessera.music.Progress
 import io.github.michaelmassoni.tessera.music.R
 import io.github.michaelmassoni.tessera.music.data.MusicRepository
+import io.github.michaelmassoni.tessera.music.engine.Library
 import io.github.michaelmassoni.tessera.music.engine.PlayingFrom
 import io.github.michaelmassoni.tessera.music.engine.Playlist
 import io.github.michaelmassoni.tessera.music.engine.formatDuration
@@ -296,9 +293,17 @@ private fun PlayPause(
 /** Where the full player can take you: the playing song's album and artist pages, and where it plays from. */
 class NowPlayingLinks(
     val onAlbum: (() -> Unit)? = null,
-    val onArtist: (() -> Unit)? = null,
+    /** Each artist the song credits, in order. */
+    val artists: List<ArtistLink> = emptyList(),
     /** "Playing from": the album, artist or playlist the queue came from, or all songs. */
     val onSource: (() -> Unit)? = null,
+)
+
+/** An artist the playing song credits: their name, their first album's art, and their page (null when the library has none). */
+class ArtistLink(
+    val name: String,
+    val albumId: Long = 0,
+    val go: (() -> Unit)? = null,
 )
 
 /** The full-screen player: one column, or the art beside the rest when the screen is wider than tall. */
@@ -325,6 +330,8 @@ fun FullPlayer(
     var showLyrics by rememberSaveable { mutableStateOf(false) }
     var saving by rememberSaveable { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    var credits by rememberSaveable { mutableStateOf(false) }
+    val artistPages = links.artists.filter { it.go != null }
     BackHandler(showLyrics) { showLyrics = false }
     Box(modifier) {
         Scaffold(
@@ -342,7 +349,7 @@ fun FullPlayer(
                         }
                     },
                     actions = {
-                        if (links.onAlbum != null || links.onArtist != null) {
+                        if (links.onAlbum != null || artistPages.isNotEmpty()) {
                             Box {
                                 IconButton(onClick = { menu = true }) {
                                     Icon(painterResource(DesignR.drawable.ic_more_vert), contentDescription = stringResource(R.string.more))
@@ -358,13 +365,14 @@ fun FullPlayer(
                                             },
                                         )
                                     }
-                                    links.onArtist?.let { go ->
+                                    if (artistPages.isNotEmpty()) {
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.go_to_artist)) },
                                             leadingIcon = { Icon(painterResource(DesignR.drawable.ic_artist), contentDescription = null) },
                                             onClick = {
                                                 menu = false
-                                                go()
+                                                // More than one artist: let the listener pick.
+                                                artistPages.singleOrNull()?.go?.invoke() ?: run { credits = true }
                                             },
                                         )
                                     }
@@ -389,7 +397,15 @@ fun FullPlayer(
                     )
                 }
                 val details: @Composable () -> Unit = {
-                    TitleRow(state, explicit, liked, playlists, libraryActions, links, onSave = { saving = true })
+                    TitleRow(
+                        state,
+                        explicit,
+                        liked,
+                        playlists,
+                        libraryActions,
+                        onSave = { saving = true },
+                        onArtists = if (artistPages.isNotEmpty() || links.onAlbum != null) ({ credits = true }) else null,
+                    )
                     SeekBar(progress, actions)
                     Controls(state, actions)
                     OutputRow(castButton, castingTo, onQueue = { queue = true })
@@ -440,13 +456,17 @@ fun FullPlayer(
         if (saving && libraryActions != null) {
             SaveToPlaylistSheet(state.songId, playlists, libraryActions, onDismiss = { saving = false })
         }
+        if (credits) CreditsSheet(state, links, onDismiss = { credits = false })
         if (showLyrics && lyrics is LyricsState.Found) {
             LyricsScreen(lyrics.lyrics, state, progress, actions, onClose = { showLyrics = false })
         }
     }
 }
 
-/** Title, then "Artist · Album" (each a link to its page when it has one), the heart, and save to playlist. */
+/**
+ * Title, then the artists (comma-separated; tapping them lists each artist and the album to go to,
+ * as Spotify does), the heart, and save to playlist. Long titles and artist lines scroll sideways.
+ */
 @Composable
 private fun TitleRow(
     state: PlaybackState,
@@ -454,8 +474,8 @@ private fun TitleRow(
     liked: Boolean?,
     playlists: List<Playlist>,
     libraryActions: LibraryActions?,
-    links: NowPlayingLinks,
     onSave: () -> Unit,
+    onArtists: (() -> Unit)?,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
@@ -466,33 +486,26 @@ private fun TitleRow(
                 maxLines = 1,
                 modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = MARQUEE_DELAY_MS),
             )
-            val linkStyle = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant))
-            val line =
-                buildAnnotatedString {
-                    fun part(
-                        text: String,
-                        tag: String,
-                        go: (() -> Unit)?,
-                    ) {
-                        if (text.isBlank()) return
-                        if (length > 0) append(" · ")
-                        if (go != null) {
-                            withLink(LinkAnnotation.Clickable(tag, linkStyle) { go() }) { append(text) }
-                        } else {
-                            append(text)
-                        }
-                    }
-                    part(state.artist, "artist", links.onArtist)
-                    part(state.album, "album", links.onAlbum)
-                }
-            WithExplicitBadge(explicit) { m ->
+            val artists =
+                Library
+                    .artistNames(state.artist)
+                    .joinToString(", ")
+                    .ifEmpty { stringResource(R.string.unknown_artist) }
+            WithExplicitBadge(
+                explicit,
+                modifier =
+                    if (onArtists != null) {
+                        Modifier.clickable(onClickLabel = stringResource(R.string.show_artists_and_album), onClick = onArtists)
+                    } else {
+                        Modifier
+                    },
+            ) { m ->
                 Text(
-                    line,
+                    artists,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = m,
+                    modifier = m.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = MARQUEE_DELAY_MS),
                 )
             }
         }
@@ -517,6 +530,65 @@ private fun TitleRow(
                 )
             }
         }
+    }
+}
+
+/** The song's artists, then its album: each a row that opens its page (an artist without one isn't tappable). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreditsSheet(
+    state: PlaybackState,
+    links: NowPlayingLinks,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
+            val artists = links.artists.ifEmpty { Library.artistNames(state.artist).map { ArtistLink(it) } }
+            artists.forEach { artist ->
+                val go = artist.go
+                CreditRow(
+                    title = artist.name,
+                    kind = stringResource(R.string.credit_artist),
+                    onClick =
+                        go?.let {
+                            {
+                                onDismiss()
+                                it()
+                            }
+                        },
+                ) { AlbumArt(artist.albumId, size = 56.dp, modifier = Modifier.clip(CircleShape)) }
+            }
+            if (state.album.isNotBlank()) {
+                CreditRow(
+                    title = state.album,
+                    kind = stringResource(R.string.credit_album),
+                    onClick =
+                        links.onAlbum?.let {
+                            {
+                                onDismiss()
+                                it()
+                            }
+                        },
+                ) { AlbumArt(state.albumId, artwork = state.artwork, size = 56.dp) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreditRow(
+    title: String,
+    kind: String,
+    onClick: (() -> Unit)?,
+    art: @Composable () -> Unit,
+) {
+    val supporting: @Composable () -> Unit = { Text(kind) }
+    if (onClick != null) {
+        ListItem(onClick = onClick, leadingContent = art, supportingContent = supporting) {
+            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    } else {
+        ListItem(leadingContent = art, supportingContent = supporting) { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
 
